@@ -1,0 +1,3 @@
+[submodule "VisE"]
+	path = VisE
+	url = git@github.com:FakeNarratives/VisE.git
