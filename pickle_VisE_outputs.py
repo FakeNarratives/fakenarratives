@@ -17,7 +17,7 @@ from VisE.ontology_reader import OntologyReader
 
 def vise_pkl(
     leaf_node_vectors: np.ndarray,
-    subgraph_vectors: np.ndarray,
+    # subgraph_vectors: np.ndarray,
     OntReader: OntologyReader,
     times: list,
     config: dict,
@@ -33,10 +33,8 @@ def vise_pkl(
 
     Returns:
         dict: dictionary ready to write in a .pkl
-            leaf_node_vector (np.ndarray): similarities of 148 event types for all t entries in time (shape t, 148)
-            leaf_node_labels (list): labels of all event types according to Wikidata (length 148)
-            subgraph_vector (np.ndarray): similarities of 409 ontology nodes for all t entries in time (shape t, 409)
-            leaf_node_labels (list): labels of all ontology nodes according to Wikidata (length 148)
+            y (np.ndarray): similarities of 148 event types for all t entries in time (shape t, 148)
+            index (list): event type names according to Wikidata (length 148)
             time (list): t time values (length t)
             delta_time (float): time duration for which a certain value is created (equals 1 / fps)
             config (dict): model config
@@ -47,9 +45,7 @@ def vise_pkl(
 
     return {
         "leaf_node_vector": leaf_node_vectors,
-        "leaf_node_labels": None,  # TODO
-        "subgraph_vector": subgraph_vectors,
-        "subgraph_node_labels": None,  # TODO
+        "leaf_node_labels": OntReader.leaf_node_labels,
         "time": times,
         "delta_time": 1 / args.fps,
         "config": config,
@@ -88,7 +84,7 @@ def parse_args():
 
 
 def get_predictions(dataloader, OntReader, model, device, s2l_strategy):
-    subgraph_vectors = []
+    # subgraph_vectors = []
     leaf_node_vectors = []
 
     for batch in dataloader:  # loop over batches
@@ -116,9 +112,9 @@ def get_predictions(dataloader, OntReader, model, device, s2l_strategy):
 
             # store predictions
             leaf_node_vectors.append(leaf_node_vector)
-            subgraph_vectors.append(OntReader.leaf_to_subgraph_vector(leaf_node_vector))
+            # subgraph_vectors.append(OntReader.leaf_to_subgraph_vector(leaf_node_vector))
 
-    return np.stack(leaf_node_vectors, axis=0), np.stack(subgraph_vectors, axis=0)
+    return np.stack(leaf_node_vectors, axis=0)  # ,  np.stack(subgraph_vectors, axis=0)
 
 
 def main():
@@ -203,7 +199,7 @@ def main():
         dataloader = DataLoader(dataset, batch_size=args.batch_size, num_workers=8)
 
         # predict event classes for images
-        leaf_node_vectors, subgraph_vectors = get_predictions(
+        leaf_node_vectors = get_predictions(
             dataloader=dataloader,
             OntReader=OntReader,
             model=model,
@@ -211,7 +207,7 @@ def main():
             s2l_strategy=args.s2l_strategy,
         )
         logging.debug(leaf_node_vectors.shape)
-        logging.debug(subgraph_vectors.shape)
+        # logging.debug(subgraph_vectors.shape)
 
         vidname = os.path.splitext(os.path.basename(video_path))[0]
         output_dir = os.path.join(args.output, vidname)
@@ -220,9 +216,10 @@ def main():
             os.makedirs(output_dir)
 
         with open(os.path.join(output_dir, "eventclassification_vise.pkl"), "wb") as f:
+            print(OntReader.leaf_node_labels)
             output_dict = vise_pkl(
                 leaf_node_vectors=leaf_node_vectors,
-                subgraph_vectors=subgraph_vectors,
+                # subgraph_vectors=subgraph_vectors,
                 OntReader=OntReader,
                 times=times,
                 config=cfg,
