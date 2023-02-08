@@ -1,3 +1,6 @@
 [submodule "VisE"]
 	path = VisE
 	url = git@github.com:FakeNarratives/VisE.git
+[submodule "mmocr"]
+	path = mmocr
+	url = git@github.com:FakeNarratives/mmocr.git
