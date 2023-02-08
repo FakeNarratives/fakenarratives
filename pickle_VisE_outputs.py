@@ -177,7 +177,7 @@ def main():
 
     # extract features for all videos
     for video_path in args.videos:
-
+        logging.info(f"Processing video: {video_path}")
         vd = VideoDecoder(path=video_path, max_dimension=args.max_dimension, fps=args.fps)
         vb = VideoBatcher(video_decoder=vd, batch_size=args.batch_size)
 
@@ -216,7 +216,6 @@ def main():
             os.makedirs(output_dir)
 
         with open(os.path.join(output_dir, "eventclassification_vise.pkl"), "wb") as f:
-            print(OntReader.leaf_node_labels)
             output_dict = vise_pkl(
                 leaf_node_vectors=leaf_node_vectors,
                 # subgraph_vectors=subgraph_vectors,
