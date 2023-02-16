@@ -4,3 +4,9 @@
 [submodule "mmocr"]
 	path = mmocr
 	url = git@github.com:FakeNarratives/mmocr.git
+[submodule "lavis"]
+	path = lavis
+	url = https://github.com/salesforce/LAVIS.git
+[submodule "whisper"]
+	path = whisper
+	url = https://github.com/openai/whisper.git
