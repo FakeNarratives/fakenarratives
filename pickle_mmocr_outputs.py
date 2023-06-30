@@ -35,7 +35,9 @@ def mmocr_pkl(
             args (dict): arguments the script has been executed with
     """
     args_dict = vars(args)
-    del args_dict["videos"]
+
+    if "videos" in args_dict:
+        del args_dict["videos"]
 
     return {
         "y": mmocr_outputs,
@@ -85,9 +87,10 @@ def main():
 
     # init ocr model
     ocr = MMOCR(recog=args.recog, det=args.det)
+    videos = args.videos
 
     # extract features for all videos
-    for video_path in args.videos:
+    for video_path in videos:
         logging.info(f"Processing video: {video_path}")
         vd = VideoDecoder(path=video_path, max_dimension=args.max_dimension, fps=args.fps)
         vb = VideoBatcher(video_decoder=vd, batch_size=args.batch_size)
@@ -97,7 +100,6 @@ def main():
         mmocr_outputs = []
 
         for i, batch in enumerate(vb):
-
             logging.info(f"Batch: {i}")
             images = np.split(batch["frame"], batch["frame"].shape[0], axis=0)
 
