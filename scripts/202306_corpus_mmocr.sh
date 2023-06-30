@@ -11,8 +11,7 @@
 FPS=2
 NEWSCHANNELS=(BildTV CompactTV HeuteJournal Tagesschau)
 
-
-for c in $NEWSCHANNELS
+for c in ${NEWSCHANNELS[*]}
 do
     echo %%%% $c
     videos=$(ls -d /nfs/data/fakenarratives/202306_corpus/videos/$c/*.mp4)
