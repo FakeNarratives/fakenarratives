@@ -3,7 +3,8 @@
 ##SBATCH -w devbox2
 ##SBATCH -s
 #SBATCH -J mmocr_fakenarratives
-#SBATCH -G 1    
+#SBATCH -G 1  
+#SBATCH --mem 16G  
 ##SBATCH -c 24
 ##SBATCH -o /nfs/home/muellerer/fakenarratives/slurm
 
