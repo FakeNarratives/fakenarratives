@@ -41,7 +41,9 @@ def vise_pkl(
             args (dict): arguments the script has been executed with
     """
     args_dict = vars(args)
-    del args_dict["videos"]
+
+    if "videos" in args_dict:
+        del args_dict["videos"]
 
     return {
         "leaf_node_vector": leaf_node_vectors,
@@ -90,7 +92,6 @@ def get_predictions(dataloader, OntReader, model, device, s2l_strategy):
     for batch in dataloader:  # loop over batches
         batch_result = model(batch["image"].to(device))
         for sample in range(batch_result["predictions"].shape[0]):  # loop over samples in batches
-
             # get prediction from model
             prediction = batch_result["predictions"][sample, :].detach().cpu().numpy()
             if model.model_type == "classification":
@@ -175,8 +176,10 @@ def main():
     model.eval()
     model.load(device=device, path=os.path.join(os.path.dirname(args.cfg), cfg["model_checkpoint"]))
 
+    videos = args.videos
+
     # extract features for all videos
-    for video_path in args.videos:
+    for video_path in videos:
         logging.info(f"Processing video: {video_path}")
         vd = VideoDecoder(path=video_path, max_dimension=args.max_dimension, fps=args.fps)
         vb = VideoBatcher(video_decoder=vd, batch_size=args.batch_size)
