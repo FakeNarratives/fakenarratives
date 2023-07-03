@@ -4,27 +4,24 @@ import tempfile
 from datetime import date
 from moviepy.editor import VideoFileClip
 import torch
-import whisper
+import argparse
+# import whisper
 ## Github repository: https://github.com/openai/whisper
 ## Commit ID: f572f2161ba831bae131364c3bffdead7af6d210
-import argparse
 
-import os
-import pickle
-import tempfile
-from datetime import date
-from moviepy.editor import VideoFileClip
-import torch
-import whisper
-import argparse
+import whisper_timestamped as whisper
+## Github repository: https://github.com/linto-ai/whisper-timestamped
+## Commit ID: 732865ce9c0c1027c67f964e7200c7db6542b142
+
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Runs OpenAI's whisper model on news videos for automatic speech recognition")
+    parser = argparse.ArgumentParser(description="Runs OpenAI's whisper model on news videos for ASR and word timestamps")
     parser.add_argument("-f", "--file", type=str, required=True, help="Text file containing paths to videos as <media>/<video_name>")
     parser.add_argument("-i", "--inp_dir", type=str, default="/nfs/data/fakenarratives/202306_corpus/videos", help="Base directory for input videos")
     parser.add_argument("-o", "--out_dir", type=str, default="/nfs/data/fakenarratives/202306_corpus/results_pkl", help="Base directory for output results")
     args = parser.parse_args()
     return args
+
 
 def read_video_paths(file_path, base_input_dir, base_output_dir):
     with open(file_path, 'r') as f:
@@ -37,13 +34,13 @@ def get_output_dir(video_path, base_output_dir):
     return output_dir
 
 def get_model(device):
-    model = whisper.load_model("large-v2")
-    model.to(device)
+    model = whisper.load_model("large-v2", device=device)
     return model
+
 
 def transcribe_video(video_path, model):
     """
-    Transcribes video using OpenAI's Whisper ASR model and stores details in a dictionary.
+    Transcribes (with word timestamps) video using OpenAI's Whisper ASR model and stores details in a dictionary.
 
     The dictionary includes:
     1. GitHub repo of the Whisper model
@@ -62,11 +59,11 @@ def transcribe_video(video_path, model):
             commit_id (str): Commit ID of the used Whisper model
             parameters (str): Parameters used for the Whisper model
             video_file (str): Full path to the video file
-            output_data (str): Transcription result from the Whisper model
+            output_data (str): Transcription result from the Whisper model with word timestamps
     """
 
-    video_feat_dict = {"github_repo": "https://github.com/openai/whisper",
-                        "commit_id": "f572f2161ba831bae131364c3bffdead7af6d210",
+    video_feat_dict = {"github_repo": "https://github.com/linto-ai/whisper-timestamped",
+                        "commit_id": "732865ce9c0c1027c67f964e7200c7db6542b142",
                         "parameters": "default",
                         "video_file": video_path,
                       }
@@ -75,8 +72,11 @@ def transcribe_video(video_path, model):
 
     with tempfile.NamedTemporaryFile(suffix=".mp3") as tmp:
         video.audio.write_audiofile(tmp.name)
-        result = model.transcribe(tmp.name)
-        video_feat_dict["output_data"] = result
+        audio = whisper.load_audio(tmp.name)
+
+        result = whisper.transcribe(model, audio, language="de")
+
+        video_feat_dict["output_data"] = result["segments"]
 
         return video_feat_dict
 
@@ -102,7 +102,7 @@ def main():
 
         fname = os.path.basename(input_path)
 
-        with open(os.path.join(out_loc, "asr.pkl"), "wb") as f:
+        with open(os.path.join(out_loc, "asr_wordstamps.pkl"), "wb") as f:
             pickle.dump(video_feat_dict, f)
 
 

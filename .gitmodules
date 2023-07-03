@@ -7,3 +7,6 @@
 [submodule "audio_analysis/whisper"]
 	path = audio_analysis/whisper
 	url = git@github.com:openai/whisper.git
+[submodule "audio_analysis/whisper-timestamped"]
+	path = audio_analysis/whisper-timestamped
+	url = git@github.com:linto-ai/whisper-timestamped.git
