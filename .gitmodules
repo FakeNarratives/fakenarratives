@@ -10,3 +10,6 @@
 [submodule "audio_analysis/whisper-timestamped"]
 	path = audio_analysis/whisper-timestamped
 	url = git@github.com:linto-ai/whisper-timestamped.git
+[submodule "semantic_geo_partitioning"]
+	path = semantic_geo_partitioning
+	url = git@github.com:FakeNarratives/semantic_geo_partitioning.git
