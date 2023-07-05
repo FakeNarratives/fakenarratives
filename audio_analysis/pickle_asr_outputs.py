@@ -75,7 +75,7 @@ def transcribe_video(video_path, model):
 
     with tempfile.NamedTemporaryFile(suffix=".mp3") as tmp:
         video.audio.write_audiofile(tmp.name)
-        result = model.transcribe(tmp.name)
+        result = model.transcribe(tmp.name, word_timestamps=True)
         video_feat_dict["output_data"] = result
 
         return video_feat_dict

@@ -52,7 +52,6 @@ dependencies:
   - ncurses=6.4=h6a678d5_0
   - nettle=3.6=he412f7d_0
   - networkx=2.8.4=py310h06a4308_1
-  - numpy-base=1.25.0=py310hb5e798b_0
   - openh264=2.1.1=h4ff587b_0
   - openssl=3.0.9=h7f8727e_0
   - pip=23.1.2=py310h06a4308_0
@@ -99,8 +98,7 @@ dependencies:
       - regex==2023.6.3
       - requests==2.31.0
       - scipy==1.11.1
-      - tiktoken==0.3.3
+      - tiktoken==0.3.1
       - tqdm==4.65.0
       - urllib3==2.0.3
-      - whisper-timestamped==1.12.20
 prefix: /nfs/home/cheemag/anaconda3/envs/faken_a
