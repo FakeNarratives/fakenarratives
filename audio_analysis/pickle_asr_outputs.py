@@ -67,7 +67,12 @@ def transcribe_video(video_path, model, pipeline):
 
     video = VideoFileClip(video_path+".mp4")
 
-    with tempfile.NamedTemporaryFile(suffix=".mp3") as tmp:
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    if not os.path.exists(os.path.join(script_dir, "temp/")):
+        os.makedirs(os.path.join(script_dir, "temp/"))
+
+    with tempfile.NamedTemporaryFile(os.path.join(script_dir, "temp/"), suffix=".mp3", delete=True) as tmp:
         video.audio.write_audiofile(tmp.name)
         asr_result = model.transcribe(tmp.name, word_timestamps=True)
         diarization_result = pipeline(tmp.name)

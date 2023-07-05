@@ -4,6 +4,10 @@ conda env create -f environment.yml
 ## Install pyannote-audio
 pip install -qq https://github.com/pyannote/pyannote-audio/archive/refs/heads/develop.zip
 
+## Other Installations
+pip install speechbrain
+pip install transformers
+
 ## Run ASR and speaker diarization
 
 `python audio_analysis/pickle_asr_outputs.py -f ../video_list.txt`
