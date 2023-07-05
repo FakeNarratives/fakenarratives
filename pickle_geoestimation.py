@@ -43,7 +43,7 @@ def geo_pkl(
 
     # print(model.partitionings[-1])
 
-    # TODO: add geocoordiate of a 14741 classes in y?
+    # TODO: add geocoordiates for all 14,741 classes in y? -> allows geographical heatmap visualization
     return {
         "y": np.asarray(probs),
         "geocoords": geocoords,
@@ -134,7 +134,6 @@ def predict_geolocation(batch, model, device="cpu"):
     )
 
     geocoords = zip(pred_lats, pred_lngs)
-
     return yhats.cpu().detach().numpy(), geocoords
 
 
@@ -190,7 +189,6 @@ def main():
                 indices.extend(batch["index"])
                 probs.extend(p)
                 geocoords.extend(c)
-                break
 
             # write results
             vidname = os.path.splitext(os.path.basename(video_path))[0]
