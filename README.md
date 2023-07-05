@@ -31,7 +31,7 @@ To extract features for a given video, please run:
 
 ~~~sh
 conda activate fakenarratives_vise_py38
-python python pickle_VisE_outputs.py --cfg VisE/resources/VisE-D/models/VisE_CO_cos.yml --videos /PATH/TO/VIDEOS --output /PATH/TO/OUTPUT_FOLDER
+python pickle_VisE_outputs.py --cfg VisE/resources/VisE-D/models/VisE_CO_cos.yml --videos /PATH/TO/VIDEOS --output /PATH/TO/OUTPUT_FOLDER
 ~~~
 
 For optional parameters, we refer to the file [```pickle_VisE_outputs.py```](pickle_VisE_outputs.py)
@@ -43,14 +43,15 @@ To install all dependencies, please use the following commands:
 
 ~~~sh
 cd semantic_geo_partitioning
-conda env create ---name fakenarratives_semantic_geo_partitioning_py38 -f environment.yml python=3.8
+conda create --name fakenarratives_semantic_geo_partitioning_py38 python=3.8
+pip install -r requirements.txt
 ~~~
 
 To extract features for a given video, please run:
 
 ~~~sh
 conda activate fakenarratives_semantic_geo_partitioning_py38
-TODO
+PYTHONPATH=./semantic_geo_partitioning/geo_classification python pickle_geoestimation.py --videos /PATH/TO/VIDEOS --output /PATH/TO/OUTPUT_FOLDER
 ~~~
 
 ### Optical Character Recognition
