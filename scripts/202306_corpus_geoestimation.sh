@@ -1,0 +1,19 @@
+#!/usr/bin/bash
+#SBATCH --nodes=1
+##SBATCH -w devbox2
+##SBATCH -s
+#SBATCH -J mmocr_fakenarratives
+#SBATCH -G 1  
+#SBATCH --mem 16G  
+##SBATCH -c 24
+##SBATCH -o /nfs/home/muellerer/fakenarratives/slurm
+
+FPS=2
+NEWSCHANNELS=(BildTV CompactTV HeuteJournal Tagesschau)
+
+for c in ${NEWSCHANNELS[*]}
+do
+    echo %%%% $c
+    videos=$(ls -d /nfs/data/fakenarratives/202306_corpus/videos/$c/*.mp4)
+    PYTHONPATH=./semantic_geo_partitioning/geo_classification python pickle_geoestimation.py --videos $videos --output /nfs/data/fakenarratives/202306_corpus/results_pkl/$c --fps $FPS
+done
