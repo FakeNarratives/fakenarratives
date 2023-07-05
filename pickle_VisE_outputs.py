@@ -33,8 +33,8 @@ def vise_pkl(
 
     Returns:
         dict: dictionary ready to write in a .pkl
-            y (np.ndarray): similarities of 148 event types for all t entries in time (shape t, 148)
-            index (list): event type names according to Wikidata (length 148)
+            leaf_node_vector (np.ndarray): similarities of 148 event types for all t entries in time (shape t, 148)
+            leaf_node_labels (list): event type names according to Wikidata (length 148)
             time (list): t time values (length t)
             delta_time (float): time duration for which a certain value is created (equals 1 / fps)
             config (dict): model config
