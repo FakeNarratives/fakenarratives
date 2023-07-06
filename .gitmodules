@@ -10,6 +10,3 @@
 [submodule "semantic_geo_partitioning"]
 	path = semantic_geo_partitioning
 	url = git@github.com:FakeNarratives/semantic_geo_partitioning.git
-[submodule "audio_analysis/pyannote-whisper"]
-	path = audio_analysis/pyannote-whisper
-	url = git@github.com:yinruiqing/pyannote-whisper.git

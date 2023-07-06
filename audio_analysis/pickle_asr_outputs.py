@@ -87,8 +87,6 @@ def transcribe_video(video_path, model, pipeline):
 
     video_feat_dict["output_data"] = asr_result
 
-    print(asr_result)
-
     return video_feat_dict
 
 
