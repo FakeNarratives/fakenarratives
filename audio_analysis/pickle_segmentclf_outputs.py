@@ -94,12 +94,10 @@ def classify_asr_segments(video_path, asr_dict,
         resampler = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=sr).to(device)
         audio_data = resampler(waveform).cpu()
 
-        os.remove(tmp.name)
-
     ## For ASR segments 
     asr_segment_preds = []
 
-    # Creating a temp file name
+    # A temporary file to store the slice of audio
     temp_file_name = os.path.join(script_dir, "temp", "slice.mp3")
 
     for seg in tqdm(asr_dict["segments"]):
@@ -126,14 +124,11 @@ def classify_asr_segments(video_path, asr_dict,
         
         sf.write(temp_file_name, slice, sr) ## For some reason, this randomly creates files under temp/ and outside temp/ folder
 
-        out_prob, score, _, text_lab = emo_model.classify_file(temp_file_name)
+        _, _, _, text_lab = emo_model.classify_file(temp_file_name) ## Returns probability, score, index, label
 
         asr_segment_preds.append({"id": seg["id"], "seek": seg["seek"], 
                                     "start": seg["start"], "end": seg["end"],
                                     "gender": gen_pred, "emotion": emo_lab_map[text_lab[0]]})
-        
-        os.remove(temp_file_name)
-
 
     ## For speaker segments 
     speaker_segment_preds = []
@@ -144,7 +139,7 @@ def classify_asr_segments(video_path, asr_dict,
 
         if end_sample <= start_sample:
             ## "Skipping segment with same start_sample and end_sample")
-            asr_segment_preds.append({"start": seg["start"], "end": seg["end"], "speaker": seg["speaker"],
+            speaker_segment_preds.append({"start": seg["start"], "end": seg["end"], "speaker": seg["speaker"],
                                             "gender": "None", "emotion": "None"})
             continue
 
@@ -160,15 +155,24 @@ def classify_asr_segments(video_path, asr_dict,
         
         sf.write(temp_file_name, slice, sr) ## For some reason, this randomly creates files under temp/ and outside temp/ folder
 
-        out_prob, score, _, text_lab = emo_model.classify_file(temp_file_name)
+        _, _, _, text_lab = emo_model.classify_file(temp_file_name) ## Returns probability, score, index, label
 
         speaker_segment_preds.append({"start": seg["start"], "end": seg["end"], "speaker": seg["speaker"],
                                         "gender": gen_pred, "emotion": emo_lab_map[text_lab[0]]})
 
-        os.remove(temp_file_name)
                 
     video_feat_dict["output_data"]["asr_segments"] = asr_segment_preds
     video_feat_dict["output_data"]["speaker_segments"] = speaker_segment_preds
+
+    ## Delete the temporary files after a video is processed
+    if os.path.isfile(os.path.join(script_dir, "temp", "audio.mp3")):
+        os.remove(os.path.join(script_dir, "temp", "audio.mp3"))
+
+    if os.path.isfile("slice.mp3"):
+        os.remove("slice.mp3")
+
+    if os.path.isfile(os.path.join(script_dir, "temp", "slice.mp3")):
+        os.remove(os.path.join(script_dir, "temp", "slice.mp3"))
 
     return video_feat_dict
 
@@ -191,18 +195,17 @@ def main():
 
         out_loc = output_paths[i]
 
-        if not os.path.exists(os.path.join(out_loc, "audio_segment_classification.pkl")):
-            if not os.path.exists(out_loc):
-                os.makedirs(out_loc)
+        if not os.path.exists(out_loc):
+            os.makedirs(out_loc)
 
-            asr_dict = pickle.load(open(os.path.join(out_loc, "asr.pkl"), "rb"))
+        asr_dict = pickle.load(open(os.path.join(out_loc, "asr.pkl"), "rb"))
 
-            video_feat_dict = classify_asr_segments(input_path, asr_dict["output_data"], 
-                                                    emo_model, gen_model, gen_processor, 
-                                                    emo_lab_map, gen_lab_map, device)
+        video_feat_dict = classify_asr_segments(input_path, asr_dict["output_data"], 
+                                                emo_model, gen_model, gen_processor, 
+                                                emo_lab_map, gen_lab_map, device)
 
-            with open(os.path.join(out_loc, "audio_segment_classification.pkl"), "wb") as f:
-                pickle.dump(video_feat_dict, f)
+        with open(os.path.join(out_loc, "audio_segment_classification.pkl"), "wb") as f:
+            pickle.dump(video_feat_dict, f)
 
 
 if __name__ == "__main__":
