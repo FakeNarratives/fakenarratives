@@ -39,7 +39,7 @@ def create_shot_tier(eaf, input_pickle):
     # loop through shots and add annotations
     shots = pickle.load(open(input_pickle, "rb"))
     i = 0
-    for shot in enumerate(shots["output_data"]["shots"]):
+    for shot in shots["output_data"]["shots"]:
         logging.debug(shot)
 
         start = int(1000 * shot["start"])
@@ -59,9 +59,34 @@ def create_scene_tier(input_pkl):
     pass
 
 
-def create_speaker_tier(input_pkl):
-    # TODO
-    pass
+def create_speaker_tier(eaf, input_pickle):
+    logging.info(f"Reading: {input_pickle}")
+
+    # create tier
+    tier_speaker = "speakers"
+    eaf.add_tier(tier_id=tier_speaker)
+
+    tier_transcript = "transcript"
+    eaf.add_tier(tier_id=tier_transcript)
+
+    # loop through shots and add annotations
+    asr = pickle.load(open(input_pickle, "rb"))
+    i = 0
+
+    for speaker_segment in asr["output_data"]["speaker_segments"]:
+        logging.debug(speaker_segment)
+
+        start = int(1000 * speaker_segment["start"])
+        end = int(1000 * speaker_segment["end"])
+
+        if start == end:
+            continue
+
+        eaf.add_annotation(tier_speaker, start=start, end=end, value=speaker_segment["speaker"])
+        eaf.add_annotation(tier_transcript, start=start, end=end, value=speaker_segment["text"])
+        i += 1
+
+    return eaf
 
 
 def main():
@@ -87,12 +112,17 @@ def main():
         else:
             eaf = create_shot_tier(eaf, os.path.join(args.input, "transnet_shotdetection.pkl"))
 
-    # write elan file
-    print(videoname)
-    output_file = os.path.join(args.output, f"{videoname}.eaf")
+    if args.speakers:
+        if "asr.pkl" not in os.listdir(args.input):
+            logging.error(f"Cannot find asr.pkl for {videoname}")
+        else:
+            eaf = create_speaker_tier(eaf, os.path.join(args.input, "asr.pkl"))
 
-    if not os.path.exists(args.output):
-        os.makedirs(args.output)
+    # write elan file
+    # print(videoname)
+    output_file = os.path.join(os.path.dirname(args.output), f"{videoname}.eaf")
+
+    os.makedirs(os.path.dirname(args.output), exist_ok=True)
 
     logging.info(f"Writing: {output_file}")
     to_eaf(file_path=output_file, eaf_obj=eaf)
