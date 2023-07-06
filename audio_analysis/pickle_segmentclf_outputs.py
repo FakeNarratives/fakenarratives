@@ -82,48 +82,57 @@ def classify_asr_segments(video_path, asr_dict,
     if not os.path.exists(os.path.join(script_dir, "temp/")):
         os.makedirs(os.path.join(script_dir, "temp/"))
 
-    with tempfile.NamedTemporaryFile(dir=os.path.join(script_dir, "temp/"), suffix=".mp3", delete=True) as tmp:
+    audio_data = None
+    sr = 16000
+
+    with open(os.path.join(script_dir, "temp", "audio.mp3"), "w") as tmp:
         video.audio.write_audiofile(tmp.name)
         waveform, sample_rate = torchaudio.load(tmp.name)
         if waveform.shape[0] > 1:  # if stereo
             waveform = waveform.mean(dim=0)  # convert to mono
         waveform = waveform.to(device)
-        resampler = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=16000).to(device)
+        resampler = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=sr).to(device)
         audio_data = resampler(waveform).cpu()
-        sr = 16000
 
-        # audio_data, orig_sr = sf.read(tmp.name, dtype='float32')  # load audio and sample at 16kHz for models
-        # audio_data, sr = librosa.resample(audio_data, orig_sr=orig_sr, target_sr=16000)  # resample audio
+        os.remove(tmp.name)
 
     ## For ASR segments 
     asr_segment_preds = []
 
+    # Creating a temp file name
+    temp_file_name = os.path.join(script_dir, "temp", "slice.mp3")
+
     for seg in tqdm(asr_dict["segments"]):
         start_sample = int(seg["start"] * sr)
         end_sample = int(seg["end"] * sr)
+
+        if end_sample <= start_sample:
+            ## "Skipping segment with same start_sample and end_sample")
+            asr_segment_preds.append({"id": seg["id"], "seek": seg["seek"], 
+                                        "start": seg["start"], "end": seg["end"],
+                                        "gender": "None", "emotion": "None"})
+            continue
+
         slice = audio_data[start_sample:end_sample]
 
-        input_values = gen_proc(slice, sampling_rate = 16000, padding=True, return_tensors='pt').input_values
+        input_values = gen_proc(slice, sampling_rate = sr, padding=True, return_tensors='pt').input_values
         input_values = input_values.to(device)
-
-        temp_filename = os.path.join(script_dir, "temp", "temp.mp3")
 
         with torch.no_grad():
             result = gen_model(input_values).logits
             max_i = result.detach().cpu().argmax().numpy()
             gen_pred = gen_lab_map[str(max_i)]                
         
-            sf.write(temp_filename, slice, sr)
+        
+        sf.write(temp_file_name, slice, sr) ## For some reason, this randomly creates files under temp/ and outside temp/ folder
 
-            # Perform classification
-            out_prob, score, _, text_lab = emo_model.classify_file(temp_filename)
+        out_prob, score, _, text_lab = emo_model.classify_file(temp_file_name)
 
-            asr_segment_preds.append({"id": seg["id"], "seek": seg["seek"], 
-                                        "start": seg["start"], "end": seg["end"],
-                                        "gender": gen_pred, "emotion": emo_lab_map[text_lab[0]]})
-            
-            # Delete the temporary file
-            os.remove(temp_filename)
+        asr_segment_preds.append({"id": seg["id"], "seek": seg["seek"], 
+                                    "start": seg["start"], "end": seg["end"],
+                                    "gender": gen_pred, "emotion": emo_lab_map[text_lab[0]]})
+        
+        os.remove(temp_file_name)
 
 
     ## For speaker segments 
@@ -132,9 +141,16 @@ def classify_asr_segments(video_path, asr_dict,
     for seg in tqdm(asr_dict["speaker_segments"]):
         start_sample = int(seg["start"] * sr)
         end_sample = int(seg["end"] * sr)
+
+        if end_sample <= start_sample:
+            ## "Skipping segment with same start_sample and end_sample")
+            asr_segment_preds.append({"start": seg["start"], "end": seg["end"], "speaker": seg["speaker"],
+                                            "gender": "None", "emotion": "None"})
+            continue
+
         slice = audio_data[start_sample:end_sample]
 
-        input_values = gen_proc(slice, sampling_rate = 16000, padding=True, return_tensors='pt').input_values
+        input_values = gen_proc(slice, sampling_rate = sr, padding=True, return_tensors='pt').input_values
         input_values = input_values.to(device)
 
         with torch.no_grad():
@@ -142,16 +158,14 @@ def classify_asr_segments(video_path, asr_dict,
             max_i = result.detach().cpu().argmax().numpy()
             gen_pred = gen_lab_map[str(max_i)]                
         
-            sf.write(temp_filename, slice, sr)
+        sf.write(temp_file_name, slice, sr) ## For some reason, this randomly creates files under temp/ and outside temp/ folder
 
-            # Perform classification
-            out_prob, score, _, text_lab = emo_model.classify_file(temp_filename)
+        out_prob, score, _, text_lab = emo_model.classify_file(temp_file_name)
 
-            speaker_segment_preds.append({"start": seg["start"], "end": seg["end"], "speaker": seg["speaker"],
-                                            "gender": gen_pred, "emotion": emo_lab_map[text_lab[0]]})
-            
-            # Delete the temporary file
-            os.remove(temp_filename)
+        speaker_segment_preds.append({"start": seg["start"], "end": seg["end"], "speaker": seg["speaker"],
+                                        "gender": gen_pred, "emotion": emo_lab_map[text_lab[0]]})
+
+        os.remove(temp_file_name)
                 
     video_feat_dict["output_data"]["asr_segments"] = asr_segment_preds
     video_feat_dict["output_data"]["speaker_segments"] = speaker_segment_preds
@@ -177,7 +191,7 @@ def main():
 
         out_loc = output_paths[i]
 
-        if "speaker_segments" in pickle.load(open(os.path.join(out_loc, "asr.pkl"), "rb"))["output_data"]:
+        if not os.path.exists(os.path.join(out_loc, "audio_segment_classification.pkl")):
             if not os.path.exists(out_loc):
                 os.makedirs(out_loc)
 
