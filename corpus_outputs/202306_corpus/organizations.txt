@@ -1,147 +1,147 @@
-Forbidden Stories
-Berlinale
-RT
-ZDF
-Microsoft
-Ifo-Instituts
-internationale Olympische Komitee
-Alternativen Gewerkschaft Zentrum
-SPD
-Hamas
-Universität Stockholm
-Transparency International
-Holocaust-Gedenkstätte Yad Vashem
-Stromio
-Erste Deutsche Fernsehen
-IFO-Institut
-NSDAP
-FIFA
-Taliban
-OSZE
-FDP
-Ipsos
-Deutsche Welle
-BioNTech
-Webasto
-UNHCR
-Amazon
-Modis BJP
-ZDF Mediathek
-Deutschen Welle
-Young Global Leader
-Bild-Zeitung
-UNESCO
-Deutschen Post
-Funke Mediengruppe
-Aeroflot
-Mercosur
-Bayer Leverkusen
-Grünen
-Internationale Energieagentur
-Londoner Börse
-UN-Flüchtlingshilfswerks
-Die Grünen
-Wall Street Journal
-Verdi
-FÖV
-Uni Moskau
-Bundesverfassungsgerichts
-MV Werften
-Deutschen Fußballbundes
-SPD politician on Wednesday
-VVN-BDA
-Biontech
-Bundesverfassungsgericht
-the SPD politician drew a connection between the further development of the military alliance and the Scandinavian countries
-ProSieben
-UEFA
-UNO
-Bundestag
-G7
-Piraten
-ZDF.de
-SIPRI
-WHO
-Lufthansa
-Bundesverfassungsgerichtes
-PDS
-KfW-Bank
-NATO
-PKK
-Europäischen Gerichtshof
-Puma
-Bundesfinanzhof
-Grüne Partei
-Tagesschau24
-Google and Apple
-DHL
-Christophorus-Gemeinschaft
-G7-Staaten
-Deutsche Bahn
-Frankfurter Börse
-Amigo Hom
-Deutschen Bundestages
-CORRECTIV
-Pfizer
-Linkspartei
-Genting
-Linke
-AfD
-Bundestags
-Axel Springer-Konzerns
-Wolfspeed
-Bundestagsmandat
-BILD-Zeitung
-Nord Stream AG
-Boeing
-Die Linke
-Linken
-ABC
-Grüne Parteitag
-Deutschen Bahn
-Radio France
-Rosneft
-OECD
-UN
-Deutschen Bundestag
-Deutsche Fußballbund
-RWE
-CDU
-Genting-Konzern
-GEZ
-ZDF History
-Grüne
-World Government Summit
-Vonovia
-Lega
-Daimler
-BILD
-AP
-Europarat
-Bundespressekonferenz
-Siemens
-BILD LIVE
-World Food Program
-Spotify
-Buzzfeed
-DFB
-Bellingcat
-WEF
-Vereinten Nationen
-IS
-BMW
-UN-Flüchtlingshilfswerk
-BBC
-Telekom
-tagesschau24
-Ständigen Impfkommission
-Fraport
-Airbus
-NSU 2.0
-KfW
-Bundeswehr
-Gazprom
-Northvolt
-IOC
-Google
-Rheinmetall
+Erste Deutsche Fernsehen	Q49727
+G7-Staaten	Q1764511
+G7	Q1764511
+SPD	Q49768
+FDP	Q13124
+Grüne	Q49766
+CDU	Q49762
+AfD	Q6721203
+Stromio	Q15849468
+Google	Q95
+Linkspartei	Q49764
+Genting-Konzern	Q16922766
+Genting	Q1190323
+Bundestag	Q154797
+NATO	Q7184
+ZDF	Q48989
+Taliban	Q42418
+Grünen	Q49766
+KfW-Bank	Q658270
+KfW	Q658270
+Deutsche Bahn	Q9322
+Siemens	Q81230
+IOC	Q40970
+Funke Mediengruppe	Q137317
+Ipsos	Q1672300
+Christophorus-Gemeinschaft	Q1087107
+Berlinale	Q130871
+internationale Olympische Komitee	Q40970
+MV Werften	Q26794403
+Tagesschau24	Q264938
+Bundesverfassungsgericht	Q56025
+Bundesverfassungsgerichtes	Q56025
+Vereinten Nationen	Q1065
+UN-Flüchtlingshilfswerk	Q1065
+UNHCR	Q132551
+Bundeswehr	Q56010
+DFB	Q154191
+Aeroflot	Q58707
+BBC	Q9531
+AP	Q40469
+Deutschen Fußballbundes	Q154191
+Daimler	Q27530
+BMW	Q26678
+RWE	Q138133
+Bundestagsmandat	Q154797
+Rheinmetall	Q161544
+Deutschen Post	Q157645
+Verdi	Q178790
+Microsoft	Q2283
+Amazon	Q3884
+Deutsche Fußballbund	Q154191
+tagesschau24	Q264938
+Mercosur	Q4264
+Transparency International	Q174240
+Northvolt	Q28913869
+UNESCO	Q7809
+Boeing	Q66
+UN	Q1065
+Linken	Q49764
+Lufthansa	Q9325
+Deutschen Bahn	Q9322
+Fraport	Q643578
+Telekom	Q9396
+Holocaust-Gedenkstätte Yad Vashem	Q156591
+FÖV	Q1205636
+WHO	Q7817
+Lega	Q47750
+OSZE	Q81299
+Ständigen Impfkommission	Q2360189
+CORRECTIV	Q20181258
+RT	Q105584
+Bild-Zeitung	Q156203
+the SPD politician drew a connection between the further development of the military alliance and the Scandinavian countries	Q49768
+Google and Apple	Q312
+SPD politician on Wednesday	Q49768
+UNO	Q1065
+Spotify	Q689141
+Alternativen Gewerkschaft Zentrum	Q178790
+VVN-BDA	Q315292
+NSU 2.0	Q29325
+Grüne Partei	Q49766
+Die Linke	Q49764
+Bundesverfassungsgerichts	Q56025
+IS	Q2429253
+Vonovia	Q1202053
+Bundespressekonferenz	Q1006502
+Piraten	Q13129
+Deutsche Welle	Q153770
+Young Global Leader	Q170418
+Buzzfeed	Q5003490
+Londoner Börse	Q171240
+ABC	Q169889
+Ifo-Instituts	Q314073
+Gazprom	Q102673
+Wall Street Journal	Q164746
+Rosneft	Q1141123
+Deutschen Bundestag	Q154797
+Biontech	Q30256699
+Pfizer	Q206921
+WEF	Q170418
+Universität Stockholm	Q221645
+Nord Stream AG	Q691563
+Grüne Parteitag	Q49766
+Internationale Energieagentur	Q826700
+Puma	Q157064
+GEZ	Q1457674
+Europarat	Q8908
+PKK	Q152220
+Axel Springer-Konzerns	Q163560
+NSDAP	Q7320
+BILD-Zeitung	Q156203
+Uni Moskau	Q13164
+Amigo Hom	Q471190
+Deutschen Welle	Q153770
+World Government Summit	Q30589582
+ProSieben	Q168717
+PDS	Q152554
+BILD	Q156203
+Deutschen Bundestages	Q154797
+Bundestags	Q154797
+SIPRI	Q1140407
+BILD LIVE	Q156203
+FIFA	Q253414
+UEFA	Q35572
+Europäischen Gerichtshof	Q1518827
+IFO-Institut	Q314073
+World Food Program	Q204344
+OECD	Q41550
+ZDF History	Q48989
+ZDF Mediathek	Q48989
+Die Grünen	Q49766
+Linke	Q49764
+Bellingcat	Q22938621
+BioNTech	Q30256699
+Frankfurter Börse	Q151139
+Airbus	Q67
+UN-Flüchtlingshilfswerks	Q132551
+Bundesfinanzhof	Q702415
+Hamas	Q38799
+Webasto	Q319769
+Wolfspeed	Q5183828
+ZDF.de	Q48989
+DHL	Q489815
+Radio France	Q2120364
+Forbidden Stories	Q51951232
+Modis BJP	Q10230
+Bayer Leverkusen	Q152051

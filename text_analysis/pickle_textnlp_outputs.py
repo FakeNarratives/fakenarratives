@@ -70,6 +70,27 @@ def add_transcript_boundaries(asr_dict):    ## Segment boundaries are needed to 
 def perform_nlp(video_path, asr_dict, nlp, 
                 model, pos_dict, ner_dict, 
                 event_set):
+    """
+    Takes ASR segments and performs NLP of text and text segments for sentiment, POS and NER
+
+    Args:
+        video_path (str): Full path to the video file
+        asr_dict (dict): ASR output dictionary
+        nlp (stanza.Pipeline): Stanza NLP pipeline
+        model (germansentiment.SentimentModel): German sentiment detection model
+        pos_dict (dict): Dictionary with pos tag label map
+        ner_dict (dict): Dictionary with ner label map
+        event_set (set): Set of events to be considered for NER
+
+    Returns:
+        dict: Dictionary containing:
+            github_repo (str): GitHub repositories of models used separated by ;
+            commit_id (str): Commit ID of the repositories (same order as github_repo) used separated by ;
+            parameters (str): Parameters used for the Whisper model
+            video_file (str): Full path to the video file
+            output_data (dict): Dictionary containing sentiment, pos and ner outputs 
+                                for sentence-wise, segment-wise and speaker-segment-wise segments
+    """
     video_feat_dict = {"github_repo": "https://github.com/oliverguhr/german-sentiment-lib;https://github.com/stanfordnlp/stanza",
                         "commit_id": "367f8f55d92fd85e6cde8bc59dc8dbad7ec88071;a85cce6816f40fa03ab06f6497c7d65ba1244a33",
                         "parameters": "default",
@@ -177,7 +198,7 @@ def perform_nlp(video_path, asr_dict, nlp,
 
     ent_map = {}
     for ent in linked_entities:
-        ent_map[ent["text"]] = ent["type"]
+        ent_map[ent["text"]] = ent
 
     ## Sent-wise ent vectors
     sent_ent_vectors = []
@@ -186,8 +207,8 @@ def perform_nlp(video_path, asr_dict, nlp,
         ner_vector = np.zeros(6)
         for ent in sent.ents:
             if ent.text in ent_map:
-                temp_nes.append((ent.text, ent_map[ent.text]))
-                ner_vector[ner_dict[ent_map[ent.text]]] += 1
+                temp_nes.append((ent.text, ent_map[ent.text]["type"], ent_map[ent.text]["wd_id"], ent.start_char, ent.end_char))
+                ner_vector[ner_dict[ent_map[ent.text]["type"]]] += 1
 
         sent_ent_vectors.append({"id": str(i), "text": sent.text, "tags": temp_nes, "vector": ner_vector})
 
@@ -201,11 +222,13 @@ def perform_nlp(video_path, asr_dict, nlp,
         for sent in seg_doc.sentences:
             for ent in sent.ents:
                 if ent.text in ent_map:
-                    temp_nes.append((ent.text, ent_map[ent.text]))
-                    ner_vector[ner_dict[ent_map[ent.text]]] += 1
+                    temp_nes.append((ent.text, ent_map[ent.text]["type"], ent_map[ent.text]["wd_id"], ent.start_char, ent.end_char))
+                    ner_vector[ner_dict[ent_map[ent.text]["type"]]] += 1
 
         seg_ent_vectors.append({"id": seg["id"], "seek": seg["seek"], "start": seg["start"], 
                                 "end": seg["end"], "tags": temp_nes, "vector": ner_vector})
+
+    video_feat_dict["output_data"]["ner"]["segment_wise"] = seg_ent_vectors
     
     ## Speaker-Segment-wise ent vectors
     speaker_seg_ent_vectors = []
@@ -216,11 +239,13 @@ def perform_nlp(video_path, asr_dict, nlp,
         for sent in seg_doc.sentences:
             for ent in sent.ents:
                 if ent.text in ent_map:
-                    temp_nes.append((ent.text, ent_map[ent.text]))
-                    ner_vector[ner_dict[ent_map[ent.text]]] += 1
+                    temp_nes.append((ent.text, ent_map[ent.text]["type"], ent_map[ent.text]["wd_id"], ent.start_char, ent.end_char))
+                    ner_vector[ner_dict[ent_map[ent.text]["type"]]] += 1
 
         speaker_seg_ent_vectors.append({"id": str(i), "start": seg["start"], "end": seg["end"], 
                                         "speaker": seg["speaker"], "tags": temp_nes, "vector": ner_vector})
+
+    video_feat_dict["output_data"]["ner"]["speakerseg_wise"] = speaker_seg_ent_vectors
 
     print("Named Entity Recognition Done in %.2f seconds"%(time.time()-t3))
 
@@ -241,10 +266,9 @@ def main():
     ner_dict = {"EPER": 0, "LPER": 1, "LOC": 2, "ORG": 3, "EVENT": 4, "MISC": 5}
 
     event_set = set()
-    with open("text_analysis/eventKG.tsv") as fr:
+    with open("text_analysis/eventKG.csv") as fr:
         for line in fr:
-            qid, _, _ = line.strip().split("\t")
-            event_set.add(qid.strip())
+            event_set.add(line.strip())
 
     ## File has lines with video names such as "Tagesschau/TV-20220101-2019-5100.webl.h264"
     input_paths, output_paths = read_transcript_paths(args.file, args.inp_dir, args.out_dir)
