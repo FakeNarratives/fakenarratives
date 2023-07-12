@@ -9,6 +9,7 @@ This repository contains code to extract auditory, textual, and visual features 
 - [Visual Feature Extraction](#visual-feature-extraction)
     - [Event Classification](#event-classification)
     - [Geolocation Estimation](#geolocation-estimation)
+    - [Headpose Estimation](#headpose-estimation)
     - [Optical Character Recognition](#optical-character-recognition)
 
 ## Auditory Feature Extraction
@@ -52,6 +53,31 @@ To extract features for a given video, please run:
 ~~~sh
 conda activate fakenarratives_semantic_geo_partitioning_py38
 PYTHONPATH=./semantic_geo_partitioning/geo_classification python pickle_geoestimation.py --videos /PATH/TO/VIDEOS --output /PATH/TO/OUTPUT_FOLDER
+~~~
+
+### Headpose Estimation
+
+> **_NOTE:_**  This plugin requires the ```face_analysis.pkl``` that contains faces detected by *insightface*.
+> For this purpose, the corresponding *TIB-AV-A* pipeline has been used. 
+
+To install all dependencies, please use the following commands:
+
+~~~sh
+cd 6DREpNet
+conda create --name fakenarratives_headpose_py38 python=3.8
+pip install -r requirements.txt
+mkdir model
+cd model
+wget https://cloud.ovgu.de/s/Q67RnLDy6JKLRWm/download/6DRepNet_300W_LP_AFLW2000.pth
+~~~
+
+To extract features for a given video, the face_analysis pipeline from TIB-AV-A needs to be executed first. 
+Based on the ```face_analysis.pkl``` written by the corresponding 
+[*TIB-AV-A*](https://github.com/TIBHannover/tibava-analyser) pipeline, please run:
+
+~~~sh
+conda activate fakenarratives_headpose_py38
+python pickle_headpose.py --videos /PATH/TO/VIDEOS --output /PATH/TO/OUTPUT_FOLDER
 ~~~
 
 ### Optical Character Recognition
