@@ -14,10 +14,7 @@ def mmocr_pkl(
     times: list,
     args,
 ) -> dict:
-    """Converts outputs from VisE to a pkl
-
-    The leaf node vector indicate the similarities of 148 event types to the visual content, while the subgraph vector
-    indicates the similarities of all ontology nodes including the intermediate parent nodes of the leafs
+    """Converts outputs from MMOCR to a pkl
 
     Args:
         mmocr_outputs (list<dict>): list of dicts containing the mmocr outputs per frame
