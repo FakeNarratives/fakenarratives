@@ -46,6 +46,7 @@ def parse_args():
 
     # optional
     parser.add_argument("--threshold", type=float, default=0.4, help="clustering threshold")
+    parser.add_argument("--criterion", type=str, default="distance", help="clustering criterion")
     parser.add_argument("--metric", type=str, default="cosine", help="distance metric")
 
     parser.add_argument("--debug", action="store_true", help="debug output")
@@ -91,7 +92,7 @@ def main():
         # cluster based on embeddings
         embeddings = np.asarray(embeddings)
         logging.debug(f"Perform clustering ... shape {embeddings.shape}")
-        clusters = fclusterdata(X=embeddings, t=args.threshold, criterion="distance", metric=args.metric)
+        clusters = fclusterdata(X=embeddings, t=args.threshold, criterion=args.criterion, metric=args.metric)
         clusters = clusters.tolist()
 
         # return results
