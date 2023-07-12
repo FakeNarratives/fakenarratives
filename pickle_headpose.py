@@ -5,7 +5,49 @@ import pickle
 import sys
 
 from sixdrepnet import SixDRepNet
-from video_decoder import VideoBatcher, VideoDecoder
+from video_decoder import VideoDecoder
+
+
+def headpose_pkl(
+    headposes: list,
+    times: list,
+    args,
+) -> dict:
+    """Converts outputs from 6DRepNet for head pose estimation to a pkl
+
+    Args:
+        headposes (list<dict>): list (length n) containing the bbox and headpose of a face
+        times (list): time values for each headpose output (length n)
+        args (Namespace): arguments the script has been executed with
+
+    Returns:
+        dict: dictionary ready to write in a .pkl
+            y (list<dict>): list of dicts containing the mmocr outputs per frame
+                bbox (dict): dictionary containing the bounding box for the face
+                    x (float): x-coordinate of the face normalized by the image width
+                    y (float): y-coordinate of the face normalized by the image height
+                    w (float): width of the face normalized by the image width
+                    h (float): height of the face normalized by the image height
+                    det_score (float): likelihood of the bounding box beeing a face
+
+                headpose (list<dict>): list (length n) of head poses including
+                    pitch (float): pitch angle of the face (in degree)
+                    yaw (float): yaw angle of the face (in degree)
+                    roll (float): roll angle of the face (in degree)
+
+            time (list): t time values (length t)
+            args (dict): arguments the script has been executed with
+    """
+    args_dict = vars(args)
+
+    if "videos" in args_dict:
+        del args_dict["videos"]
+
+    return {
+        "y": headposes,
+        "time": times,
+        "args": args_dict,
+    }
 
 
 def parse_args():
@@ -21,7 +63,7 @@ def parse_args():
     parser.add_argument("--fps", type=int, required=False, default=2, help="fps to process video")
     parser.add_argument("--debug", action="store_true", help="debug output")
     parser.add_argument(
-        "--max_dimension", type=int, required=False, default=512, help="max dimension of the video frames"
+        "--max_dimension", type=int, required=False, default=1920, help="max dimension of the video frames"
     )
     args = parser.parse_args()
     return args
@@ -52,43 +94,58 @@ def main():
         output_dir = os.path.join(args.output, vidname)
 
         if not os.path.isfile(os.path.join(output_dir, "face_analysis.pkl")):
-            logging.error(f"{vidname}: face_analysis.pkl is missing")
+            logging.error(f"Missing file: {os.path.join(output_dir, 'face_analysis.pkl')}")
             continue
 
-        # read faceanalyis.pkl
+        # read faceanalyis.pkl and store face bboxes
         with open(os.path.join(output_dir, "face_analysis.pkl"), "rb") as pklfile:
-            faces_dict = pickle.load(pklfile)
+            content = pickle.load(pklfile)
 
-        faces = faces_dict["output_data"][0]
+        faces = content["output_data"][0]
+        faces_dict = {}
         for face in faces["faces"]:
-            print(face.keys())
-            print(face["time"])
-        return
+            if face["time"] not in faces_dict:
+                faces_dict[face["time"]] = []
+
+            faces_dict[face["time"]].append(face)
 
         # get frames from video
         vd = VideoDecoder(path=video_path, max_dimension=args.max_dimension, fps=args.fps)
-        vb = VideoBatcher(video_decoder=vd, batch_size=args.batch_size)
 
-        # iterate over image batches
         times = []
-        indices = []
         headposes = []
+        for frame in vd:
+            time = frame["time"]
+            image = frame["frame"]
 
-        for i, batch in enumerate(vb):
-            # TODO convert iio.v3 frame into cv-like frame
-            # img = cv2.imread('/path/to/image.jpg')
+            if time not in faces_dict:  # no face in frame
+                continue
 
-            pitch, yaw, roll = model.predict(batch["frame"])
-            print(pitch, yaw, roll)
-            headposes.append((pitch, yaw, roll))
+            logging.debug(f"{vidname}: Processing frame {frame['index']}")
 
-            # store information
-            times.extend(batch["time"])
-            indices.extend(batch["index"])
+            for face in faces_dict[time]:  # loop through face(s) in frame
+                h, w, _ = image.shape
 
-            # model.draw_axis(img, yaw, pitch, roll)
-            # cv2.imshow("test_window", img)
-            break
+                y1 = round(h * face["bbox"]["y"])
+                y2 = round(h * (face["bbox"]["y"] + face["bbox"]["h"]))
+
+                x1 = round(w * face["bbox"]["x"])
+                x2 = round(w * (face["bbox"]["x"] + face["bbox"]["w"]))
+
+                face_image = image[y1:y2, x1:x2, :]
+                pitch, yaw, roll = model.predict(face_image)
+
+                headposes.append(
+                    {"bbox": face["bbox"], "headpose": {"pitch": pitch[0], "yaw": yaw[0], "roll": roll[0]}}
+                )
+                times.append(time)
+
+        os.makedirs(output_dir, exist_ok=True)
+        with open(os.path.join(output_dir, "headpose_6DRepNet.pkl"), "wb") as f:
+            output_dict = headpose_pkl(headposes, times, args)
+            pickle.dump(output_dict, f)
+
+        logging.info(f"Output written to: {os.path.join(output_dir, 'headpose_6DRepNet.pkl')}")
 
     return 0
 
