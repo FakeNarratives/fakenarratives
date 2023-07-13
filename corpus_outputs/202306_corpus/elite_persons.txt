@@ -1,631 +1,555 @@
-Thorsten Schröder	Q2429257
-Habeck	Q109943
-Scholz	Q61053
-Eric Adams	Q5385992
-Desmond Tutu	Q43033
-Ramaphosa	Q1148669
-Michael Nuttall	Q6833113
-Franziskus	Q450675
-Betty White	Q373895
-Biden	Q6279
-Ryoyu Kobayashi	Q22252582
-Markus Eisenbichler	Q126987
-Karl Geiger	Q127325
-Walter Steinmeier	Q76658
-Baerbock	Q564328
-Annalena Baerbock	Q564328
-Ingo Zamperoni	Q109627
-Robert Habeck	Q109943
-Putin	Q7747
-Novak Djokovic	Q5812
-Djokovic	Q5812
-Wolfgang Ischinger	Q177593
-Kristen Stewart	Q126599
-Lady Di	Q9685
-Kirby	Q544651
-Gerhard Trabert	Q19283912
-Steffen Baumgart	Q2338559
-Robert Lewandowski	Q151269
-Julian Nagelsmann	Q21226404
-Timo Baumgartl	Q15431792
-Bastian Oczipka	Q524589
-Oliver Baumann	Q129116
-Max Kruse	Q129013
-Geraldo Becker	Q1510065
-Kira Weidle	Q28771704
-Ramona Siebenhofer	Q526764
-Sofia Goggia	Q2297435
-Peter H.	Q2078286
-Josef Ratzinger	Q2494
-Benedikt XVI	Q2494
-Marx	Q9061
-Le Drian	Q559040
-Lavrov	Q337628
-Joe Biden	Q6279
-Hardy Krüger	Q77342
-Al Capone	Q80048
-Susanne Daubner	Q1472644
-Macron	Q3052772
-Max Otte	Q72817
-Friedrich Merz	Q566257
-Scheele	Q4522370
-Boris Johnson	Q180589
-Patrick Zieke	Q14902856
-Daniel Rebmann	Q110613448
-Johannes Goller	Q4581
-Patrick Zieker	Q14902856
-Aline Abboud	Q28112713
-Rui Rio	Q7378729
-Sergio Mattarella	Q3956186
-Tscheich Mohammed bin Saied	Q9458
-Rafael Nadal	Q10132
-Medvedev	Q18818844
-Selensky	Q3874799
-Thomas Bach	Q72245
-Eric Seymour	Q100921728
-Renoir Monet Gauguin	Q37693
-Osthaus	Q43134960
-Matsukata	Q714039
-Karl Ernst Osthaus	Q74432
-Van Gogh	Q5582
-Cezanne	Q35548
-Renoir	Q39931
-Gauguin	Q37693
-Führig	Q1933150
-Waldemar Anton	Q23559699
-Michael Gregoritsch	Q699094
-Katharina Althaus	Q87758
-Claudia Pechstein	Q57415
-Julia Nihari	Q1711801
-Kazen	Q330149
-Blume	Q76816
-Buschmann	Q1893672
-Markus Söder	Q50664
-Peter von Kant	Q9312
-Rainer Werner Fassbinder	Q44426
-Johannes Ludwig	Q71595
-Tobias Wendel	Q6254828
-Kamila Valieva	Q59800543
-Claudia Roth	Q75791
-Francesco Friedrich	Q108156
-Johannes Lochner	Q19411627
-Kendrick Lamar	Q130798
-Mary J. Blige	Q228909
-Snoop Dogg	Q6096
-Dr. Dre	Q6078
-Eminem	Q5608
-Ina Ruck	Q1660863
-Markus Preiss	Q26000920
-Markus Preiß	Q26000920
-Matthias Deiß	Q20671603
-Wladimir Putin	Q7747
-Banderas	Q41548
-Lambrecht	Q1083648
-von der Leyen	Q60772
-Peter Zimmermann	Q60311001
-Li Keqiang	Q18111
-Demirbay	Q822762
-Adli	Q1566859
-Domenico Tedesco	Q28916689
-Christian Streich	Q129121
-Lukas Kübler	Q4419904
-Marco Maier	Q111103025
-Florian Baumann	Q111448677
-Leonie Walter	Q91412625
-Oksana Shyshkova	Q15920483
-Momoka Muraoka	Q50392050
-Cavusoglu	Q249206
-Sabine Rau	Q20752268
-Lagarde	Q484605
-Kim Jong-un	Q56226
-Lula	Q37181
-Bolsonaro	Q10304982
-Lula da Silva	Q37181
-Silva's	Q1163276
-Kubatski	Q62714501
-Lanišek	Q502944
-Andreas Wellinger	Q127538
-RuPaul	Q705715
-Selina Freitag	Q58042513
-Anna Rupprecht	Q96808
-Kevin McCarthy	Q766866
-Gudrun Engel	Q111733599
-Rosi Mittermeier	Q61624
-Karl Lauterbach	Q72821
-Özdemir	Q12839
-Marco Buschmann	Q1893672
-Céline Giraud	Q114446010
-Anne Will	Q77772
-Greta Thunberg	Q56434717
-Tina Hassel	Q2435478
-Högl	Q1379228
-Faeser	Q1288810
-Netanyahu	Q43723
-Cem Özdemir	Q12839
-Alberto Fujimori	Q133040
-Rudi Völler	Q44464
-Völler	Q44464
-Oliver Bierhoff	Q152844
-David Crosby	Q370560
-Olaf Scholz	Q61053
-Füracker	Q103964
-Lulas	Q60734133
-Arndt-Geiwitz	Q110969027
-René Benko	Q90042
-Ibrahim A.	Q73119355
-Maaßen	Q1576999
-Georg Maaßen	Q1576999
-Hans-	Q5673
-Ole Werner	Q27050003
-Bruno Labbadia	Q57548
-Füllkrug	Q326159
-Assad	Q44329
-Viktor Orban	Q57641
-Lederer	Q3189862
-Hanna Öberg	Q27999595
-Sophia Schneider	Q102355576
-Adnan Tekin	Q60676369
-Hun Sen	Q57788
-Frank-	Q40912
-Alexander Schmid	Q23639418
-Dominik Raschner	Q59361693
-Sarah Wagenknecht	Q77193
-Alice Schwarzer	Q62919
-Selinski	Q435709
-Modi	Q1058
-Mahatma Gandhi	Q1001
-Großmughuls Humayun	Q486188
-Bola Tinubu	Q3510872
-Steven Spielberg	Q8877
-Thea Ehre	Q112656104
-Christian Petzold	Q67268
-Gregor Kohl	Q95777717
-Julian Brandt	Q3189078
-Marco Reus	Q152377
-Edin Terzic	Q61709977
-Christoph Baumgartner	Q55999670
-Timo Werner	Q3529022
-Tuta Silva	Q61680332
-Emil Forsberg	Q5371234
-Marco Rose	Q542990
-Luisa Görlich	Q23059485
-Paul Klemm	Q55098560
-Heinrich Fiechtner	Q23561140
-Martin Müller	Q1028067
-Frank Ulrich Montgomery	Q123373
-Johannes Kahrs	Q96820
-Christa Luft	Q88304
-Boris Becker	Q76334
-Spartacus	Q83406
-Slobodan Milosevic	Q47139
-Mladic	Q93167
-Tito	Q9161
-Spartakus	Q83406
-Joschka Fischers	Q57344
-Sebastian Kurz	Q2262885
-Joschka Fischer	Q57344
-Gerhard Schröder	Q2530
-Christian Drosten	Q1079331
-Karl dem Großen	Q3044
-Christina Kohl	Q60848
-Peter Thiel	Q705525
-Karl Nehammer	Q42860944
-Thomas Mertens	Q2426106
-Hegel	Q9235
-Karl Marx	Q9061
-Donald Trump	Q22686
-Joe Biden enters the White House	Q6279
-Jimmy Carter in the 1970s	Q23685
-Martin Mueller	Q57614498
-Both Joe Biden	Q6279
-Kamala Harris	Q10853588
-As you mentioned it	Q60059
-Jimmy Carter	Q23685
-Christine Lambrecht	Q1083648
-Jens Stoltenberg	Q57665
-Robert Andres	Q104209629
-Annalena Baerbock and Robert Habeck, are affected	Q109943
-Emmanuel Macron	Q3052772
-Marine Le Pen	Q12927
-Jérôme Rivière	Q3191042
-Damien Rieu	Q29018357
-Matteo Salvini	Q1055449
-Trump	Q22686
-Jörg Meuthen	Q15907132
-Gita Gopinath	Q5565024
-Martin Wille	Q6776890
-Jean Asselborn	Q58200
-Asselborn	Q58200
-Antony Blinken	Q7821917
-Alexander Pavliuk	Q89865925
-Paul Ziemiak	Q18169686
-Zoran Milanovic	Q57687
-Thomas Kemmerich	Q2425648
-Kemmerich	Q2425648
-Max-Otte	Q72817
-Alice Weidel	Q27975838
-Lothar Wieler	Q43331181
-Boris Pfeiffer	Q893754
-Wieler	Q43331181
-Christian Lindner	Q85806
-Christian Görke	Q1080069
-Linda Thomas	Q19920980
-Sergej Lavrov	Q58217
-Lars Klingbeil	Q1806261
-Lenin	Q1394
-Flindenuschi von der Leyen	Q60772
-Justin Trudeau	Q3099714
-Sain Wittgenstein	Q9391
-Björn Höcke	Q18176756
-Stefan Möller	Q18176782
-Tino Chrupalla	Q40895143
-Petra Köpping	Q1788125
-Susanne Hoffmann	Q18631376
-Wolfgang Mückstein	Q106484746
-Peter Kaiser	Q2076158
-Norbert Nowotny	Q46169435
-Martin Kohlmann	Q94875911
-Christian Dürr	Q102641
-Lita	Q230060
-Christine Lagarde	Q484605
-Jürgen Trittin	Q11762
-Roosevelt	Q8007
-Hitler	Q352
-Michael Harig	Q1927697
-Joe Bidens	Q6279
-Antonio Guterres	Q311440
-Jörg Asmussen	Q73330
-Harald Martenstein	Q108868
-Martenstein	Q108868
-Saddam Hussein	Q1316
-Eva Herrmann	Q1379214
-Eva Braun	Q76433
-Bomber Harris, do it again	Q372052
-Anne Frank	Q4583
-Ursula von der Leyen	Q60772
-Mateusz Morawiecki	Q11771436
-Omi	Q18510281
-Michael Utsch	Q18326500
-Kim Jong-Un	Q56226
-Anni Will	Q94739109
-Gabriele Krone	Q118724
-Stoltenbergs	Q57665
-Volodymyr Zelenskyy	Q3874799
-Liz Truss	Q272201
-Andrzej Duda	Q9151911
-Jörg Müller	Q60483
-Gaddafi	Q19878
-Netrebko	Q78516
-George Orwell	Q3335
-Hubertus Heil	Q71534
-Ronald Reagan	Q9960
-Gergiev	Q165693
-Tchaikovsky	Q7315
-Modest Mussorgsky	Q132682
-Tolstois	Q7243
-Kristalina Georgieva	Q265277
-Wladi	Q4112948
-Saulus	Q9200
-Paulus	Q9200
-Deniz Yücel	Q1187856
-Eugen Schmidt	Q562508
-Peter Tschentscher	Q971774
-Irina Tybinka	Q111280022
-Selenskyj	Q3874799
-Napoleon	Q517
-Ivan Iljin	Q1282198
-Trotzki	Q33391
-Stalin	Q855
-Ulbricht	Q2628
-Mario Puhl	Q96178
-Eichmann	Q28085
-Volodymyr Zelensky	Q3874799
-Russkis	Q952851
-Joachim Gauck	Q2538
-William Burns	Q1768478
-Jakub Kumoch	Q56340872
-Charles III	Q382433
-Victoria	Q9439
-Lady Diana	Q9685
-Jürgen Elsässer	Q95243
-Angela Merkel	Q567
-Stephan Berndt	Q27523574
-Scholli	Q107497
-Boris Pistorius	Q893758
-Sergio Canavero	Q22137462
-Paul Ehrlich	Q57089
-Elon Musk	Q317521
-Hunter Biden	Q5944264
-Miranda Devine	Q6872802
-Elon Musk Twitter	Q317521
-Böhmermann	Q1361675
-Dirk Adams	Q1227729
-Doreen Denstädt	Q116151972
-Dietmar Woidke	Q99660
-Jan Böhmermann	Q1361675
-Edsche	Q137375
-Ernst Schäfer	Q63962
-Bruno Beger	Q68427
-Edmund Gär	Q1286297
-Ernst Krause	Q3057351
-Heinrich Himmlers	Q43067
-Martin Sellner	Q26262585
-Alexandra Ocasio	Q55223040
-Egon Krenz	Q2602
-Lisa Neubauer	Q6558385
-Shahram Irani	Q108171145
-Luisa Neubauer	Q61625543
-Maischberger	Q106538
-Vitali Klitschko	Q31919
-Henry Kissinger	Q66107
-Klaus Schwab	Q76793
-Elvis	Q303
-Lisa Marie Presley	Q237324
-Elvis Presley	Q303
-Lisa Marie	Q242015
-André Poggenburg	Q23046207
-Gerdam	Q1510945
-Tatjana Patitz	Q65023
-Erich Honecker	Q2607
-Walter Ulbricht	Q2628
-Stefan Heim	Q38639955
-Beria	Q141829
-Ricarda Lang	Q42841188
-Mick Knauf	Q18629199
-Jürgen Drews	Q84623
-Florian Silbereisen	Q45430
-Beatrice Egli	Q13360930
-Klaus Lage	Q457829
-Dieter Dehm	Q1223204
-Roland Kaiser	Q69263
-Michael Kretschmer	Q1928299
-Radoslaw Sikorski	Q58085
-Anthony Blinken	Q7821917
-Kim.com Schmitz	Q60543
-Konstantin von Notz	Q1710769
-Christine Lamb	Q1083648
-Karl Laus	Q1557780
-DeSantis	Q505634
-Clever	Q362872
-Rolf Mützenich	Q2163668
-Hofreiter	Q103519
-Marie Agnes Strack	Q15391841
-Otto der Große	Q43915
-Otto dem Großen	Q43915
-Otto Magnus Imperator	Q15193
-Mauritius	Q316599
-Paul von Lettow Vorbeck	Q57203
-Stefan Fritsch	Q88385559
-Matthias Döpfner	Q107797
-Bettina Jarasch	Q849997
-Josef Goebbels	Q41749
-Katrin Göring-Eckardt	Q48967
-Goebbels	Q41749
-Bertolt Brecht	Q38757
-Andreas Hofmann	Q9151007
-Dmitri Shostakovich	Q80135
-Valery Gergiev	Q165693
-Shostakovich	Q80135
-Ingbert Liebing	Q105355
-Anna Netrebko	Q78516
-Egon Barr	Q113801465
-Peter dem Großen	Q8479
-Johanna Mikl-Leitner	Q87130
-Herbert Kickl	Q1395041
-Sabine K.	Q113791847
-Sinan B.	Q5600
-Robert Farle	Q23561061
-Helge Schneider	Q76490
-Lorenz Gösta Beutin	Q40804106
-Giorgia Meloni	Q451791
-Seymour Hersh	Q435792
-Donald Trump Jr.	Q3713655
-Seymour Hershs	Q435792
-Robert Fleischer	Q2157102
-Georg Büchner	Q154014
-Büchners	Q154014
-Lina E.	Q110498482
-Paul Clem	Q920184
-Musk	Q317521
-Bill Gates	Q5284
-Wolfgang Effenberger	Q56342053
-Christoph Heusgen	Q1085167
-Andre Poggenburg	Q23046207
-Maximilian Pütz	Q63383076
-Roald Dahl	Q25161
-Steffen Kotré	Q40846824
-Birnecke	Q1446302
-Oskar Lafontaine	Q110719
-Jürgen Todenhöfer	Q88267
-Tolkien	Q892
-Strasser	Q76638
-Thunberg	Q39658
-Elijah T.	Q108773423
-Fabian Köster	Q29357285
-López Obrado	Q318508
-Siegfried Gorn	Q1480382
-Gustav Heinemann	Q2573
-Florian Philippot	Q3074223
-Thomas Huber	Q454894
-Charlie Walter	Q5085667
-Sebastian Geißler	Q95889155
-Josef Lindner	Q50602466
-Sebastian	Q183332
-Jens Weißflog	Q161339
-Sebastian Geisler	Q183332
-Thomas Fischbach	Q95220383
-Klaus Stöhr	Q1399285
-Hans Kluge	Q86818696
-Alexander Kißler	Q1557005
-Jan Schäfer	Q90756
-Joachim Wundrak	Q1690600
-Carsten Linnemann	Q1045606
-Helene Mann	Q105366663
-Andreas Gassen	Q16054369
-Thomas Haldenwang	Q57997565
-Sebastian Prängel	Q183332
-Putins	Q7747
-Vitaly Klitschko	Q31919
-Paul Ronzheimer	Q47199975
-Peter Thiede	Q324605
-Nikita Khrushchev	Q35314
-Helmut Schmidt	Q2516
-Markus Faber	Q95636853
-Peter Hell	Q51885900
-Peter Helfe	Q59676732
-Jojan	Q2004036
-Julian	Q33941
-Jorgos	Q27994402
-Wladimir Klitschko	Q18797
-Heinz Wolf	Q65010506
-Marietta Slomka	Q74177
-Henning Radtke	Q968118
-Henner Hebestreit	Q1605378
-Alexander Zverev	Q13990552
-Cameron Norrie	Q23668736
-Zverev	Q13990552
-Tim Pütz	Q15133598
-Daniel Evans	Q4847264
-Jamie Murray	Q317820
-Julia Taubitz	Q22338623
-Melanie Haag	Q111422430
-Daniela Anschütz	Q62245
-Meins	Q76718
-Patrick Beckert	Q73322
-Frank Ulrich	Q114610721
-Kent Nagano	Q819447
-Christian Thiede	Q42323747
-Walter Lübcke	Q2545434
-Axel Storm	Q3820169
-Nawale	Q55536004
-Gundula Gause	Q1554650
-Hanna Zimmermann	Q49671199
-Christian Sievers	Q1081910
-Thomas Gonsior	Q3641576
-Benjamin Daniel	Q107179987
-Jack Sullivan	Q1770560
-Kant Agha	Q9312
-Agha Kants	Q9312
-Kants	Q9312
-Bettina Schausten	Q850034
-Richard Kick	Q1617247
-Jürgen Erbacher	Q55225500
-Philipp Kohlschreiber	Q77149
-Bautista Agut	Q966542
-Dieter Hallervorden	Q78006
-Christopher Wehrmann	Q106433483
-Reinhard Bütikofer	Q31236
-Omid Nouripour	Q71635
-Nouripour	Q71635
-Emily Büning	Q1337575
-Thomas Walder	Q21547675
-Antonio Costa	Q610788
-Danielle Collins	Q17523802
-Robert Malley	Q7347302
-Dunja Hayali	Q1265849
-Colin Powell	Q150851
-Clara Geiwitz	Q945360
-Hannah Zimmermann	Q95201223
-Amy Gutman	Q4749221
-Valerie Haller	Q101113
-Peter Merseburger	Q125528
-Heinz Wolff	Q5700908
-Marie-Agnes Strack	Q15391841
-Pelé	Q12897
-Christoph Röcke	Q15435153
-Aline Sousa	Q101140962
-Luiz Inácio Lula	Q37181
-Andreas Weise	Q4755675
-Mark Jones	Q735017
-Stresemann	Q103955
-Adolf Hitler	Q352
-Dieter Kronzucker	Q96478
-Anne Gellinek	Q21468695
-Jörg Brase	Q64410211
-Khamenei	Q57336
-Ahmad Reza Radan	Q4390433
-Gottfried Barth	Q84078286
-Linus Strasser	Q18715441
-Anton Tremmel	Q61712320
-Annegret Oster	Q102228271
-Franziska Giffey	Q19279839
-Peter Böhmer	Q110560714
-Jana Becker	Q1369498
-Frank Bethmann	Q1442950
-Naomi Campbell	Q199369
-Cindy Crawford	Q199801
-Christoph Stölzl	Q1085958
-Steven Spielbergs	Q8877
-Michel Jau	Q33236002
-Colin Farrell	Q172035
-Annette Hilsenbeck	Q90158848
-Thomas Reichert	Q94821438
-Rolf Mütze	Q2163668
-Franz Josef Jung	Q57505
-Heiko Maas	Q108447
-Fabian Köhler	Q92866626
-Thomas de Maiziere	Q57364
-Egon Ramms	Q88324
-Olena Selenska	Q59321885
-Ulf Röller	Q1229961
-Julia Rech	Q63358281
-Olena Zelenska	Q59321885
-Pierre Antonio Panzeri	Q1055562
-Eva Kaili	Q2420152
-George Clooney	Q23844
-Brad Pitt	Q35332
-Knorr	Q1491130
-Seth Moulton	Q18045052
-Walter Scheel	Q2571
-Christian Mölling	Q116688282
-Sibylle Bassler	Q2280964
-Pina Bausch	Q155538
-Stravinskys	Q7314
-Pina Bauschs	Q155538
-Lutz van der Horst	Q992081
-Volodymyr Selenskyj	Q3874799
-Nazan Gökdemir	Q1972529
-Itamar Ben	Q12403861
-Christiane Hoffmann	Q1082694
-Karl Gorath	Q3813044
-Sharmat	Q1899808
-Julian Köster	Q109465153
-Tyre Nichols	Q116455259
-George Floyd	Q95677819
-Florian Neuhan	Q90626411
-Frank Bittmann	Q92397920
-Eva Schiller	Q22670
-Willi Brandt	Q2514
-Willy Brandt	Q2514
-Kevin Kühnert	Q43567875
-Elisabeth Schmid	Q15303643
-Ayatollah Ali Khamenei	Q57336
-Musharraf	Q40495
-Nicole Diekmann	Q63609706
-Andre Breitenreiter	Q517257
-Breitenreiter	Q517257
-Julian Schmid	Q62027705
-Beethoven	Q255
-Lisa Streich	Q99688605
-Recep Tayyip Erdogan	Q39259
-Anne	Q119702
-Bashar al-Assad	Q44329
-Katrin Eigendorf	Q20724971
-Arndt Ginzel	Q64825278
-Rosa Maksimenko	Q471507
-Ludwig Erhard	Q2496
-Felix Klauser	Q96322182
-Stephanie Barrett	Q107297574
-Heike Slansky	Q455948
-Slansky Bidens	Q455948
-Maja Sandu	Q15071069
-Navid Kermani	Q99728
-André Wüstner	Q15734473
-Alissa Jung	Q97380
-Corinna Miazga	Q40878850
-Haller	Q123225
-Nicola Albrecht	Q23559633
-Monet	Q296
-Rubens	Q5599
-Caspar David Friedrich	Q104884
-William Turner	Q159758
+Q2429257	Thorsten Schröder
+Q109943	Robert Habeck
+Q61053	Olaf Scholz
+Q5385992	Eric Adams
+Q43033	Desmond Tutu
+Q1148669	Cyril Ramaphosa
+Q6833113	Michael Nuttall
+Q450675	Pope Francis
+Q373895	Betty White
+Q6279	Joe Biden
+Q22252582	Ryoyu Kobayashi
+Q126987	Markus Eisenbichler
+Q127325	Karl Geiger
+Q76658	Frank-Walter Steinmeier
+Q564328	Annalena Baerbock
+Q109627	Ingo Zamperoni
+Q7747	Vladimir Putin
+Q5812	Novak Djokovic
+Q177593	Wolfgang Ischinger
+Q126599	Kristen Stewart
+Q9685	Diana, Princess of Wales
+Q544651	William Kirby (entomologist)
+Q19283912	Gerhard Trabert
+Q2338559	Steffen Baumgart
+Q151269	Robert Lewandowski
+Q21226404	Julian Nagelsmann
+Q15431792	Timo Baumgartl
+Q524589	Bastian Oczipka
+Q129116	Oliver Baumann
+Q129013	Max Kruse
+Q1510065	Geraldo (bandleader)
+Q28771704	Kira Weidle
+Q526764	Ramona Siebenhofer
+Q2297435	Sofia Goggia
+Q2078286	Peter Seeberger
+Q2494	Pope Benedict XVI
+Q9061	Karl Marx
+Q559040	Jean-Yves Le Drian
+Q21392377	Nikolai Nicolaevich Lavrov
+Q77342	Hardy Krüger
+Q80048	Al Capone
+Q1472644	Susanne Daubner
+Q3052772	Emmanuel Macron
+Q72817	Max Otte
+Q566257	Friedrich Merz
+Q4522370	George Heinrich Adolf Scheele
+Q180589	Boris Johnson
+Q14902856	Patrick Zieker
+Q110613448	Daniel Rebmann
+Q4581	Sara Goller
+Q28112713	Aline Abboud
+Q7378729	Rui Rio
+Q3956186	Sergio Mattarella
+Q9458	Muhammad
+Q10132	Rafael Nadal
+Q18818844	Lev Nikandrovich Medvedev
+Q3874799	Volodymyr Zelensky
+Q72245	Thomas Bach
+Q100921728	Eric Seymour
+Q37693	Paul Gauguin
+Q43134960	Edmund Henry Osthaus
+Q714039	Matsukata Masayoshi
+Q74432	Karl Ernst Osthaus
+Q5582	Vincent van Gogh
+Q35548	Paul Cézanne
+Q39931	Pierre-Auguste Renoir
+Q1933150	Mike Fuhrig
+Q23559699	Waldemar Anton
+Q699094	Michael Gregoritsch
+Q87758	Katharina Althaus
+Q57415	Claudia Pechstein
+Q1711801	Julia-Niharika Sen
+Q330149	Abraham Kazen
+Q76816	Carl Ludwig Blume
+Q1893672	Marco Buschmann
+Q50664	Markus Söder
+Q9312	Immanuel Kant
+Q44426	Rainer Werner Fassbinder
+Q71595	Johannes Ludwig
+Q6254828	Tobias Wendeler
+Q59800543	Kamila Valieva
+Q75791	Claudia Roth
+Q108156	Francesco Friedrich
+Q19411627	Johannes Lochner
+Q130798	Kendrick Lamar
+Q228909	Mary J. Blige
+Q6096	Snoop Dogg
+Q6078	Dr. Dre
+Q5608	Eminem
+Q1660863	Ina Ruck
+Q26000920	Markus Preiß
+Q20671603	Matthias Deiß
+Q41548	Antonio Banderas
+Q1083648	Christine Lambrecht
+Q60772	Ursula von der Leyen
+Q60311001	Peter Zimmermann
+Q18111	Li Keqiang
+Q822762	Kerem Demirbay
+Q1566859	Habib el-Adly
+Q28916689	Domenico Tedesco
+Q129121	Christian Streich
+Q4419904	Lukas Kübler
+Q111103025	Marco Maier
+Q111448677	Florian Baumann
+Q91412625	Leonie Walter
+Q15920483	Oksana Skyshkova
+Q50392050	Momoka Muraoka
+Q249206	Mevlüt Çavuşoğlu
+Q20752268	Sabine Rau
+Q484605	Christine Lagarde
+Q56226	Kim Jong-un
+Q37181	Luiz Inácio Lula da Silva
+Q10304982	Jair Bolsonaro
+Q1163276	Daniel da Silva Soares
+Q62714501	Kubacky Viktor
+Q502944	Andrej Lanišek
+Q127538	Andreas Wellinger
+Q705715	RuPaul
+Q58042513	Selina Freitag
+Q96808	Anna Rupprecht
+Q766866	Kevin McCarthy (California politician)
+Q111733599	Gudrun Engel
+Q61624	Rosi Mittermaier
+Q72821	Carl Adolf Georg Lauterbach
+Q12839	Cem Özdemir
+Q114446010	Céline Giraudeau
+Q77772	Anne Will
+Q56434717	Greta Thunberg
+Q2435478	Tina Hassel
+Q1379228	Eva Högl
+Q1288810	Nancy Faeser
+Q43723	Benjamin Netanyahu
+Q133040	Alberto Fujimori
+Q44464	Rudi Völler
+Q152844	Oliver Bierhoff
+Q370560	David Crosby
+Q103964	Albert Füracker
+Q60734133	Lulas
+Q110969027	Arndt Geiwitz
+Q90042	René Benko
+Q73119355	Ibrahim A. Omoson
+Q1576999	Hans-Georg Maaßen
+Q5673	Hans Christian Andersen
+Q27050003	Ole Werner
+Q57548	Bruno Labbadia
+Q326159	Niclas Füllkrug
+Q44329	Bashar al-Assad
+Q57641	Viktor Orbán
+Q3189862	Julius Lederer
+Q27999595	Hanna Öberg
+Q102355576	Sophia Schneider
+Q60676369	Adnan Tekin
+Q57788	Hun Sen
+Q40912	Frank Sinatra
+Q23639418	Alexander Schmid
+Q59361693	Dominik Raschner
+Q77193	Sahra Wagenknecht
+Q62919	Alice Schwarzer
+Q435709	Nikolay Zelinsky
+Q1058	Narendra Modi
+Q1001	Mahatma Gandhi
+Q486188	Humayun
+Q3510872	Bola Ahmed Tinubu
+Q8877	Steven Spielberg
+Q112656104	Thea Ehre
+Q67268	Christian Petzold (director)
+Q95777717	Gregor Kohl
+Q3189078	Julian Brandt
+Q152377	Marco Reus
+Q61709977	Edin Terzić
+Q55999670	Christoph Baumgartner
+Q3529022	Timo Werner
+Q61680332	Tuta (footballer, born 1999)
+Q5371234	Emil Forsberg
+Q542990	Marco Rose
+Q23059485	Luisa Görlich
+Q55098560	Paul Klemm
+Q23561140	Heinrich Fiechtner
+Q1028067	Martin Müller
+Q123373	Frank Ulrich Montgomery
+Q96820	Johannes Kahrs (politician)
+Q88304	Christa Luft
+Q76334	Boris Becker
+Q83406	Spartacus
+Q47139	Slobodan Milošević
+Q93167	Ratko Mladić
+Q9161	Josip Broz Tito
+Q57344	Joschka Fischer
+Q2262885	Sebastian Kurz
+Q2530	Gerhard Schröder
+Q1079331	Christian Drosten
+Q3044	Charlemagne
+Q60848	Kristina Schröder
+Q705525	Peter Thiel
+Q42860944	Karl Nehammer
+Q2426106	Thomas Mertens
+Q9235	Georg Wilhelm Friedrich Hegel
+Q22686	Donald Trump
+Q23685	Jimmy Carter
+Q57614498	Martin Mueller
+Q10853588	Kamala Harris
+Q60059	Albertus Magnus
+Q57665	Jens Stoltenberg
+Q104209629	Robert Andres
+Q12927	Marine Le Pen
+Q3191042	Jérôme Rivière
+Q29018357	Damien Rieu
+Q1055449	Matteo Salvini
+Q15907132	Jörg Meuthen
+Q5565024	Gita Gopinath
+Q6776890	Martin Wille
+Q58200	Jean Asselborn
+Q7821917	Antony Blinken
+Q89865925	Alexander O Pavliuk
+Q18169686	Paul Ziemiak
+Q57687	Zoran Milanović
+Q2425648	Thomas Kemmerich
+Q27975838	Alice Weidel
+Q43331181	Lothar H. Wieler
+Q893754	Boris Pfeiffer
+Q85806	Christian Lindner
+Q1080069	Christian Görke
+Q19920980	Linda Thomas-Greenfield
+Q58217	Sergey Lavrov
+Q1806261	Lars Klingbeil
+Q1394	Vladimir Lenin
+Q3099714	Justin Trudeau
+Q9391	Ludwig Wittgenstein
+Q18176756	Björn Höcke
+Q18176782	Stefan Möller
+Q40895143	Tino Chrupalla
+Q1788125	Petra Köpping
+Q18631376	Susanne Hoffmann
+Q106484746	Wolfgang Mückstein
+Q2076158	Peter Kaiser
+Q46169435	Norbert Nowotny
+Q94875911	Martin Kohlmann
+Q102641	Christian Dürr
+Q230060	Lita
+Q11762	Jürgen Trittin
+Q8007	Franklin Delano Roosevelt
+Q352	Adolf Hitler
+Q1927697	Michael Harig
+Q311440	António Guterres
+Q73330	Jörg Asmussen
+Q108868	Harald Martenstein
+Q1316	Saddam Hussein
+Q1379214	Eva Herrmann
+Q76433	Eva Braun
+Q372052	Sir Arthur Harris, 1st Baronet
+Q4583	Anne Frank
+Q11771436	Mateusz Morawiecki
+Q18510281	Omi (singer)
+Q18326500	Michael Utsch
+Q94739109	Anni Willmann
+Q118724	Gabriele Krone-Schmalz
+Q272201	Liz Truss
+Q9151911	Andrzej Duda
+Q60483	Jörg Müller
+Q19878	Muammar Gaddafi
+Q78516	Anna Netrebko
+Q3335	George Orwell
+Q71534	Hubertus Heil
+Q9960	Ronald Reagan
+Q165693	Valery Gergiev
+Q7315	Pyotr Ilyich Tchaikovsky
+Q132682	Modest Mussorgsky
+Q7243	Leo Tolstoy
+Q265277	Kristalina Georgieva
+Q4112948	Vladi
+Q9200	Paul the Apostle
+Q1187856	Deniz Yücel
+Q562508	Eugen Schmidt
+Q971774	Peter Tschentscher
+Q111280022	Iryna Tybinka
+Q517	Napoleon
+Q1282198	Ivan Ilyin
+Q33391	Leon Trotsky
+Q855	Joseph Stalin
+Q2628	Walter Ulbricht
+Q96178	Emil Puhl
+Q28085	Adolf Eichmann
+Q952851	Nikolai Ruzsky
+Q2538	Joachim Gauck
+Q1768478	William Burns
+Q56340872	Jakub Kumoch
+Q382433	Charles III, Prince of Monaco
+Q9439	Queen Victoria
+Q95243	Jürgen Elsässer
+Q567	Angela Merkel
+Q27523574	Stephan Berndt
+Q107497	Herman Scholliner
+Q893758	Boris Pistorius
+Q22137462	Sergio Canavero
+Q57089	Paul Ehrlich
+Q317521	Elon Musk
+Q5944264	Hunter Biden
+Q6872802	Miranda Devine
+Q1361675	Jan Böhmermann
+Q1227729	Dirk Adams
+Q116151972	Doreen Denstädt
+Q99660	Dietmar Woidke
+Q137375	Gholam-Hossein Mohseni-Eje'i
+Q63962	Ernst Schäfer
+Q68427	Bruno Beger
+Q1286297	Edmund Garratt Gardner
+Q3057351	Ernst Hans Ludwig Krause
+Q43067	Heinrich Himmler
+Q26262585	Martin Sellner
+Q55223040	Alexandria Ocasio-Cortez
+Q2602	Egon Krenz
+Q6558385	Lisa S. Neubauer
+Q108171145	Shahram Irani
+Q61625543	Luisa Neubauer
+Q106538	Sandra Maischberger
+Q31919	Vitali Klitschko
+Q66107	Henry Kissinger
+Q76793	Klaus Schwab
+Q303	Elvis Presley
+Q237324	Lisa Marie Presley
+Q242015	Lisa Marie
+Q23046207	André Poggenburg
+Q1510945	Gerda-Maria Jürgens
+Q65023	Tatjana Patitz
+Q2607	Erich Honecker
+Q38639955	Stefan Heim
+Q141829	Lavrentiy Beria
+Q42841188	Ricarda Lang
+Q18629199	Mick Knauff
+Q84623	Jürgen Drews
+Q45430	Florian Silbereisen
+Q13360930	Beatrice Egli
+Q457829	Klaus Lage
+Q1223204	Diether Dehm
+Q69263	Roland Kaiser
+Q1928299	Michael Kretschmer
+Q58085	Radosław Sikorski
+Q60543	Kim Dotcom
+Q1710769	Konstantin von Notz
+Q1557780	Karl Lausecker
+Q505634	John DeSantis
+Q362872	James Worthy
+Q2163668	Rolf Mützenich
+Q103519	Anton Hofreiter
+Q15391841	Marie-Agnes Strack-Zimmermann
+Q43915	Otto I, Holy Roman Emperor
+Q15193	Alexander I of Russia
+Q316599	Saint Maurice
+Q57203	Paul Emil von Lettow-Vorbeck
+Q88385559	Stefan Fritsch
+Q107797	Mathias Döpfner
+Q849997	Bettina Jarasch
+Q41749	Joseph Goebbels
+Q48967	Katrin Göring-Eckardt
+Q38757	Bertolt Brecht
+Q9151007	Andreas Hofmann (javelin thrower)
+Q80135	Dmitri Shostakovich
+Q105355	Ingbert Liebing
+Q113801465	Egon Barres
+Q8479	Peter the Great
+Q87130	Johanna Mikl-Leitner
+Q1395041	Herbert Kickl
+Q113791847	Sabine Kraume-Probst
+Q5600	Mimar Sinan
+Q23561061	Robert Farle
+Q76490	Helge Schneider
+Q40804106	Lorenz Gösta Beutin
+Q451791	Giorgia Meloni
+Q435792	Seymour Hersh
+Q3713655	Donald Trump Jr.
+Q2157102	Robert Fleischer
+Q154014	Georg Büchner
+Q110498482	Lina Eichler
+Q920184	Frederic Clements
+Q5284	Bill Gates
+Q56342053	Wolfgang Effenberger
+Q1085167	Christoph Heusgen
+Q63383076	Maximilian Pütz
+Q25161	Roald Dahl
+Q40846824	Steffen Kotré
+Q1446302	Franz Birnecker
+Q110719	Oskar Lafontaine
+Q88267	Jürgen Todenhöfer
+Q892	J. R. R. Tolkien
+Q76638	Gregor Strasser
+Q39658	Carl Peter Thunberg
+Q108773423	Tom Johnson
+Q29357285	Fabian Köster
+Q318508	Andrés Manuel López Obrador
+Q1480382	Walter Gorn
+Q2573	Gustav Heinemann
+Q3074223	Florian Philippot
+Q454894	Thomas Huber
+Q5085667	Charlie Walters
+Q95889155	Sebastian Geissler
+Q50602466	Josef Lindner
+Q183332	Saint Sebastian
+Q161339	Jens Weißflog
+Q95220383	Thomas Fischbacher
+Q1399285	Klaus Stöhr
+Q86818696	Hans Kluge
+Q1557005	Alexander Kissler
+Q90756	Jan Schäfer
+Q1690600	Joachim Wundrak
+Q1045606	Carsten Linnemann
+Q105366663	Helene Mann
+Q16054369	Andreas Gassen
+Q57997565	Thomas Haldenwang
+Q337628	Pyotr Lavrov
+Q47199975	Paul Ronzheimer
+Q324605	Peter Thiede
+Q35314	Nikita Khrushchev
+Q2516	Helmut Schmidt
+Q95636853	Markus Faber
+Q51885900	Peter Hell
+Q59676732	Peter Helfer
+Q2004036	Jojanneke van den Berge
+Q33941	Julian (emperor)
+Q27994402	Jorgos
+Q18797	Wladimir Klitschko
+Q65010506	Heinz Wolf
+Q74177	Marietta Slomka
+Q968118	Henning Radtke
+Q1605378	Henner Hebestreit
+Q13990552	Alexander Zverev
+Q23668736	Cameron Norrie
+Q15133598	Tim Pütz
+Q4847264	Dan Evans (tennis)
+Q317820	Jamie Murray
+Q22338623	Julia Taubitz
+Q111422430	Melanie Haag
+Q62245	Daniela Anschütz-Thoms
+Q76718	Anton Raphael Mengs
+Q73322	Patrick Beckert
+Q114610721	Frank Ulrich
+Q819447	Kent Nagano
+Q42323747	Christian Thiede
+Q2545434	Walter Lübcke
+Q3820169	L. R. Johannis
+Q55536004	Nawale Hajjaji
+Q1554650	Gundula Gause
+Q49671199	Hanna Zimmermann
+Q1081910	Christian Sievers
+Q3641576	Bohdan Gonsior
+Q107179987	Benjamin Daniel
+Q1770560	Jack Sullivan
+Q850034	Bettina Schausten
+Q1617247	Richard Kick
+Q55225500	Jürgen Erbacher
+Q77149	Philipp Kohlschreiber
+Q966542	Roberto Bautista Agut
+Q78006	Dieter Hallervorden
+Q106433483	Christopher Wehrmann
+Q31236	Reinhard Bütikofer
+Q71635	Omid Nouripour
+Q1337575	Emily Büning
+Q21547675	Thomas Walder
+Q610788	António Costa
+Q17523802	Danielle Collins
+Q7347302	Robert Malley
+Q1265849	Dunja Hayali
+Q150851	Colin Powell
+Q945360	Eugen Geiwitz
+Q95201223	Hannah Zimmermann
+Q4749221	Amy Gutman
+Q101113	Valerie Haller
+Q125528	Peter Merseburger
+Q5700908	Heinz Wolff
+Q12897	Pelé
+Q15435153	Christoph Röckerath
+Q101140962	Aline Sousa Bomfim
+Q4755675	Andreas Weise
+Q735017	Mark Jones (footballer, born 1933)
+Q103955	Gustav Stresemann
+Q96478	Dieter Kronzucker
+Q21468695	Anne Gellinek
+Q64410211	Jörg Brase
+Q57336	Ali Khamenei
+Q4390433	Ahmad-Reza Radan
+Q84078286	Gottfried Barth
+Q18715441	Linus Straßer
+Q61712320	Anton Tremmel
+Q102228271	Annegret Ostermann
+Q19279839	Franziska Giffey
+Q57910	Arthur Zimmermann
+Q110560714	Peter Böhmer
+Q1369498	Jana Becker
+Q1442950	Frank Bethmann
+Q199369	Naomi Campbell
+Q199801	Cindy Crawford
+Q1085958	Christoph Stölzl
+Q33236002	Michel Jau
+Q172035	Colin Farrell
+Q90158848	Annette Hilsenbeck
+Q94821438	Thomas Reichert
+Q57505	Franz Josef Jung
+Q108447	Heiko Maas
+Q92866626	Fabian Köhler
+Q57364	Thomas de Maizière
+Q88324	Egon Ramms
+Q59321885	Olena Zelenska
+Q1229961	Ulf-Jensen Röller
+Q63358281	Julia Rechenberger
+Q1055562	Antonio Panzeri
+Q2420152	Eva Kaili
+Q23844	George Clooney
+Q35332	Brad Pitt
+Q1491130	Thomas Knorr
+Q18045052	Seth Moulton
+Q2571	Walter Scheel
+Q116688282	Christian Mölling
+Q2280964	Sibylle Bassler
+Q155538	Pina Bausch
+Q7314	Igor Stravinsky
+Q992081	Lutz van der Horst
+Q1972529	Nazan Gökdemir
+Q12403861	Itamar Ben-Gvir
+Q1082694	Christiane Hoffmann
+Q3813044	Karl Gorath
+Q1899808	Marjorie W. Sharmat
+Q109465153	Julian Köster
+Q116455259	Tyre Nichols
+Q95677819	George Floyd
+Q90626411	Florian Neuhann
+Q92397920	Frank N Bittmann
+Q22670	Friedrich Schiller
+Q2514	Willy Brandt
+Q43567875	Kevin Kühnert
+Q15303643	Elisabeth Schmid
+Q40495	Pervez Musharraf
+Q63609706	Nicole Diekmann
+Q517257	André Breitenreiter
+Q62027705	Julian Schmid
+Q255	Ludwig van Beethoven
+Q99688605	Lisa Streich
+Q39259	Recep Tayyip Erdoğan
+Q119702	Anne, Queen of Great Britain
+Q20724971	Katrin Eigendorf
+Q64825278	Arndt Ginzel
+Q471507	Vitālijs Maksimenko
+Q2496	Ludwig Erhard
+Q96322182	Felix Klauser
+Q107297574	Stephanie Barrett
+Q455948	Rudolf Slánský
+Q15071069	Maia Sandu
+Q99728	Navid Kermani
+Q15734473	André Wüstner
+Q97380	Alissa Jung
+Q40878850	Corinna Miazga
+Q123225	Albrecht von Haller
+Q23559633	Nicola Albrecht
+Q296	Claude Monet
+Q5599	Peter Paul Rubens
+Q104884	Caspar David Friedrich
+Q159758	J. M. W. Turner

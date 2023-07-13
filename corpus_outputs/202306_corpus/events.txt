@@ -1,5 +1,3 @@
-Ukraine-Krieg	Q16335075
-Vietnamkrieg	Q8740
-Kalten Krieg	Q8683
-Ukraine-Krieges	Q16335075
-Kalten Krieges	Q8683
+Q16335075	War in Donbass
+Q8740	Vietnam War
+Q8683	Cold War
