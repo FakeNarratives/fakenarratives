@@ -60,7 +60,6 @@ def parse_args():
     # optional
     parser.add_argument("--batch_size", type=int, required=False, default=8, help="batch size")
     parser.add_argument("--cpu", action="store_true", help="process on cpu")
-    parser.add_argument("--fps", type=int, required=False, default=2, help="fps to process video")
     parser.add_argument("--debug", action="store_true", help="debug output")
     parser.add_argument(
         "--max_dimension", type=int, required=False, default=1920, help="max dimension of the video frames"
@@ -101,7 +100,9 @@ def main():
         with open(os.path.join(output_dir, "face_analysis.pkl"), "rb") as pklfile:
             content = pickle.load(pklfile)
 
+        fps = content["plugins"][0]["parameters"]["fps"]
         faces = content["output_data"][0]
+
         faces_dict = {}
         for face in faces["faces"]:
             if face["time"] not in faces_dict:
@@ -110,7 +111,7 @@ def main():
             faces_dict[face["time"]].append(face)
 
         # get frames from video
-        vd = VideoDecoder(path=video_path, max_dimension=args.max_dimension, fps=args.fps)
+        vd = VideoDecoder(path=video_path, max_dimension=args.max_dimension, fps=fps)
 
         times = []
         headposes = []
