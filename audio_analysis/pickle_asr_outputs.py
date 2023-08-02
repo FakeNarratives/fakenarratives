@@ -47,6 +47,7 @@ def transcribe_video(script_dir, video_path, model, pipeline):
     5. Transcription result
 
     Args:
+        script_dir (str): Full path of this script
         video_path (str): Full path to the video file
         model (whisper.asr.ASRModel): Initialized Whisper ASR model
 

@@ -48,6 +48,7 @@ def classify_asr_segments(script_dir, video_path, asr_dict,
     Takes ASR segments and Speaker Diarization segments, classifies them into speech emotion and gender categories.
 
     Args:
+        script_dir (str): Full path of this script
         video_path (str): Full path to the video file
         asr_dict (dict): ASR dictionary with transcript and speaker segments
         emo_model (Speechbrain model): Emotion recognition model from speechbrain
@@ -72,8 +73,6 @@ def classify_asr_segments(script_dir, video_path, asr_dict,
                         "output_data": {}
                       }
     
-    
-    
     video = VideoFileClip(video_path+".mp4")
 
     audio_data = None
@@ -81,13 +80,10 @@ def classify_asr_segments(script_dir, video_path, asr_dict,
 
     ## Changed temporary audio files from .mp3 to .wav to avoid loading errors
     with open(os.path.join(script_dir, "temp", "audio.wav"), "w") as tmp:
-        video.audio.write_audiofile(tmp.name)
-        waveform, sample_rate = torchaudio.load(tmp.name)
-        if waveform.shape[0] > 1:  # if stereo
-            waveform = waveform.mean(dim=0)  # convert to mono
-        waveform = waveform.to(device)
-        resampler = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=sr).to(device)
-        audio_data = resampler(waveform).cpu()
+        video.audio.write_audiofile(tmp.name, fps=sr)
+        audio_data, sample_rate = torchaudio.load(tmp.name)
+        if audio_data.shape[0] > 1:  # if stereo
+            audio_data = audio_data.mean(dim=0)  # convert to mono
 
     ## For ASR segments 
     asr_segment_preds = []
