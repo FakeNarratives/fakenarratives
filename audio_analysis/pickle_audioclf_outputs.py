@@ -97,6 +97,9 @@ def classify_shot_segments(script_dir, video_path, shots,
     for shot in shots:
         start_time = shot["start"]
         end_time = shot["end"]
+        if (start_time - end_time) == 0:
+            continue
+
         audio_data = video.audio.subclip(start_time, end_time)
         with open(os.path.join(script_dir, "temp", "audio.wav"), "w") as tmp:
             audio_data.write_audiofile(tmp.name, fps=sr)
