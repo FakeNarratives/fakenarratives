@@ -33,7 +33,7 @@ To extract features for a given video, please run:
 
 ~~~sh
 conda activate fakenarratives_vise_py38
-python pickle_VisE_outputs.py --cfg VisE/resources/VisE-D/models/VisE_CO_cos.yml --videos /PATH/TO/VIDEOS --output /PATH/TO/OUTPUT_FOLDER
+python visual_anaylsis/pickle_VisE_outputs.py --cfg VisE/resources/VisE-D/models/VisE_CO_cos.yml --videos /PATH/TO/VIDEOS --output /PATH/TO/OUTPUT_FOLDER
 ~~~
 
 For optional parameters, we refer to the file [```pickle_VisE_outputs.py```](pickle_VisE_outputs.py)
@@ -55,7 +55,7 @@ Based on the ```face_analysis.pkl``` written by the corresponding
 [*TIB-AV-A*](https://github.com/TIBHannover/tibava-analyser) pipeline, please run:
 
 ~~~sh
-python pickle_faceclustering.py --videos /PATH/TO/VIDEOS --output /PATH/TO/OUTPUT_FOLDER
+python visual_anaylsis/pickle_faceclustering.py --videos /PATH/TO/VIDEOS --output /PATH/TO/OUTPUT_FOLDER
 ~~~
 
 ### Geolocation Estimation
@@ -72,7 +72,7 @@ To extract features for a given video, please run:
 
 ~~~sh
 conda activate fakenarratives_semantic_geo_partitioning_py38
-PYTHONPATH=./semantic_geo_partitioning/geo_classification python pickle_geoestimation.py --videos /PATH/TO/VIDEOS --output /PATH/TO/OUTPUT_FOLDER
+PYTHONPATH=./semantic_geo_partitioning/geo_classification python visual_anaylsis/pickle_geoestimation.py --videos /PATH/TO/VIDEOS --output /PATH/TO/OUTPUT_FOLDER
 ~~~
 
 ### Headpose Estimation
@@ -97,7 +97,7 @@ Based on the ```face_analysis.pkl``` written by the corresponding
 
 ~~~sh
 conda activate fakenarratives_headpose_py38
-python pickle_headpose.py --videos /PATH/TO/VIDEOS --output /PATH/TO/OUTPUT_FOLDER
+python visual_anaylsis/pickle_headpose.py --videos /PATH/TO/VIDEOS --output /PATH/TO/OUTPUT_FOLDER
 ~~~
 
 ### Optical Character Recognition
@@ -115,7 +115,7 @@ To extract features for a given video, please run:
 ~~~sh
 cd mmocr
 conda activate fakenarratives_mmocr_py38
-python ../pickle_mmocr_outputs.py --videos /PATH/TO/VIDEOS --output /PATH/TO/OUTPUT_FOLDER --fps $FPS
+python ../visual_anaylsis/pickle_mmocr_outputs.py --videos /PATH/TO/VIDEOS --output /PATH/TO/OUTPUT_FOLDER --fps $FPS
 ~~~
 
 For optional parameters, we refer to the file [```pickle_mmocr_outputs.py```](pickle_mmocr_outputs.py)
