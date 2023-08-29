@@ -5,7 +5,7 @@ import numpy as np
 from tqdm import tqdm
 from sentence_transformers import SentenceTransformer
 from transformers import AutoTokenizer, AutoModelWithLMHead
-from utils import *
+from text_utils import *
 import argparse
 
 def parse_args():

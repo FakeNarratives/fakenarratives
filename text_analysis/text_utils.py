@@ -302,7 +302,8 @@ def get_wikifier_annotations(proc_text, language="de", wikifier_key="dqmaycxjptu
 
         total_len += len(text_chunk)
 
-        time.sleep(1)
+        if len(chunks) > 1:
+            time.sleep(1)
 
     return all_annotations
 
@@ -324,3 +325,32 @@ def get_stanza_ner_annotations(proc_text):
         named_entities.extend(sent_ents)
 
     return named_entities
+
+
+def get_speaker_turns(speaker_segments, speaker_seg_tol=3):
+    for i, segment in enumerate(speaker_segments):
+        start_time = round(segment["start"], 2)
+        end_time = round(segment["end"], 2)
+        if i < len(speaker_segments)-1:
+            if speaker_segments[i+1]["start"] - end_time < speaker_seg_tol:
+                end_time = round(speaker_segments[i+1]["start"]- 0.04, 2)     ## Similar to shots
+                
+        segment["start"] = start_time
+        segment["end"] = end_time
+        segment["n_words"] = len(segment["text"].split())
+        
+        if segment["speaker"] == None:
+            segment["speaker"] = "Unknown"
+                
+    speaker_turns = []
+    current_span = None
+    for segment in speaker_segments:
+        if current_span is None or segment['speaker'] != current_span['speaker']:
+            current_span = segment.copy()
+            speaker_turns.append(current_span)
+        else:
+            current_span['end'] = segment['end']
+            current_span['text'] += ' ' + segment['text'].strip()
+            current_span['n_words'] += segment['n_words']
+        
+    return speaker_turns
