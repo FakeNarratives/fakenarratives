@@ -1,0 +1,16 @@
+nodes:
+  transnet_shotdetection:
+    color: "#ff9999"
+    shape: box
+  asr:
+    color: "#69cfd3"
+    shape: box
+  span:
+    color: "#66cc66"
+    shape:
+  asr_textnlp:
+relations:
+  transnet_shotdetection:
+    - span
+  asr:
+    - span
