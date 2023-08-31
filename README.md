@@ -34,6 +34,9 @@ To extract features for a given video, please run:
 
 ~~~sh
 conda activate fakenarratives_vise_py38
+cd VisE
+python download_resources.py
+cd ..
 python pickle_VisE_outputs.py --cfg VisE/resources/VisE-D/models/VisE_CO_cos.yml --videos /PATH/TO/VIDEOS --output /PATH/TO/OUTPUT_FOLDER
 ~~~
 
