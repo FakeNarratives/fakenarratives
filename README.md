@@ -11,8 +11,10 @@ This repository contains code to extract auditory, textual, and visual features 
     - [Event Classification](#event-classification)
     - [Face Clustering](#face-clustering)
     - [Geolocation Estimation](#geolocation-estimation)
+    - [InstructBLIP](#intructblip)
     - [Headpose Estimation](#headpose-estimation)
     - [Optical Character Recognition](#optical-character-recognition)
+  - [Graph Creation](#graph-creation)
 
 ## Auditory Feature Extraction
 
@@ -104,6 +106,23 @@ conda activate fakenarratives_headpose_py38
 python pickle_headpose.py --videos /PATH/TO/VIDEOS --output /PATH/TO/OUTPUT_FOLDER
 ~~~
 
+### IntructBLIP
+
+To install all dependencies, please use the following commands:
+
+~~~sh
+cd instructblip
+conda create --name fakenarratives_instructblip_py311 python=3.11
+pip install -r requirements.txt
+~~~
+
+To extract features for a given video, please run:
+
+~~~sh
+conda activate fakenarratives_instructblip_py311
+python blip_object_classification.py --videos /PATH/TO/VIDEOS --output /PATH/TO/OUTPUT_FOLDER --queries /PATH/TO/QUERY/CSVs
+~~~
+
 ### Optical Character Recognition
 
 To install all dependencies, please use the following commands:
@@ -124,3 +143,20 @@ python ../pickle_mmocr_outputs.py --videos /PATH/TO/VIDEOS --output /PATH/TO/OUT
 
 For optional parameters, we refer to the file [```pickle_mmocr_outputs.py```](pickle_mmocr_outputs.py)
 
+## Graph Creation
+
+To install all dependencies, please use the following commands:
+
+~~~sh
+cd graph_visualization
+conda create --name fakenarratives_graph_py311 python=3.11
+pip install -r requirements.txt
+~~~
+
+To create a graphlml file based on the extracted features (from .pkl files), please run:
+
+~~~sh
+cd graph_visualization
+conda activate fakenarratives_graph_py311
+python export_graphml.py --input /PATH/TO/RESULT_PKLS --output /PATH/TO/OUTPUT_FOLDER
+~~~
