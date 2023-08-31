@@ -1,12 +1,13 @@
 import argparse
-import glob
 import json
 import logging
 import networkx as nx
 import os
-import pickle
 from pyvis.network import Network
 import sys
+import yaml
+
+from utils import read_pkl
 
 
 def parse_args():
@@ -15,8 +16,7 @@ def parse_args():
 
     # inputs
     parser.add_argument("--input", "-i", type=str, required=True, help="path to .pkl folder")
-    parser.add_argument("--pkl_whitelist", type=str, nargs="+", help="pkl files to read (leave empty to read all)")
-    parser.add_argument("--pkl_blacklist", type=str, default=[], nargs="+", help="pkl files to skip")
+    parser.add_argument("--config", "-c", type=str, default="config.yml", help="path to .yml config file")
 
     # output
     parser.add_argument("--output", "-o", type=str, required=True, help="path to .graphml folder")
@@ -29,15 +29,72 @@ def parse_args():
     return args
 
 
-def add_node(G, index, color):
-    for i, entry in enumerate(index):
-        G.add_node(entry, label=entry, title=entry, color=color)
+def create_base_graph(args, config):
+    G = nx.Graph()
+
+    # read shots
+    logging.info(f"Create shots")
+    fname = os.path.join(args.input, "transnet_shotdetection.pkl")
+    assert os.path.isfile(fname), f"Cannot find {fname}"
+
+    data = read_pkl(fname)
+    shots = data["output_data"]["shots"]
+
+    # add nodes for shots
+    G = add_shot_nodes(G, shots, config["nodes"]["transnet_shotdetection"])
+
+    # read speaker segments
+    logging.info(f"Create speaker segments")
+    fname = os.path.join(args.input, "asr.pkl")
+    assert os.path.isfile(fname), f"Cannot find {fname}"
+
+    data = read_pkl(fname)
+    speaker_segments = data["output_data"]["speaker_segments"]
+
+    # create speaker turns
+    speaker_turns, speaker_segments = get_speaker_turns(speaker_segments, args.speaker_seg_tol)
+
+    # add nodes for speaker turs
+    G = add_speakerturn_nodes(G, speaker_turns, config["nodes"]["asr"])
+
+    # add spans based on speaker turns and shots (smallest temporal element in our graph)
+    G, spans = add_span_nodes(G, speaker_turns, shots, config, args.span_tol)
+
+    # add edges between shots and speaker turns to spans
+    G = add_edges_to_spans(G, shots, speaker_turns, spans)
+
+    logging.info(f"## Graph created!")
+    logging.info(f"   - Number of shots: {len(shots)}")
+    logging.info(f"   - Number of speaker turns: {len(speaker_turns)}")
+    logging.info(f"   - Number of spans: {len(spans)}")
 
     return G
 
 
-def add_shot_nodes(G, shots):
-    for i, shot in enumerate(shots):
+def add_nodes(G, plugin, data, config):
+    print(data["output_data"].keys())
+
+    add_node_function = {
+        "asr_textnlp": add_ner_nodes,
+    }
+
+    G = add_node_function[plugin](G=G, data=data, config=config[plugin])
+    return G
+
+
+def add_ner_nodes(G, data, config):
+    # TODO: This has to change; There should never be more than one information in a pkl
+    for entry in data["output_data"]["ner"]["speakerseg_wise"]:
+        print(entry)
+        break
+
+    # TODO
+
+    return G
+
+
+def add_shot_nodes(G, data, config):
+    for i, shot in enumerate(data):
         start_time = shot["start"]
         end_time = shot["end"]
 
@@ -48,15 +105,48 @@ def add_shot_nodes(G, shots):
             f"shot_{i}",
             label=label,
             title=title,
+            type="shot",
             start_time=start_time,
             end_time=end_time,
-            color="#ff9999",
-            shape="box",
+            color=config["color"],
+            shape=config["shape"],
         )
 
-    # Add edges within shot nodes and segment nodes
-    for i in range(len(shots) - 1):
+    # add edges between shots
+    for i in range(len(data) - 1):
         G.add_edge(f"shot_{i}", f"shot_{i+1}")
+
+    return G
+
+
+def add_speakerturn_nodes(G, speaker_turns, config):
+    for i, turn in enumerate(speaker_turns):
+        start_time = turn["start"]
+        end_time = turn["end"]
+
+        speaker_label = turn["speaker"] if turn["speaker"] else "None"
+        num_words = turn["n_words"]
+
+        # Create the label and title for the node (to see the attribute values and label nodes)
+        label = f"Spk. turn {i}"
+        title = f"Speaker ID: {speaker_label}, Num Words: {num_words}, Start: {start_time}, End: {end_time}"
+
+        G.add_node(
+            f"spk_turn_{i}",
+            label=label,
+            title=title,
+            type="speaker_turn",
+            start_time=start_time,
+            end_time=end_time,
+            speaker_id=speaker_label,
+            num_words=num_words,
+            color=config["color"],
+            shape=config["shape"],
+        )
+
+    # add edges between speaker turns
+    for i in range(len(speaker_turns) - 1):
+        G.add_edge(f"spk_turn_{i}", f"spk_turn_{i+1}")
 
     return G
 
@@ -87,35 +177,7 @@ def get_speaker_turns(speaker_segments, speaker_seg_tol=3.0):
     return speaker_turns, speaker_segments
 
 
-def add_speakerturn_nodes(G, speaker_turns):
-    for i, turn in enumerate(speaker_turns):
-        start_time = turn["start"]
-        end_time = turn["end"]
-
-        speaker_label = turn["speaker"]
-        num_words = turn["n_words"]
-
-        #         Create the label and title for the node (To see the attribute values and label nodes)
-        label = f"Spk. turn {i}"
-        title = f"Speaker ID: {speaker_label}, Num Words: {num_words}, Start: {start_time}, End: {end_time}"
-
-        G.add_node(
-            f"spk_turn_{i}",
-            label=label,
-            title=title,
-            start_time=start_time,
-            end_time=end_time,
-            color="#69cfd3",
-            shape="box",
-        )
-
-    for i in range(len(speaker_turns) - 1):
-        G.add_edge(f"spk_turn_{i}", f"spk_turn_{i+1}")
-
-    return G
-
-
-def add_span_nodes(G, speaker_turns, shots, tolerance=3.0):
+def add_span_nodes(G, speaker_turns, shots, config, tolerance=3.0):
     # Combine the two lists and sort by start time
     intervals = sorted(
         [{"start": shot["start"], "end": shot["end"]} for shot in shots]
@@ -163,7 +225,15 @@ def add_span_nodes(G, speaker_turns, shots, tolerance=3.0):
         label = f"Span {i}"
         title = f"Start: {start_time}, End: {end_time}"
 
-        G.add_node(f"span_{i}", label=label, title=title, start_time=start_time, end_time=end_time, color="#66cc66")
+        G.add_node(
+            f"span_{i}",
+            label=label,
+            title=title,
+            type="span",
+            start_time=start_time,
+            end_time=end_time,
+            color=config["nodes"]["span"]["color"],
+        )
 
     for i in range(len(spans) - 1):
         G.add_edge(f"span_{i}", f"span_{i+1}")
@@ -232,60 +302,24 @@ def main():
 
     logging.basicConfig(format="%(asctime)s %(levelname)s:%(message)s", datefmt="%Y-%m-%d %H:%M:%S", level=level)
 
-    # read pickle files
-    logging.info(f"Read .pkl files from {args.input}")
-    pkls = args.pkl_whitelist
-    if not pkls:
-        pkls = []
-        for pkl_file in glob.glob(os.path.join(args.input, "*.pkl")):
-            fname = os.path.splitext(os.path.basename(pkl_file))[0]
-            if fname in args.pkl_blacklist:
-                continue
-            pkls.append(fname)
+    # read config
+    with open(args.config, "r") as stream:
+        config = yaml.safe_load(stream)
+    logging.debug(config)
 
-    outputs = {}
-    for pkl in pkls:
-        try:
-            with open(os.path.join(args.input, pkl + ".pkl"), "rb") as pklfile:
-                outputs[pkl] = pickle.load(pklfile)
-                logging.debug(outputs[pkl])
-        except Exception as e:
-            logging.error(f"Cannot load {pkl}. {e}")
+    # create base structure of the graph
+    G = create_base_graph(args, config)
 
-    logging.debug(outputs.keys())
+    # add additional nodes to the graph
+    for plugin in config["nodes"]:
+        if plugin in ["transnet_shotdetection", "asr", "span"]:  # already computed for base graph
+            continue
 
-    # create graph
-    G = nx.Graph()
+        fname = os.path.join(args.input, plugin + ".pkl")
+        assert os.path.isfile(fname), f"Cannot find: {fname}"
 
-    # read shots
-    logging.info(f"Create shots")
-    assert "transnet_shotdetection" in outputs, "Cannot find transnet_shotdection.pkl"
-    shots = outputs["transnet_shotdetection"]["output_data"]["shots"]
-
-    # add nodes for shots
-    G = add_shot_nodes(G, shots)
-
-    # read speaker segments
-    logging.info(f"Create speaker segments")
-    assert "asr" in outputs, "Cannot find asr.pkl"
-    speaker_segments = outputs["asr"]["output_data"]["speaker_segments"]
-
-    # create speaker turns
-    speaker_turns, speaker_segments = get_speaker_turns(speaker_segments, args.speaker_seg_tol)
-
-    # add nodes for speaker turs
-    G = add_speakerturn_nodes(G, speaker_turns)
-
-    # add spans based on speaker turns and shots (smallest temporal element in our graph)
-    G, spans = add_span_nodes(G, speaker_turns, shots, args.span_tol)
-
-    logging.info(f"## Graph created!")
-    logging.info(f"   - Number of shots: {len(shots)}")
-    logging.info(f"   - Number of speaker turns: {len(speaker_turns)}")
-    logging.info(f"   - Number of spans: {len(spans)}")
-
-    # add edges between shots and speaker turns to spans
-    G = add_edges_to_spans(G, shots, speaker_turns, spans)
+        data = read_pkl(fname)
+        G = add_nodes(G, plugin, data, config["nodes"])
 
     # export graph
     os.makedirs(args.output, exist_ok=True)
