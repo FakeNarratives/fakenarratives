@@ -2,6 +2,7 @@ import argparse
 import json
 import logging
 import networkx as nx
+import numpy as np
 import os
 from pyvis.network import Network
 import sys
@@ -41,7 +42,7 @@ def create_base_graph(args, config):
     shots = data["output_data"]["shots"]
 
     # add nodes for shots
-    G = add_shot_nodes(G, shots, config["nodes"]["transnet_shotdetection"])
+    G = add_shot_nodes(G, shots, config["base"]["transnet_shotdetection"])
 
     # read speaker segments
     logging.info(f"Create speaker segments")
@@ -55,7 +56,7 @@ def create_base_graph(args, config):
     speaker_turns, speaker_segments = get_speaker_turns(speaker_segments, args.speaker_seg_tol)
 
     # add nodes for speaker turs
-    G = add_speakerturn_nodes(G, speaker_turns, config["nodes"]["asr"])
+    G = add_speakerturn_nodes(G, speaker_turns, config["base"]["asr"])
 
     # add spans based on speaker turns and shots (smallest temporal element in our graph)
     G, spans = add_span_nodes(G, speaker_turns, shots, config, args.span_tol)
@@ -72,23 +73,67 @@ def create_base_graph(args, config):
 
 
 def add_nodes(G, plugin, data, config):
-    print(data["output_data"].keys())
-
     add_node_function = {
-        "asr_textnlp": add_ner_nodes,
+        "query": add_query_nodes,
     }
 
-    G = add_node_function[plugin](G=G, data=data, config=config[plugin])
+    add_relation_function = {
+        "shot": add_shot_relation,
+    }
+
+    G = add_node_function[config["plugin_type"]](G=G, plugin=plugin, data=data, config=config)
+    G = add_relation_function[config["relation"]["target"]](G=G, plugin=plugin, data=data, config=config)
     return G
 
 
-def add_ner_nodes(G, data, config):
-    # TODO: This has to change; There should never be more than one information in a pkl
-    for entry in data["output_data"]["ner"]["speakerseg_wise"]:
-        print(entry)
-        break
+def add_query_nodes(G, plugin, data, config):
+    logging.debug(f"Add nodes for {plugin}")
+    for label in data["labels"]:
+        G.add_node(
+            label,
+            label=label,
+            type=plugin,
+            color=config["color"],
+            shape=config["shape"],
+        )
+    return G
 
-    # TODO
+
+def add_shot_relation(G, plugin, data, config):
+    logging.debug(f"Add relations from {plugin} to {config['relation']}")
+
+    for node in G.nodes(data=True):
+        _, node_attr = node
+        if node_attr["type"] != "shot":
+            continue
+
+        # get shot boundaries
+        st = node_attr["start_time"]
+        et = node_attr["end_time"]
+        idx = node_attr["index"]
+
+        # assign timestamps of the data to the shot boundaries
+        span_places = [i for i, t in enumerate(data["time"]) if t >= st and t <= et]
+        if len(span_places) < 1:
+            continue
+
+        # get corresponding values
+        shot_values = data["responses"][:, span_places[0] : span_places[-1] + 1]  # concepts x times
+
+        # aggregate values for each concept
+        # TODO: other aggregation functions
+        mean_scores = list(np.mean(shot_values, axis=-1))
+        median_scores = list(np.median(shot_values, axis=-1))
+
+        if config["relation"]["weight"] == "median":
+            scores = median_scores
+        else:
+            scores = mean_scores
+
+        # add edges based on threshold
+        for i, concept in enumerate(data["labels"]):
+            if scores[i] > config["relation"]["threshold"]:
+                G.add_edge(concept, f"shot_{idx}", weight=scores[i], mean=mean_scores[i], median=median_scores[i])
 
     return G
 
@@ -105,6 +150,7 @@ def add_shot_nodes(G, data, config):
             f"shot_{i}",
             label=label,
             title=title,
+            index=i,
             type="shot",
             start_time=start_time,
             end_time=end_time,
@@ -232,7 +278,7 @@ def add_span_nodes(G, speaker_turns, shots, config, tolerance=3.0):
             type="span",
             start_time=start_time,
             end_time=end_time,
-            color=config["nodes"]["span"]["color"],
+            color=config["base"]["span"]["color"],
         )
 
     for i in range(len(spans) - 1):
@@ -319,7 +365,7 @@ def main():
         assert os.path.isfile(fname), f"Cannot find: {fname}"
 
         data = read_pkl(fname)
-        G = add_nodes(G, plugin, data, config["nodes"])
+        G = add_nodes(G, plugin, data, config["nodes"][plugin])
 
     # export graph
     os.makedirs(args.output, exist_ok=True)

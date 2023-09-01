@@ -1,4 +1,4 @@
-nodes:
+base:
   transnet_shotdetection:
     color: "#ff9999"
     shape: box
@@ -7,10 +7,37 @@ nodes:
     shape: box
   span:
     color: "#66cc66"
-    shape:
-  asr_textnlp:
-relations:
-  transnet_shotdetection:
-    - span
-  asr:
-    - span
+    shape: circle
+nodes:
+  instructblip_daytime:
+    plugin_type: query
+    color: "#ffffff"
+    shape: circle
+    relation: 
+      target: shot
+      weight: mean
+      threshold: 0.5
+  instructblip_environment:
+    plugin_type: query
+    color: "#ffffff"
+    shape: circle
+    relation: 
+      target: shot
+      weight: mean
+      threshold: 0.5
+  instructblip_events:
+    plugin_type: query
+    color: "#ffffff"
+    shape: circle
+    relation: 
+      target: shot
+      weight: mean
+      threshold: 0.5
+  instructblip_weather:
+    plugin_type: query
+    color: "#ffffff"
+    shape: circle
+    relation: 
+      target: shot
+      weight: mean
+      threshold: 0.5
