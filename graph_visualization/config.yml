@@ -9,7 +9,13 @@ base:
     color: "#66cc66"
     shape: dot
 nodes:
+  camera_size_classification:
+    type: attribute
+    attribute: 
+      target: shot
+      value: mean
   instructblip_daytime:
+    type: node
     plugin_type: query
     color: "#ffffff"
     shape: dot
@@ -18,6 +24,7 @@ nodes:
       weight: mean
       threshold: 0.5
   instructblip_environment:
+    type: node
     plugin_type: query
     color: "#ffffff"
     shape: dot
@@ -26,6 +33,7 @@ nodes:
       weight: mean
       threshold: 0.5
   instructblip_events:
+    type: node
     plugin_type: query
     color: "#ffffff"
     shape: dot
@@ -34,6 +42,7 @@ nodes:
       weight: mean
       threshold: 0.5
   instructblip_weather:
+    type: node
     plugin_type: query
     color: "#ffffff"
     shape: dot
@@ -41,3 +50,4 @@ nodes:
       target: shot
       weight: mean
       threshold: 0.5
+  

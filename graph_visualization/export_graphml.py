@@ -72,6 +72,56 @@ def create_base_graph(args, config):
     return G
 
 
+def add_attributes(G, plugin, data, config):
+    t_iter = enumerate(iter(data["output_data"]["time"]))
+    idx, t = next(t_iter)
+
+    for node in G.nodes(data=True):
+        _, node_attr = node
+        if node_attr["type"] != "shot":
+            continue
+
+        st = node_attr["start_time"]
+        et = node_attr["end_time"]
+
+        shot_idx = []
+        while t < st:
+            idx, t = next(t_iter)
+
+        while t <= et:
+            shot_idx.append(idx)
+
+            if idx < len(data["output_data"]["time"]) - 1:
+                idx, t = next(t_iter)
+            else:
+                break
+
+        if len(shot_idx) < 1:
+            continue
+
+        # get corresponding values
+        shot_values = data["output_data"]["y"][shot_idx[0] : shot_idx[-1] + 1, :]  # times x concepts
+
+        # aggregate values for each concept
+        # TODO: other aggregation functions
+        mean_scores = list(np.mean(shot_values, axis=0))
+        median_scores = list(np.median(shot_values, axis=0))
+
+        if config["attribute"]["value"] == "median":
+            scores = median_scores
+        else:
+            scores = mean_scores
+
+        # add edges based on threshold
+        for i, concept in enumerate(data["output_data"]["index"]):
+            node_attr[f"{plugin}/{concept}"] = scores[i]
+
+        prediction = data["output_data"]["index"][np.argmax(scores)]
+        node_attr["title"] += f", Shot Size: {prediction}"
+
+    return G
+
+
 def add_nodes(G, plugin, data, config):
     add_node_function = {
         "query": add_query_nodes,
@@ -365,7 +415,11 @@ def main():
         assert os.path.isfile(fname), f"Cannot find: {fname}"
 
         data = read_pkl(fname)
-        G = add_nodes(G, plugin, data, config["nodes"][plugin])
+
+        if config["nodes"][plugin]["type"] == "node":
+            G = add_nodes(G, plugin, data, config["nodes"][plugin])
+        else:  # attribute
+            G = add_attributes(G, plugin, data, config["nodes"][plugin])
 
     # export graph
     os.makedirs(args.output, exist_ok=True)
