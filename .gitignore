@@ -3,6 +3,8 @@ temp/
 slurm/
 slurm*.out
 .vscode
+*.yml
+!graph_visualization/config.yml
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
