@@ -7,12 +7,12 @@ base:
     shape: box
   span:
     color: "#66cc66"
-    shape: circle
+    shape: dot
 nodes:
   instructblip_daytime:
     plugin_type: query
     color: "#ffffff"
-    shape: circle
+    shape: dot
     relation: 
       target: shot
       weight: mean
@@ -20,7 +20,7 @@ nodes:
   instructblip_environment:
     plugin_type: query
     color: "#ffffff"
-    shape: circle
+    shape: dot
     relation: 
       target: shot
       weight: mean
@@ -28,7 +28,7 @@ nodes:
   instructblip_events:
     plugin_type: query
     color: "#ffffff"
-    shape: circle
+    shape: dot
     relation: 
       target: shot
       weight: mean
@@ -36,7 +36,7 @@ nodes:
   instructblip_weather:
     plugin_type: query
     color: "#ffffff"
-    shape: circle
+    shape: dot
     relation: 
       target: shot
       weight: mean
