@@ -73,6 +73,8 @@ def create_base_graph(args, config):
 
 
 def add_attributes(G, plugin, data, config):
+    # TODO: variable to add attributes to shots or speaker turns
+    logging.debug(f"Add attributes from {plugin} to shots")
     t_iter = enumerate(iter(data["output_data"]["time"]))
     idx, t = next(t_iter)
 
@@ -114,10 +116,12 @@ def add_attributes(G, plugin, data, config):
 
         # add edges based on threshold
         for i, concept in enumerate(data["output_data"]["index"]):
-            node_attr[f"{plugin}/{concept}"] = scores[i]
+            node_attr[f"{plugin}/{str(i)}/{concept}"] = scores[i]
 
-        prediction = data["output_data"]["index"][np.argmax(scores)]
-        node_attr["title"] += f", Shot Size: {prediction}"
+        prediction = np.argmax(scores)
+        node_attr[f"{plugin}/prediction"] = int(prediction)
+        prediction_label = data["output_data"]["index"][prediction]
+        node_attr["title"] += f", Shot Size: {prediction_label}"
 
     return G
 
