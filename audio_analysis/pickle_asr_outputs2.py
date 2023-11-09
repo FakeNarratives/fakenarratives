@@ -9,7 +9,7 @@ import whisperx
 import yaml
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Runs OpenAI's whisper model on news videos for automatic speech recognition and speaker diarization")
+    parser = argparse.ArgumentParser(description="Runs WhisperX on news videos for automatic speech recognition and speaker diarization")
     parser.add_argument("-f", "--file", type=str, required=True, help="Text file containing paths to videos as <media>/<video_name>")
     parser.add_argument("-i", "--inp_dir", type=str, default="/nfs/data/fakenarratives/202306_corpus/videos", help="Base directory for input videos")
     parser.add_argument("-o", "--out_dir", type=str, default="/nfs/data/fakenarratives/202306_corpus/results_pkl", help="Base directory for output results")
@@ -32,7 +32,9 @@ def get_model(device, config):
 
     return model, diarize_model, alignment_model, metadata
 
-def transcribe_video(script_dir, video_path, model, diarize_model, alignment_model, metadata, device):
+
+def transcribe_video(script_dir, video_path, model, diarize_model, 
+                        alignment_model, metadata, device, config):
     """
     Transcribes video using WhisperX library and performs speaker diarization.
 
@@ -77,7 +79,7 @@ def transcribe_video(script_dir, video_path, model, diarize_model, alignment_mod
         audio = whisperx.load_audio(tmp.name)
 
         # result = model.transcribe(tmp.name)
-        result = model.transcribe(audio, batch_size=128, language="de")
+        result = model.transcribe(audio, batch_size=config["whisperx"]["batch_size"], language="de")
         text = ""
         for seg in result["segments"]:
             text += seg["text"].strip() + " "
@@ -124,10 +126,15 @@ def main():
 
         out_loc = output_paths[i]
 
+        if os.path.exists(os.path.join(out_loc, "asr_whisperx.pkl")):
+            print("Already processed. Skipping...")
+            continue
+
         if not os.path.exists(out_loc):
             os.makedirs(out_loc)
 
-        video_feat_dict = transcribe_video(script_dir, input_path, model, diarize_model, alignment_model, metadata, device)
+        video_feat_dict = transcribe_video(script_dir, input_path, model, diarize_model, 
+                                            alignment_model, metadata, device, config)
 
         with open(os.path.join(out_loc, "asr_whisperx.pkl"), "wb") as f:
             pickle.dump(video_feat_dict, f)

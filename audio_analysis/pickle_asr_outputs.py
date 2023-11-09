@@ -112,6 +112,10 @@ def main():
 
         out_loc = output_paths[i]
 
+        if os.path.exists(os.path.join(out_loc, "asr_whisper.pkl")):
+            print("Already processed. Skipping...")
+            continue
+
         if not os.path.exists(out_loc):
             os.makedirs(out_loc)
 
