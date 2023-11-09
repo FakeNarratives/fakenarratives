@@ -13,3 +13,6 @@
 [submodule "audio_analysis/pyannote-whisper"]
 	path = audio_analysis/pyannote-whisper
 	url = git@github.com:gullalc/pyannote-whisper.git
+[submodule "unilm"]
+	path = unilm
+	url = git@github.com:microsoft/unilm.git

@@ -1,13 +1,16 @@
 import os
+import sys
 import pickle
-from moviepy.editor import VideoFileClip
+import json
 import argparse
-from tqdm import tqdm
+import tempfile
+import numpy as np
 import torch
-from transformers import AutoFeatureExtractor, ASTForAudioClassification
 import torchaudio
 import torch.nn.functional as F
-import numpy as np
+from moviepy.editor import VideoFileClip
+sys.path.append("unilm/beats/")
+from BEATs import BEATs, BEATsConfig
 
 
 def parse_args():
@@ -26,13 +29,25 @@ def read_video_paths(file_path, base_input_dir, base_output_dir):
     return [os.path.join(base_input_dir, vp) for vp in video_paths], [os.path.join(base_output_dir, vp) for vp in video_paths]
 
 
-def get_models(device):
-    feature_extractor = AutoFeatureExtractor.from_pretrained("MIT/ast-finetuned-audioset-10-10-0.4593")
-    model = ASTForAudioClassification.from_pretrained("MIT/ast-finetuned-audioset-10-10-0.4593")
+def get_models(device, script_dir):
+    checkpoint = torch.load(script_dir+"/pretrained_utils/BEATs_iter3_plus_AS2M_finetuned_on_AS2M_cpt2.pt")
+    cfg = BEATsConfig(checkpoint['cfg'])
+    BEATs_model = BEATs(cfg)
+    BEATs_model.load_state_dict(checkpoint['model'])
+    BEATs_model.to(device)
+    BEATs_model.eval()
 
-    model.to(device)
+    with open(script_dir+"/pretrained_utils/ontology.json", "r") as f:
+        data = json.load(f)
 
-    return feature_extractor, model
+    idx_to_code = {v: k for k, v in checkpoint['label_dict'].items()}
+
+    label_map = {}
+    for entry in data:
+        if entry["id"] in idx_to_code:
+            label_map[idx_to_code[entry["id"]]] = entry["name"]
+
+    return BEATs_model, label_map
 
 
 def chop_audio_segments(waveform, sampling_rate, window):
@@ -58,20 +73,20 @@ def chop_audio_segments(waveform, sampling_rate, window):
     return segments
 
 
-def classify_shot_segments(script_dir, video_path, shots, 
-                            feature_extractor, model, device):
+def classify_shot_segments(script_dir, video_path, shots, beats_model, 
+                           label_map, device):
     """
     Takes shot segments and perform audio classification into 527 AudioSet Classes
     Classes: https://research.google.com/audioset/dataset/index.html
-    Example classes: music, speech, vehicle, explosion, drum, etc.
+    Example classes: music, speech, silence, vehicle, animal, etc
 
     Args:
         script_dir (str): Full path of this script
         video_path (str): Full path to the video file
         shots (list of dicts): List of shot boundaries (Start and end times)
-        feature_extractor (AST feature extractor): Extracts features from the audio -> Spectrogram
-        model (AST model): AST - Audio Spectrogram Transformer model
-        device (torch device) - cuda or cpu
+        beats_model (BEATs): BEATs model for audio classification
+        label_map (dict): Mapping of label index to label name
+        device (torch.device): Device to run the model on
 
     Returns:
         dict: Dictionary containing:
@@ -82,8 +97,8 @@ def classify_shot_segments(script_dir, video_path, shots,
             output_data (dict): shot wise audio classification results [Order of output same as shots]
     """
 
-    video_feat_dict = {"github_repo": "https://github.com/YuanGongND/ast",
-                        "commit_id": "31088be8a3f6ef96416145c4b8d43c81f99eba7a",
+    video_feat_dict = {"github_repo": "https://github.com/microsoft/unilm",
+                        "commit_id": "13641268b59df5cf90d27b451d87ab58b6a07055",
                         "parameters": "default",
                         "video_file": video_path,
                         "output_data": {}
@@ -91,7 +106,7 @@ def classify_shot_segments(script_dir, video_path, shots,
     
     video = VideoFileClip(video_path+".mp4")
     ## The model is trained using 16kHz audio
-    sr = 16000
+    required_sr = 16000
 
     shot_predictions = []
     for shot in shots:
@@ -101,28 +116,26 @@ def classify_shot_segments(script_dir, video_path, shots,
             continue
 
         audio_data = video.audio.subclip(start_time, end_time)
-        with open(os.path.join(script_dir, "temp", "audio.wav"), "w") as tmp:
-            audio_data.write_audiofile(tmp.name, fps=sr)
-            waveform, sample_rate = torchaudio.load(tmp.name)
+        with tempfile.NamedTemporaryFile(dir=os.path.join(script_dir, "temp/"), suffix=".wav", delete=True) as tmp:
+            audio_data.write_audiofile(tmp.name, fps=required_sr)
+            waveform, _ = torchaudio.load(tmp.name)
             if waveform.shape[0] > 1:  # if stereo
                 waveform = waveform.mean(dim=0)  # convert to mono
 
-            ## Chop audio into further segments of 10 seconds as model expects audio of 10 seconds
-            segments = chop_audio_segments(waveform, sr, 10)
+            ## Chop audio into further segments of 10 seconds
+            audio_segments = torch.tensor(np.array(chop_audio_segments(waveform, required_sr, 10))) # Chop audio into 10s segments
+            padding_mask = torch.zeros(len(audio_segments), len(audio_segments[0])).bool()
 
-            inputs = feature_extractor(segments, sampling_rate=sr, return_tensors="pt").input_values
-            inputs = inputs.to(device)
+            audio_segments = audio_segments.to(device)
+            padding_mask = padding_mask.to(device)
 
             with torch.no_grad():
-                logits = model(inputs).logits
+                probs = beats_model.extract_features(audio_segments, padding_mask=padding_mask)[0]
             
-            predicted_class_ids = torch.argmax(logits, dim=1)
-            predicted_labels = [model.config.id2label[pred_cls_id.item()] for pred_cls_id in predicted_class_ids]
+            for i, (top3_label_prob, top3_label_idx) in enumerate(zip(*probs.topk(k=3))):
+                top3_label = [label_map[label_idx.item()] for label_idx in top3_label_idx]
 
-            shot_predictions.append({"start": start_time, "end": end_time, "predictions": predicted_labels})
-
-            if os.path.isfile(tmp.name):
-                os.remove(tmp.name)
+                shot_predictions.append({"start": start_time, "end": end_time, "top3_label": top3_label, "top3_label_prob": top3_label_prob.tolist()})
         
     video_feat_dict["output_data"] = shot_predictions
 
@@ -134,32 +147,32 @@ def main():
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
     ## File has lines with video names such as "Tagesschau/TV-20220101-2019-5100.webl.h264"
     input_paths, output_paths = read_video_paths(args.file, args.inp_dir, args.out_dir)
 
     ## Model trained with audio sampled at 16kHz
-    feature_extractor, model = get_models(device)
-
-    script_dir = os.path.dirname(os.path.abspath(__file__))
+    beats_model, label_map = get_models(device, script_dir)
 
     if not os.path.exists(os.path.join(script_dir, "temp/")):
         os.makedirs(os.path.join(script_dir, "temp/"))
 
     for i, input_path in enumerate(input_paths):
-        print("Video: ", i+1, input_path) 
+        print(f"Processing Video [{i+1}/{len(input_paths)}]\t{input_path}")
 
         out_loc = output_paths[i]
 
         if not os.path.exists(out_loc):
             os.makedirs(out_loc)
 
-        if not os.path.exists(os.path.join(out_loc, "shot_audio_classification.pkl")):
+        if not os.path.exists(os.path.join(out_loc, "shot_audio_classification_beats.pkl")):
             shot_dict = pickle.load(open(os.path.join(out_loc, "transnet_shotdetection.pkl"), "rb"))
 
             video_feat_dict = classify_shot_segments(script_dir, input_path, shot_dict["output_data"]["shots"], 
-                                                        feature_extractor, model, device)
+                                                        beats_model, label_map, device)
 
-            with open(os.path.join(out_loc, "shot_audio_classification.pkl"), "wb") as f:
+            with open(os.path.join(out_loc, "shot_audio_classification_beats.pkl"), "wb") as f:
                 pickle.dump(video_feat_dict, f)
 
 
