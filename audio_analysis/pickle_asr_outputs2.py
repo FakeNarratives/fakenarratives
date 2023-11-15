@@ -64,7 +64,7 @@ def transcribe_video(script_dir, video_path, model, diarize_model,
     """
 
     video_feat_dict = {"github_repo": "https://github.com/m-bain/whisperX",
-                        "commit_id": "d8a2b4ffc9e33584e453c3d433cedf6f60651350",
+                        "commit_id": "4ece2369d73465a4e50417d0f0a45e262343703a",
                         "parameters": "default",
                         "video_file": video_path,
                       }

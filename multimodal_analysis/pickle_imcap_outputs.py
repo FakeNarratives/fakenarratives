@@ -84,7 +84,7 @@ def process_video(video_path, processor, model,
     return video_feat_dict
 
 
-
+ 
 def main():
     args = parse_args()
 

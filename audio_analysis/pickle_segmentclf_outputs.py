@@ -3,6 +3,7 @@ import pickle
 from moviepy.editor import VideoFileClip
 import torch
 import argparse
+import tempfile
 from tqdm import tqdm
 import torchaudio
 
@@ -10,7 +11,7 @@ from speechbrain.pretrained.interfaces import foreign_class
 from transformers import Wav2Vec2FeatureExtractor, Wav2Vec2ForSequenceClassification
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Runs speech emotion and gender classification on ASR and speakder diarization segments")
+    parser = argparse.ArgumentParser(description="Runs speech emotion and gender classification on speakder diarization segments")
     parser.add_argument("-f", "--file", type=str, required=True, help="Text file containing paths to videos as <media>/<video_name>")
     parser.add_argument("-i", "--inp_dir", type=str, default="/nfs/data/fakenarratives/202306_corpus/videos", help="Base directory for input videos")
     parser.add_argument("-o", "--out_dir", type=str, default="/nfs/data/fakenarratives/202306_corpus/results_pkl", help="Base directory for output results")
@@ -35,14 +36,14 @@ def get_models(device):
     gen_model = Wav2Vec2ForSequenceClassification.from_pretrained('alefiury/wav2vec2-large-xlsr-53-gender-recognition-librispeech')
     gen_proc = Wav2Vec2FeatureExtractor.from_pretrained('alefiury/wav2vec2-large-xlsr-53-gender-recognition-librispeech')
     gen_model.to(device)
+    gen_model.eval()
 
     return emo_model, gen_model, gen_proc
 
 
 
-def classify_asr_segments(script_dir, video_path, asr_dict, 
-                          emo_model, gen_model, 
-                          gen_proc, emo_lab_map, 
+def classify_asr_segments(script_dir, video_path, video, speaker_segments, 
+                          emo_model, gen_model, gen_proc, emo_lab_map, 
                           gen_lab_map, device):
     """
     Takes ASR segments and Speaker Diarization segments, classifies them into speech emotion and gender categories.
@@ -50,7 +51,8 @@ def classify_asr_segments(script_dir, video_path, asr_dict,
     Args:
         script_dir (str): Full path of this script
         video_path (str): Full path to the video file
-        asr_dict (dict): ASR dictionary with transcript and speaker segments
+        video (VideoFileClip): VideoFileClip object from moviepy
+        speaker_segments (list): List of speaker segments from ASR
         emo_model (Speechbrain model): Emotion recognition model from speechbrain
         gen_model (wav2vec2 model): Gender recognition model from transformers
         gen_proc (wav2vec2 processor): Gender recognition processor from transformers
@@ -72,97 +74,61 @@ def classify_asr_segments(script_dir, video_path, asr_dict,
                         "video_file": video_path,
                         "output_data": {}
                       }
-    
-    video = VideoFileClip(video_path+".mp4")
 
-    audio_data = None
-    sr = 16000
-
-    ## Changed temporary audio files from .mp3 to .wav to avoid loading errors
-    with open(os.path.join(script_dir, "temp", "audio.wav"), "w") as tmp:
-        video.audio.write_audiofile(tmp.name, fps=sr)
-        audio_data, sample_rate = torchaudio.load(tmp.name)
-        if audio_data.shape[0] > 1:  # if stereo
-            audio_data = audio_data.mean(dim=0)  # convert to mono
-
-    ## For ASR segments 
-    asr_segment_preds = []
-
-    # A temporary file to store the slice of audio
-    temp_file_name = os.path.join(script_dir, "temp", "slice.wav")
-
-    for _, seg in tqdm(enumerate(asr_dict["segments"])):
-        start_sample = int(seg["start"] * sr)
-        end_sample = int(seg["end"] * sr)
-
-        if end_sample <= start_sample:
-            ## "Skipping segment with same start_sample and end_sample")
-            asr_segment_preds.append({"id": seg["id"], "seek": seg["seek"], 
-                                        "start": seg["start"], "end": seg["end"],
-                                        "gender": "None", "emotion": "None"})
-            continue
-
-        slice = audio_data[start_sample:end_sample]
-
-        input_values = gen_proc(slice, sampling_rate = sr, padding=True, return_tensors='pt').input_values
-        input_values = input_values.to(device)
-
-        with torch.no_grad():
-            result = gen_model(input_values).logits
-            max_i = result.detach().cpu().argmax().numpy()
-            gen_pred = gen_lab_map[str(max_i)]                
-        
-        torchaudio.save(temp_file_name, slice.unsqueeze(0), sr) ## For some reason, this randomly creates files under temp/ and outside temp/ folder
-
-        _, _, _, text_lab = emo_model.classify_file(temp_file_name) ## Returns probability, score, index, label
-
-        asr_segment_preds.append({"id": seg["id"], "seek": seg["seek"], 
-                                    "start": seg["start"], "end": seg["end"],
-                                    "gender": gen_pred, "emotion": emo_lab_map[text_lab[0]]})
+    required_sr = 16000
 
     ## For speaker segments 
     speaker_segment_preds = []
 
-    for i, seg in tqdm(enumerate(asr_dict["speaker_segments"])):
-        start_sample = int(seg["start"] * sr)
-        end_sample = int(seg["end"] * sr)
+    for seg in speaker_segments:
 
-        if end_sample <= start_sample:
+        if seg["end"] <= seg["start"]:
             ## "Skipping segment with same start_sample and end_sample")
             speaker_segment_preds.append({"id": str(id), "start": seg["start"], "end": seg["end"], 
                                           "speaker": seg["speaker"], "gender": "None", "emotion": "None"})
             continue
 
-        slice = audio_data[start_sample:end_sample]
+        audio_data = video.audio.subclip(seg["start"], seg["end"])
 
-        input_values = gen_proc(slice, sampling_rate = sr, padding=True, return_tensors='pt').input_values
-        input_values = input_values.to(device)
+        with tempfile.NamedTemporaryFile(dir=os.path.join(script_dir, "temp/"), suffix=".wav", delete=True) as tmp:
+            audio_data.write_audiofile(tmp.name, fps=required_sr)
+            waveform, _ = torchaudio.load(tmp.name)
+            if waveform.shape[0] > 1:  # if stereo
+                waveform = waveform.mean(dim=0)  # convert to mono
 
-        with torch.no_grad():
-            result = gen_model(input_values).logits
-            max_i = result.detach().cpu().argmax().numpy()
-            gen_pred = gen_lab_map[str(max_i)]                
-        
-        torchaudio.save(temp_file_name, slice.unsqueeze(0), sr) ## For some reason, this randomly creates files under temp/ and outside temp/ folder
 
-        _, _, _, text_lab = emo_model.classify_file(temp_file_name) ## Returns probability, score, index, label
+            input_values = gen_proc(waveform, sampling_rate = required_sr, padding=True, return_tensors='pt').input_values
+            input_values = input_values.to(device)
 
-        speaker_segment_preds.append({"id": str(id), "start": seg["start"], "end": seg["end"], 
-                                      "speaker": seg["speaker"], "gender": gen_pred, "emotion": emo_lab_map[text_lab[0]]})
+            with torch.no_grad():
+                try:
+                    result = gen_model(input_values).logits.softmax(dim=-1)
+                    max_i = result.detach().cpu().argmax().numpy()
+                    gen_prob = result.detach().cpu().max().numpy()
+                    gen_pred = gen_lab_map[str(max_i)]         
+                except:
+                    gen_pred = "None"
+                    gen_prob = 0    
+
+            try:
+                _, emo_prob, _, text_lab = emo_model.classify_file(tmp.name) ## Returns all probabilities, top probability, index, label
+                emo_prob = emo_prob.item()
+                emo_pred = emo_lab_map[text_lab[0]]
+            except:
+                emo_prob = 0
+                emo_pred = "None"
+
+            speaker = seg["speaker"] if "speaker" in seg else "None"
+
+            speaker_segment_preds.append({"start": seg["start"], "end": seg["end"], 
+                                          "speaker": speaker, "gender_pred": gen_pred, "gender_prob": gen_prob, 
+                                          "emotion_pred": emo_pred, "emotion_prob": emo_prob})
+
+            if os.path.isfile(tmp.name):
+                os.remove(tmp.name)
 
                 
-    video_feat_dict["output_data"]["asr_segments"] = asr_segment_preds
-    video_feat_dict["output_data"]["speaker_segments"] = speaker_segment_preds
-
-    ## Delete the temporary files after a video is processed
-    if os.path.isfile(os.path.join(script_dir, "temp", "audio.mp3")):
-        os.remove(os.path.join(script_dir, "temp", "audio.mp3"))
-
-    if os.path.isfile("slice.mp3"):
-        os.remove("slice.mp3")
-
-    if os.path.isfile(os.path.join(script_dir, "temp", "slice.mp3")):
-        os.remove(os.path.join(script_dir, "temp", "slice.mp3"))
+    video_feat_dict["output_data"] = speaker_segment_preds
 
     return video_feat_dict
 
@@ -172,6 +138,8 @@ def main():
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
     emo_lab_map = {"neu": "neutral", "ang": "anger", "hap": "happy", "sad": "sad"}
     gen_lab_map = {"0" : "Female", "1": "Male"}
 
@@ -180,28 +148,42 @@ def main():
 
     emo_model, gen_model, gen_processor = get_models(device)
 
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-
     if not os.path.exists(os.path.join(script_dir, "temp/")):
         os.makedirs(os.path.join(script_dir, "temp/"))
 
     for i, input_path in enumerate(input_paths):
-        print("Video: ", i+1, input_path) 
+        print(f"Processing Video [{i+1}/{len(input_paths)}]\t{input_path}") 
 
         out_loc = output_paths[i]
 
         if not os.path.exists(out_loc):
             os.makedirs(out_loc)
 
-        if not os.path.exists(os.path.join(out_loc, "audio_segment_classification.pkl")):
-            asr_dict = pickle.load(open(os.path.join(out_loc, "asr.pkl"), "rb"))
+        if os.path.exists(os.path.join(out_loc, "whisperspeaker_segmentClf.pkl")):
+            print("Already processed. Skipping...")
+            continue
 
-            video_feat_dict = classify_asr_segments(script_dir, input_path, asr_dict["output_data"], 
-                                                    emo_model, gen_model, gen_processor, 
-                                                    emo_lab_map, gen_lab_map, device)
+        video = VideoFileClip(input_path+".mp4")
 
-            with open(os.path.join(out_loc, "audio_segment_classification.pkl"), "wb") as f:
-                pickle.dump(video_feat_dict, f)
+        whisper_spk_segments = pickle.load(open(os.path.join(out_loc, "asr_whisper.pkl"), "rb"))["output_data"]["speaker_segments"]
+        whisperx_spk_segments = pickle.load(open(os.path.join(out_loc, "asr_whisperx.pkl"), "rb"))["output_data"]["speaker_segments"]
+
+        video_feat_dict = classify_asr_segments(script_dir, input_path, video, whisper_spk_segments, 
+                                                emo_model, gen_model, gen_processor, 
+                                                emo_lab_map, gen_lab_map, device)
+        
+        video_feat_dict2 = classify_asr_segments(script_dir, input_path, video, whisperx_spk_segments, 
+                                                emo_model, gen_model, gen_processor, 
+                                                emo_lab_map, gen_lab_map, device)
+
+
+        with open(os.path.join(out_loc, "whisperspeaker_segmentClf.pkl"), "wb") as f:
+            pickle.dump(video_feat_dict, f)
+        
+        with open(os.path.join(out_loc, "whisperxspeaker_segmentClf.pkl"), "wb") as f:
+            pickle.dump(video_feat_dict2, f)
+
+        print()
 
 
 if __name__ == "__main__":

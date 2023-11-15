@@ -73,8 +73,8 @@ def chop_audio_segments(waveform, sampling_rate, window):
     return segments
 
 
-def classify_shot_segments(script_dir, video_path, shots, beats_model, 
-                           label_map, device):
+def classify_shot_segments(script_dir, video_path, video, shots, 
+                           beats_model, label_map, device):
     """
     Takes shot segments and perform audio classification into 527 AudioSet Classes
     Classes: https://research.google.com/audioset/dataset/index.html
@@ -82,7 +82,8 @@ def classify_shot_segments(script_dir, video_path, shots, beats_model,
 
     Args:
         script_dir (str): Full path of this script
-        video_path (str): Full path to the video file
+        video_path (str): Full path of the video
+        video (VideoFileClip): VideoFileClip object of the video
         shots (list of dicts): List of shot boundaries (Start and end times)
         beats_model (BEATs): BEATs model for audio classification
         label_map (dict): Mapping of label index to label name
@@ -104,7 +105,6 @@ def classify_shot_segments(script_dir, video_path, shots, beats_model,
                         "output_data": {}
                       }
     
-    video = VideoFileClip(video_path+".mp4")
     ## The model is trained using 16kHz audio
     required_sr = 16000
 
@@ -142,6 +142,76 @@ def classify_shot_segments(script_dir, video_path, shots, beats_model,
     return video_feat_dict
 
 
+def classify_speaker_segments(script_dir, video_path, video, speaker_segments, 
+                              beats_model, label_map, device):
+    """
+    Takes speaker segments and perform audio classification into 527 AudioSet Classes
+    Classes: https://research.google.com/audioset/dataset/index.html
+    Example classes: music, speech, silence, vehicle, animal, etc
+
+    Args:
+        script_dir (str): Full path of this script
+        video_path (str): Full path of the video
+        video (VideoFileClip): VideoFileClip object of the video
+        speaker_segments (list of dicts): List of speaker segments (Start and end times)
+        beats_model (BEATs): BEATs model for audio classification
+        label_map (dict): Mapping of label index to label name
+        device (torch.device): Device to run the model on
+
+    Returns:
+        dict: Dictionary containing:
+            github_repo (str): GitHub repositories of models used separated by ;
+            commit_id (str): Commit ID of the repositories (same order as github_repo) used separated by ;
+            parameters (str): Parameters used for the Whisper model
+            video_file (str): Full path to the video file
+            output_data (dict): shot wise audio classification results [Order of output same as shots]
+    """
+
+    video_feat_dict = {"github_repo": "https://github.com/microsoft/unilm",
+                        "commit_id": "13641268b59df5cf90d27b451d87ab58b6a07055",
+                        "parameters": "default",
+                        "video_file": video_path,
+                        "output_data": {}
+                      }
+    
+    
+    ## The model is trained using 16kHz audio
+    required_sr = 16000
+
+    segment_predictions = []
+    for segment in speaker_segments:
+        start_time = segment["start"]
+        end_time = segment["end"]
+        if (start_time - end_time) == 0:
+            continue
+
+        audio_data = video.audio.subclip(start_time, end_time)
+        with tempfile.NamedTemporaryFile(dir=os.path.join(script_dir, "temp/"), suffix=".wav", delete=True) as tmp:
+            audio_data.write_audiofile(tmp.name, fps=required_sr)
+            waveform, _ = torchaudio.load(tmp.name)
+            if waveform.shape[0] > 1:  # if stereo
+                waveform = waveform.mean(dim=0)  # convert to mono
+
+            ## Chop audio into further segments of 10 seconds
+            audio_segments = torch.tensor(np.array(chop_audio_segments(waveform, required_sr, 10))) # Chop audio into 10s segments
+            padding_mask = torch.zeros(len(audio_segments), len(audio_segments[0])).bool()
+
+            audio_segments = audio_segments.to(device)
+            padding_mask = padding_mask.to(device)
+
+            with torch.no_grad():
+                probs = beats_model.extract_features(audio_segments, padding_mask=padding_mask)[0]
+            
+            for i, (top3_label_prob, top3_label_idx) in enumerate(zip(*probs.topk(k=3))):
+                top3_label = [label_map[label_idx.item()] for label_idx in top3_label_idx]
+
+                segment_predictions.append({"start": start_time, "end": end_time, "top3_label": top3_label, "top3_label_prob": top3_label_prob.tolist()})
+        
+    video_feat_dict["output_data"] = segment_predictions
+
+    return video_feat_dict
+
+
 def main():
     args = parse_args()
 
@@ -166,14 +236,35 @@ def main():
         if not os.path.exists(out_loc):
             os.makedirs(out_loc)
 
-        if not os.path.exists(os.path.join(out_loc, "shot_audio_classification_beats.pkl")):
-            shot_dict = pickle.load(open(os.path.join(out_loc, "transnet_shotdetection.pkl"), "rb"))
+        # if os.path.exists(os.path.join(out_loc, "shot_audio_classification_beats.pkl")):
+        #     print("Already processed. Skipping...")
+        #     continue
 
-            video_feat_dict = classify_shot_segments(script_dir, input_path, shot_dict["output_data"]["shots"], 
-                                                        beats_model, label_map, device)
+        shot_segments = pickle.load(open(os.path.join(out_loc, "transnet_shotdetection.pkl"), "rb"))["output_data"]["shots"]
+        whisper_spk_segments = pickle.load(open(os.path.join(out_loc, "asr_whisper.pkl"), "rb"))["output_data"]["speaker_segments"]
+        whisperx_spk_segments = pickle.load(open(os.path.join(out_loc, "asr_whisperx.pkl"), "rb"))["output_data"]["speaker_segments"]
 
-            with open(os.path.join(out_loc, "shot_audio_classification_beats.pkl"), "wb") as f:
-                pickle.dump(video_feat_dict, f)
+        video = VideoFileClip(input_path+".mp4")
+
+        video_feat_dict = classify_shot_segments(script_dir, input_path, video, shot_segments, 
+                                                    beats_model, label_map, device)
+        
+        video_feat_dict2 = classify_speaker_segments(script_dir, input_path, video, whisper_spk_segments, 
+                                                    beats_model, label_map, device)
+        
+        video_feat_dict3 = classify_speaker_segments(script_dir, input_path, video, whisperx_spk_segments,
+                                                    beats_model, label_map, device)
+
+        with open(os.path.join(out_loc, "shot_audioClf.pkl"), "wb") as f:
+            pickle.dump(video_feat_dict, f)
+
+        with open(os.path.join(out_loc, "whisperspeaker_audioClf.pkl"), "wb") as f:
+            pickle.dump(video_feat_dict2, f)
+        
+        with open(os.path.join(out_loc, "whisperxspeaker_audioClf.pkl"), "wb") as f:
+            pickle.dump(video_feat_dict3, f)
+
+        print()
 
 
 if __name__ == "__main__":

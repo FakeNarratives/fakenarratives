@@ -27,7 +27,7 @@ def read_video_paths(file_path, base_input_dir, base_output_dir):
 
 
 def get_model(device, config):
-    model = whisper.load_model("large-v2")
+    model = whisper.load_model("large-v3")
     model.to(device)
 
     pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization", use_auth_token=config['huggingface']['token'])
@@ -62,7 +62,7 @@ def transcribe_video(script_dir, video_path, model, pipeline):
     """
 
     video_feat_dict = {"github_repo": "https://github.com/openai/whisper;https://github.com/pyannote/pyannote-audio",
-                        "commit_id": "fcfeaf1b61994c071bba62da47d7846933576ac9;28fcf502db86747bafb126720d6b95d7c8277295",
+                        "commit_id": "1cea4357687b676b293cb5473e1ade25f5b1cef7;28fcf502db86747bafb126720d6b95d7c8277295",
                         "parameters": "default",
                         "video_file": video_path,
                       }
