@@ -18,6 +18,7 @@ def parse_args():
     # inputs
     parser.add_argument("--input", "-i", type=str, required=True, help="path to .pkl folder")
     parser.add_argument("--config", "-c", type=str, default="config.yml", help="path to .yml config file")
+    parser.add_argument("--asr_type", "-a", type=str, default="whisper", help="whisper | whisperx")
 
     # output
     parser.add_argument("--output", "-o", type=str, required=True, help="path to .graphml folder")
@@ -46,7 +47,7 @@ def create_base_graph(args, config):
 
     # read speaker segments
     logging.info(f"Create speaker segments")
-    fname = os.path.join(args.input, "asr.pkl")
+    fname = os.path.join(args.input, "asr_%s.pkl"%(args.asr_type))
     assert os.path.isfile(fname), f"Cannot find {fname}"
 
     data = read_pkl(fname)
@@ -72,71 +73,234 @@ def create_base_graph(args, config):
     return G
 
 
-def add_attributes(G, plugin, data, config):
-    # TODO: variable to add attributes to shots or speaker turns
+
+def add_attributes_shot(G, plugin, data, config):
     logging.debug(f"Add attributes from {plugin} to shots")
-    t_iter = enumerate(iter(data["output_data"]["time"]))
-    idx, t = next(t_iter)
 
-    for node in G.nodes(data=True):
-        _, node_attr = node
-        if node_attr["type"] != "shot":
-            continue
+    if "camera_size" in plugin:
+        t_iter = enumerate(iter(data["output_data"]["time"]))
+        idx, t = next(t_iter)
 
-        st = node_attr["start_time"]
-        et = node_attr["end_time"]
+        for node in G.nodes(data=True):
+            _, node_attr = node
+            if node_attr["type"] != "shot":
+                continue
 
-        shot_idx = []
-        while t < st:
-            idx, t = next(t_iter)
+            st = node_attr["start_time"]
+            et = node_attr["end_time"]
 
-        while t <= et:
-            shot_idx.append(idx)
-
-            if idx < len(data["output_data"]["time"]) - 1:
+            shot_idx = []
+            while t < st:
                 idx, t = next(t_iter)
+
+            while t <= et:
+                shot_idx.append(idx)
+
+                if idx < len(data["output_data"]["time"]) - 1:
+                    idx, t = next(t_iter)
+                else:
+                    break
+
+            if len(shot_idx) < 1:
+                continue
+
+            # get corresponding values
+            shot_values = data["output_data"]["y"][shot_idx[0] : shot_idx[-1] + 1, :]  # times x concepts
+
+            # aggregate values for each concept
+            # TODO: other aggregation functions
+            mean_scores = list(np.mean(shot_values, axis=0))
+            median_scores = list(np.median(shot_values, axis=0))
+
+            if config["attribute"]["value"] == "median":
+                scores = median_scores
             else:
-                break
+                scores = mean_scores
 
-        if len(shot_idx) < 1:
-            continue
+            # add edges based on threshold
+            for i, concept in enumerate(data["output_data"]["index"]):
+                node_attr[f"{plugin}/{str(i)}/{concept}"] = scores[i]
 
-        # get corresponding values
-        shot_values = data["output_data"]["y"][shot_idx[0] : shot_idx[-1] + 1, :]  # times x concepts
+            prediction = np.argmax(scores)
+            node_attr[f"{plugin}/prediction"] = int(prediction)
+            prediction_label = data["output_data"]["index"][prediction]
+            node_attr["title"] += f", Shot Size: {prediction_label}"
+    elif "audioClf" in plugin:
+        for node in G.nodes(data=True):
+            _, node_attr = node
+            if node_attr["type"] != "shot":
+                continue
 
-        # aggregate values for each concept
-        # TODO: other aggregation functions
-        mean_scores = list(np.mean(shot_values, axis=0))
-        median_scores = list(np.median(shot_values, axis=0))
+            node_attr["title"] += "\n"
+            for lab, prob in zip(data["output_data"][node_attr["index"]]["labels"], data["output_data"][node_attr["index"]]["probs"]):
+                node_attr[f"{plugin}/{lab}"] = round(prob,2)
+                node_attr["title"] += f"{lab}: {round(prob,2)}, "
+    elif "face_analysis" in plugin:
+        faces = data["output_data"][0]["faces"]
+        f_iter = iter(faces)
+        
+        curr_face = next(f_iter) ## Each face bbox relative position: {'x', 'y', 'w', 'h'}
 
-        if config["attribute"]["value"] == "median":
-            scores = median_scores
-        else:
-            scores = mean_scores
+        for node in G.nodes(data=True):
+            _, node_attr = node
+            if node_attr["type"] != "shot":
+                continue
+        
+            st = node_attr["start_time"]
+            et = node_attr["end_time"]
 
-        # add edges based on threshold
-        for i, concept in enumerate(data["output_data"]["index"]):
-            node_attr[f"{plugin}/{str(i)}/{concept}"] = scores[i]
+            ## Iter over faces and add attributes to the shot node if the face is within the shot
+            face_cnt = 0
+            face_pos_vec = [0, 0, 0]  # left, center, right
+            while curr_face["time"] >= st and curr_face["time"] <= et:
+                face_cnt += 1
 
-        prediction = np.argmax(scores)
-        node_attr[f"{plugin}/prediction"] = int(prediction)
-        prediction_label = data["output_data"]["index"][prediction]
-        node_attr["title"] += f", Shot Size: {prediction_label}"
+                ## Compute centre of the face bbox
+                mid_x = curr_face["bbox"]["x"] + curr_face["bbox"]["w"]/2
+
+                ## Compute the relative position of the face bbox
+                if mid_x <= 0.33:
+                    face_pos_vec[0] += 1
+                elif mid_x > 0.33 and mid_x < 0.66:
+                    face_pos_vec[1] += 1
+                else:
+                    face_pos_vec[2] += 1
+                
+                # ## Emotion of the face
+                # emotion = curr_face["emotion"]
+                # print(emotion)
+
+                try:
+                    curr_face = next(f_iter)
+                except StopIteration:
+                    break
+
+            ## Face count in the shot
+            node_attr[f"{plugin}/face_count"] = face_cnt
+            ## Relative position of the faces in the shot
+            node_attr[f"{plugin}/face_count_left"] = face_pos_vec[0]
+            node_attr[f"{plugin}/face_count_center"] = face_pos_vec[1]
+            node_attr[f"{plugin}/face_count_right"] = face_pos_vec[2]
+
+            node_attr["title"] += f"\nFace Count: {face_cnt}, Face Positions: {face_pos_vec}"
 
     return G
 
 
+def add_attributes_speakerturn(G, plugin, data, config):
+    logging.debug(f"Add attributes from {plugin} to speaker turns")
+    
+    if "sentiment" in plugin:
+        for node in G.nodes(data=True):
+            _, node_attr = node
+            if node_attr["type"] != "speaker_turn":
+                continue
+
+            vector = data["output_data"]["sentence_wise"][node_attr["index"]]["vector"]
+            proportion_sentiment = config["labels"][np.argmax(vector)]
+            proportion_max_value = round(np.max(vector), 2)
+            prediction = data["output_data"]["speakerturn_wise"][node_attr["index"]]["pred"]
+            max_value = round(np.max(data["output_data"]["speakerturn_wise"][node_attr["index"]]["prob"]), 2)
+            node_attr[f"{plugin}/positive_ratio"] = round(vector[0], 2)
+            node_attr[f"{plugin}/negative_ratio"] = round(vector[1], 2)
+            node_attr[f"{plugin}/neutral_ratio"] = round(vector[2], 2)
+            node_attr[f"{plugin}/prediction"] = prediction
+            ## Change Speaker Turn node color based on sentiment: greed - positive, red - negative, light blue - neutral
+            if prediction == "positive":
+                node_attr["color"] = "#00ff00"
+            elif prediction == "negative":
+                node_attr["color"] = "#ff0000"
+            else:
+                node_attr["color"] = "#00ffff"
+
+            node_attr["title"] += f"\nOverall Sentiment: {prediction} [{max_value}], \
+                                    Proportion Sentiment: {proportion_sentiment} [{proportion_max_value}]"
+    elif "pos" in plugin:
+        for node in G.nodes(data=True):
+            _, node_attr = node
+            if node_attr["type"] != "speaker_turn":
+                continue
+
+            pos_vector = data["output_data"]["speakerturn_wise"][node_attr["index"]]["vector"]
+
+            node_attr["title"] += "\n"
+            cnt = 0
+            for ind, key in config["labels"].items():
+                node_attr[f"{plugin}/{key}/count"] = pos_vector[ind]
+                node_attr[f"{plugin}/{key}/frequency"] = pos_vector[ind]/node_attr["num_words"]
+                if cnt == 6:
+                    node_attr["title"] += "\n"
+                node_attr["title"] += f"{key}: {pos_vector[ind]}, "
+                cnt += 1
+    elif "audioClf" in plugin:
+        for node in G.nodes(data=True):
+            _, node_attr = node
+            if node_attr["type"] != "speaker_turn":
+                continue
+
+            node_attr["title"] += "\n"
+            for lab, prob in zip(data["output_data"][node_attr["index"]]["labels"], data["output_data"][node_attr["index"]]["probs"]):
+                node_attr[f"{plugin}/{lab}"] = round(prob,2)
+                node_attr["title"] += f"{lab}: {round(prob,2)}, "
+    elif "segmentClf" in plugin:
+        for node in G.nodes(data=True):
+            _, node_attr = node
+            if node_attr["type"] != "speaker_turn":
+                continue
+
+            gender = data["output_data"][node_attr["index"]]["gender_pred"]
+            gender_prob = round(float(data["output_data"][node_attr["index"]]["gender_prob"]), 2)
+            node_attr[f"{plugin}/gender/{gender}"] = gender_prob
+            node_attr["title"] += f"\n{gender}: {gender_prob}"
+
+            emotion = data["output_data"][node_attr["index"]]["emotion_pred"]
+            emotion_prob = round(data["output_data"][node_attr["index"]]["emotion_prob"], 2)
+            node_attr[f"{plugin}/emotion/{emotion}"] = emotion_prob
+            node_attr["title"] += f", {emotion}: {emotion_prob}"
+
+    return G
+
+
+def add_ner_nodes(G, plugin, data, config):
+    logging.debug(f"Add nodes and relations for {plugin}")
+
+    for i, segment in enumerate(data["output_data"]["speakerturn_wise"]):
+        entities = segment["tags"]
+        for ent in entities:
+            if not G.has_node(ent["wd_label"]):
+                title = "WD-Label: %s, Url: %s"%(ent["wd_label"], ent["url"])
+                label = ent["text"] if ent["wd_label"] == "unk" else ent["wd_label"]
+                if "PER" in ent["type"]:
+                    G.add_node(label, label=label, title=title, type=plugin, color="pink")
+                elif "ORG" in ent["type"]:
+                    G.add_node(label, label=label, title=title, type=plugin, color="yellow")
+                elif "LOC" in ent["type"]:
+                    G.add_node(label, label=label, title=title, type=plugin, color="purple")
+                elif "EVENT" in ent["type"]:
+                    G.add_node(label, label=label, title=title, type=plugin, color="brown")
+                else:
+                    G.add_node(label, label=label, title=title, type=plugin, color="gray")    
+
+                G.add_edge(f"spk_turn_{i}", label, title="mentioned as %s"%(ent["text"]))    
+
+    return G
+
+
+
 def add_nodes(G, plugin, data, config):
-    add_node_function = {
-        "query": add_query_nodes,
-    }
+    if "ner" in plugin:
+        G = add_ner_nodes(G, plugin, data, config)
+    else:
+        add_node_function = {
+            "query": add_query_nodes,
+        }
 
-    add_relation_function = {
-        "shot": add_shot_relation,
-    }
+        add_relation_function = {
+            "shot": add_shot_relation,
+        }
 
-    G = add_node_function[config["plugin_type"]](G=G, plugin=plugin, data=data, config=config)
-    G = add_relation_function[config["relation"]["target"]](G=G, plugin=plugin, data=data, config=config)
+        G = add_node_function[config["plugin_type"]](G=G, plugin=plugin, data=data, config=config)
+        G = add_relation_function[config["relation"]["target"]](G=G, plugin=plugin, data=data, config=config)
     return G
 
 
@@ -235,6 +399,7 @@ def add_speakerturn_nodes(G, speaker_turns, config):
             f"spk_turn_{i}",
             label=label,
             title=title,
+            index=i,
             type="speaker_turn",
             start_time=start_time,
             end_time=end_time,
@@ -416,6 +581,8 @@ def main():
             continue
 
         fname = os.path.join(args.input, plugin + ".pkl")
+        if args.asr_type == "whisperx":
+            fname = fname.replace("whisper", "whisperx")
         assert os.path.isfile(fname), f"Cannot find: {fname}"
 
         data = read_pkl(fname)
@@ -423,12 +590,17 @@ def main():
         if config["nodes"][plugin]["type"] == "node":
             G = add_nodes(G, plugin, data, config["nodes"][plugin])
         else:  # attribute
-            G = add_attributes(G, plugin, data, config["nodes"][plugin])
+            if config["nodes"][plugin]["attribute"]["target"] == "shot":
+                G = add_attributes_shot(G, plugin, data, config["nodes"][plugin])
+            elif config["nodes"][plugin]["attribute"]["target"] == "speaker":
+                add_attributes_speakerturn(G, plugin, data, config["nodes"][plugin])
+
+    print(G)
 
     # export graph
     os.makedirs(args.output, exist_ok=True)
     vidname = os.path.basename(args.input)
-    outfile = os.path.join(args.output, f"{vidname}.graphml")
+    outfile = os.path.join(args.output,f"{args.asr_type}_{vidname}.graphml")
 
     logging.info(f"Store networkx graph to: {outfile}")
     nx.write_graphml(G, outfile)
@@ -440,10 +612,10 @@ def main():
         net.set_options(
             json.dumps({"physics": {"solver": "barnesHut", "hierarchicalRepulsion": {"nodeDistance": 150}}})
         )
-        outfile = os.path.join(args.output, f"{vidname}.html")
+        outfile = os.path.join(args.output, f"{args.asr_type}_{vidname}.html")
 
         logging.info(f"Store pyviz network to : {outfile}")
-        net.save_graph(os.path.join(args.output, f"{vidname}.html"))
+        net.save_graph(os.path.join(args.output, f"{args.asr_type}_{vidname}.html"))
 
 
 if __name__ == "__main__":
