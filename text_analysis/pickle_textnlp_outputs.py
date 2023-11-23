@@ -5,13 +5,11 @@ import numpy as np
 import stanza
 import torch
 from germansentiment import SentimentModel
-import sys
-sys.path.append(".")
-from text_analysis.ner_utils import *
+from text_utils import *
 import argparse
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Runs german sentiment detection model on ASR transcript")
+    parser = argparse.ArgumentParser(description="Runs german sentiment detection model, POS Tagging and NEL on ASR transcript")
     parser.add_argument("-f", "--file", type=str, required=True, help="Text file containing paths to video transcriptions as <media>/<video_name>")
     parser.add_argument("-i", "--inp_dir", type=str, default="/nfs/data/fakenarratives/202306_corpus/results_pkl", help="Base directory for input transcriptions")
     parser.add_argument("-o", "--out_dir", type=str, default="/nfs/data/fakenarratives/202306_corpus/results_pkl", help="Base directory for output results")
@@ -29,193 +27,17 @@ def get_model():
     sen_model = SentimentModel('mdraw/german-news-sentiment-bert')
     return nlp, sen_model
 
-def add_transcript_boundaries(asr_dict):    ## Segment boundaries are needed to match stanza NERs with Wikifier annotations
-    ## Load ASR transcript and add start/end characters of segments
-    end_char = 0
-    cnt_i = 0
-    cnt_j = 0
-    for segment in asr_dict["output_data"]["segments"]:
-        if segment["text"] != "": ## Ignore empty segments
-            end_char += len(segment["text"])
-            for match in re.finditer(re.escape(segment["text"]), asr_dict["output_data"]["text"]):
-                if match.end() == end_char or match.end() == end_char-1:
-                    segment["start_char"] = match.start()
-                    segment["end_char"] = match.end()-1
-                    cnt_j += 1
-        
-            cnt_i += 1
 
-    assert(cnt_i==cnt_j)
-
-    ## Load ASR transcript and add start/end characters of segments
-    end_char = 0
-    cnt_i = 0
-    cnt_j = 0
-    for segment in asr_dict["output_data"]["speaker_segments"]:
-        if segment["text"] != "": ## Ignore empty segments
-            end_char += len(segment["text"])
-            for match in re.finditer(re.escape(segment["text"]), asr_dict["output_data"]["text"]):
-                if match.end() == end_char or match.end() == end_char-1:
-                    segment["start_char"] = match.start()
-                    segment["end_char"] = match.end()-1
-                    cnt_j += 1
-        
-            cnt_i += 1
-
-    assert(cnt_i==cnt_j)
-
-    return asr_dict
-
-
-def get_sentiment(sen_model, asr_dict, proc_text):
-    # Sentence-wise sentiment
-    all_texts = [sent.text for sent in proc_text.sentences]
-    preds, probs = sen_model.predict_sentiment(all_texts, output_probabilities=True)
-    sent_sentiments = [{"id": str(i), "text": text, "pred": preds[i], "prob": [probs[i][0][1], probs[i][1][1], probs[i][2][1]]} for i, text in enumerate(all_texts)]
-
-    # Segment-wise sentiment
-    all_texts = [text_seg["text"].strip() for text_seg in asr_dict["output_data"]["segments"]]
-    preds, probs = sen_model.predict_sentiment(all_texts, output_probabilities=True)
-    seg_sentiments = [{"id": seg["id"], "seek": seg["seek"], "start": seg["start"], "end": seg["end"],
-                    "pred": preds[i], "prob": [probs[i][0][1], probs[i][1][1], probs[i][2][1]]} 
-                    for i, seg in enumerate(asr_dict["output_data"]["segments"])]
-
-    # Speaker-Segment-wise sentiment
-    all_texts = [text_seg["text"].strip() for text_seg in asr_dict["output_data"]["speaker_segments"]]
-    preds, probs = sen_model.predict_sentiment(all_texts, output_probabilities=True)
-    spk_sentiments = [{"id": str(i), "start": seg["start"], "end": seg["end"], "speaker": seg["speaker"],
-                    "pred": preds[i], "prob": [probs[i][0][1], probs[i][1][1], probs[i][2][1]]} 
-                    for i, seg in enumerate(asr_dict["output_data"]["speaker_segments"])]
-
-    return sent_sentiments, seg_sentiments, spk_sentiments
-
-
-def get_pos_tags(proc_text, proc_segments, proc_speaker_segments, asr_dict, pos_dict):
-    ## Sentence-wise POS Tags
-    sent_pos = []
-    for i, sent in enumerate(proc_text.sentences):
-        temp_pos = []
-        pos_vector = np.zeros(14)
-        for word in sent.words:
-            temp_pos.append((word.text, word.upos, word.xpos, word.start_char, word.end_char))
-            if word.upos in pos_dict:
-                pos_vector[pos_dict[word.upos]] += 1
-            else:
-                pos_vector[pos_dict['X']] += 1
-    
-        sent_pos.append({"id": str(i), "text": sent.text, "tags": temp_pos, "vector": pos_vector})
-
-    ## Segment-wise POS Tags
-    seg_pos = []
-    for seg_doc, seg in zip(proc_segments, asr_dict["output_data"]["segments"]):
-        temp_pos = []
-        pos_vector = np.zeros(14)
-        for sent in seg_doc.sentences:    
-            for word in sent.words:
-                temp_pos.append((word.text, word.upos, word.xpos, word.start_char, word.end_char))
-                if word.upos in pos_dict:
-                    pos_vector[pos_dict[word.upos]] += 1
-                else:
-                    pos_vector[pos_dict['X']] += 1
-    
-        seg_pos.append({"id": seg["id"], "seek": seg["seek"], "start": seg["start"], 
-                        "end": seg["end"], "tags": temp_pos, "vector": pos_vector})
-    
-
-    ## Speaker-Segment-wise POS Tags
-    speaker_seg_pos = []
-    for i, tupl in enumerate(zip(proc_speaker_segments, asr_dict["output_data"]["speaker_segments"])):
-        seg_doc, seg = tupl
-        temp_pos = []
-        pos_vector = np.zeros(14)
-        for sent in seg_doc.sentences:    
-            for word in sent.words:
-                temp_pos.append((word.text, word.upos, word.xpos, word.start_char, word.end_char))
-                if word.upos in pos_dict:
-                    pos_vector[pos_dict[word.upos]] += 1
-                else:
-                    pos_vector[pos_dict['X']] += 1
-    
-        speaker_seg_pos.append({"id": str(i), "start": seg["start"], "end": seg["end"], 
-                                "speaker": seg["speaker"], "tags": temp_pos, "vector": pos_vector})
-
-
-    return sent_pos, seg_pos, speaker_seg_pos
-
-
-def get_ner_tags(proc_text, proc_segments, proc_speaker_segments, asr_dict, ner_dict, event_set):
-    stanza_nes = get_stanza_ner_annotations(proc_text)
-    wikifier_nes = get_wikifier_annotations(proc_text)
-    linked_entities = link_annotations(stanza_nes, wikifier_nes)
-    linked_entities = fix_entity_types(linked_entities, event_set)
-
-    ent_map = {}
-    for ent in linked_entities:
-        ent_map[ent["text"]] = ent
-
-    ## Sent-wise ent vectors
-    sent_ent_vectors = []
-    for i, sent in enumerate(proc_text.sentences):
-        temp_nes = []
-        ner_vector = np.zeros(6)
-        for ent in sent.ents:
-            if ent.text in ent_map:
-                temp_nes.append((ent.text, ent_map[ent.text]["wd_label"], ent_map[ent.text]["type"], 
-                                 ent_map[ent.text]["wd_id"], ent.start_char, ent.end_char))
-                ner_vector[ner_dict[ent_map[ent.text]["type"]]] += 1
-
-        sent_ent_vectors.append({"id": str(i), "text": sent.text, "tags": temp_nes, "vector": ner_vector})
-
-    ## Segment-wise ent vectors
-    seg_ent_vectors = []
-    for seg_doc, seg in zip(proc_segments, asr_dict["output_data"]["segments"]):
-        temp_nes = []
-        ner_vector = np.zeros(6)
-        for sent in seg_doc.sentences:
-            for ent in sent.ents:
-                if ent.text in ent_map:
-                    temp_nes.append((ent.text, ent_map[ent.text]["wd_label"], ent_map[ent.text]["type"], 
-                                     ent_map[ent.text]["wd_id"], ent.start_char, ent.end_char))
-                    ner_vector[ner_dict[ent_map[ent.text]["type"]]] += 1
-
-        seg_ent_vectors.append({"id": seg["id"], "seek": seg["seek"], "start": seg["start"], 
-                                "end": seg["end"], "tags": temp_nes, "vector": ner_vector})
-
-    
-    ## Speaker-Segment-wise ent vectors
-    speaker_seg_ent_vectors = []
-    for i, tupl in enumerate(zip(proc_speaker_segments, asr_dict["output_data"]["speaker_segments"])):
-        seg_doc, seg = tupl
-        temp_nes = []
-        ner_vector = np.zeros(6)
-        for sent in seg_doc.sentences:
-            for ent in sent.ents:
-                if ent.text in ent_map:
-                    temp_nes.append((ent.text, ent_map[ent.text]["wd_label"], ent_map[ent.text]["type"], 
-                                     ent_map[ent.text]["wd_id"], ent.start_char, ent.end_char))
-                    ner_vector[ner_dict[ent_map[ent.text]["type"]]] += 1
-
-        speaker_seg_ent_vectors.append({"id": str(i), "start": seg["start"], "end": seg["end"], 
-                                        "speaker": seg["speaker"], "tags": temp_nes, "vector": ner_vector})
-
-
-    return sent_ent_vectors, seg_ent_vectors, speaker_seg_ent_vectors
-
-    
-def perform_nlp(video_path, asr_dict, nlp, 
-                sen_model, pos_dict, ner_dict, 
-                event_set):
+def perform_ner(video_path, speaker_segments, nlp, ner_dict, event_set):
     """
-    Takes ASR segments and performs NLP of text and text segments for sentiment, POS and NER
+    Takes ASR segments and performs NER on text segments
 
     Args:
         video_path (str): Full path to the video file
-        asr_dict (dict): ASR output dictionary
+        segments (list): List of ASR segments
         nlp (stanza.Pipeline): Stanza NLP pipeline
-        sen_model (germansentiment.SentimentModel): German sentiment detection model
-        pos_dict (dict): Dictionary with pos tag label map
-        ner_dict (dict): Dictionary with ner label map
-        event_set (set): Set of events to be considered for NER
+        ner_dict (dict): Dictionary mapping NER tags to indices
+        event_set (set): Set of events from EventKG
 
     Returns:
         dict: Dictionary containing:
@@ -223,65 +45,168 @@ def perform_nlp(video_path, asr_dict, nlp,
             commit_id (str): Commit ID of the repositories (same order as github_repo) used separated by ;
             parameters (str): Parameters used for the Whisper model
             video_file (str): Full path to the video file
-            output_data (dict): Dictionary containing sentiment, pos and ner outputs 
-                                for sentence-wise, segment-wise and speaker-segment-wise segments
+            output_data (dict): Dictionary containing NER outputs for speaker segment-wise and speaker-turn segments
     """
-    video_feat_dict = {"github_repo": "https://github.com/oliverguhr/german-sentiment-lib;https://github.com/stanfordnlp/stanza",
-                        "commit_id": "367f8f55d92fd85e6cde8bc59dc8dbad7ec88071;a85cce6816f40fa03ab06f6497c7d65ba1244a33",
+    video_feat_dict = {"github_repo": "https://github.com/stanfordnlp/stanza",
+                        "commit_id": "a85cce6816f40fa03ab06f6497c7d65ba1244a33",
                         "parameters": "default",
-                        "video_file": video_path,
-                        "output_data": {"sentiment": {"sentence_wise": {}, "segment_wise": {}, "speakerseg_wise": {}},
-                                        "pos": {"sentence_wise": {}, "segment_wise": {}, "speakerseg_wise": {}},
-                                        "ner": {"sentence_wise": {}, "segment_wise": {}, "speakerseg_wise": {}}}
+                        "video_file":  video_path.replace("results_pkl", "videos"),
+                        "output_data": {"speakerturn_wise": {}, "ner_labelmap": ner_dict}
                         }
     
-    proc_text = nlp(asr_dict["output_data"]["text"])
-    proc_segments = [nlp(segment["text"]) for segment in asr_dict["output_data"]["segments"]]
-    proc_speaker_segments = [nlp(segment["text"]) for segment in asr_dict["output_data"]["speaker_segments"]]
-    
-    ##------------------------------------------------Sentiment Analysis------------------------------------------------##
-    t1 = time.time()
-    
-    sent_sentiments, seg_sentiments, spk_sentiments = get_sentiment(sen_model, asr_dict, proc_text)
-    video_feat_dict["output_data"]["sentiment"]["sentence_wise"] = sent_sentiments
-    video_feat_dict["output_data"]["sentiment"]["segment_wise"] = seg_sentiments
-    video_feat_dict["output_data"]["sentiment"]["speakerseg_wise"] = spk_sentiments
+    speaker_turns = get_speaker_turns(speaker_segments)
+    ## Speaker-turn wise NER Tags
+    speaker_turn_ner = []
+    for segment in speaker_turns:
+        ner_vector = np.zeros(6)
 
-    print("Sentiment Analysis Done in %.2f seconds"%(time.time()-t1))
-    ##------------------------------------------------Sentiment Analysis------------------------------------------------##
+        stanza_nes = get_stanza_ner_annotations(nlp(segment["text"]))
+        wikifier_nes = get_wikifier_annotations(segment["text"])
+        linked_entities = link_annotations(stanza_nes, wikifier_nes)
+        linked_entities = fix_entity_types(linked_entities, event_set)
 
-    ##------------------------------------------------Parts of Speech------------------------------------------------##
-    t2 = time.time()
+        for ent in linked_entities:
+            ner_vector[ner_dict[ent["type"]]] += 1
 
-    sent_pos, seg_pos, speaker_seg_pos = get_pos_tags(proc_text, proc_segments, proc_speaker_segments, asr_dict, pos_dict)
-    video_feat_dict["output_data"]["pos"]["sentence_wise"] = sent_pos
-    video_feat_dict["output_data"]["pos"]["segment_wise"] = seg_pos
-    video_feat_dict["output_data"]["pos"]["speakerseg_wise"] = speaker_seg_pos    
+        speaker_turn_ner.append({"start": segment["start"], "end": segment["end"], "speaker": segment["speaker"],
+                                "tags": linked_entities, "vector": ner_vector})
 
-    print("POS Tags Done in %.2f seconds"%(time.time()-t2))
-    ##------------------------------------------------Parts of Speech------------------------------------------------##
-
-    ##------------------------------------------------Named Entity Recognition------------------------------------------------##
-    t3 = time.time()
-
-    sent_ent_vectors, seg_ent_vectors, speaker_seg_ent_vectors = get_ner_tags(proc_text, proc_segments, proc_speaker_segments, 
-                                                                              asr_dict, ner_dict, event_set)
-    video_feat_dict["output_data"]["ner"]["sentence_wise"] = sent_ent_vectors
-    video_feat_dict["output_data"]["ner"]["segment_wise"] = seg_ent_vectors
-    video_feat_dict["output_data"]["ner"]["speakerseg_wise"] = speaker_seg_ent_vectors
-
-    print("Named Entity Recognition Done in %.2f seconds"%(time.time()-t3))
-
-    ##------------------------------------------------Named Entity Recognition------------------------------------------------##
+    video_feat_dict["output_data"]["speakerturn_wise"] = speaker_turn_ner
 
     return video_feat_dict
 
+
+def perform_sentiment(video_path, speaker_segments, nlp, sen_model, sent_dict):
+    """
+    Takes ASR segments and performs sentiment analysis of text segments
+
+    Args:
+        video_path (str): Full path to the video file
+        speaker_segments (list): List of ASR segments
+        sen_model (germansentiment.SentimentModel): German sentiment detection model
+        sent_dict (dict): Dictionary mapping sentiment labels to indices
+
+    Returns:
+        dict: Dictionary containing:
+            github_repo (str): GitHub repositories of models used separated by ;
+            commit_id (str): Commit ID of the repositories (same order as github_repo) used separated by ;
+            parameters (str): Parameters used for the Whisper model
+            video_file (str): Full path to the video file
+            output_data (dict): Dictionary containing sentiment outputs for sentence-wise, segment-wise and speaker-segment-wise segments
+    """
+    video_feat_dict = {"github_repo": "https://github.com/stanfordnlp/stanza",
+                        "commit_id": "a85cce6816f40fa03ab06f6497c7d65ba1244a33",
+                        "parameters": "default",
+                        "video_file":  video_path.replace("results_pkl", "videos"),
+                        "output_data": {"sentence_wise": {}, "speakerturn_wise": {}, "sent_labelmap": sent_dict}
+                        }
+    
+    speaker_turns = get_speaker_turns(speaker_segments)
+
+    # Sentence-wise sentiment aggregation over speaker turns
+    sentwise_sentiments = []
+    for turn in speaker_turns:
+        doc = nlp(turn["text"].strip())
+        turn_sentences = [sent.text for sent in doc.sentences]
+        if len(turn_sentences) == 0:
+            continue
+        preds, _ = sen_model.predict_sentiment(turn_sentences, output_probabilities=True)
+        ## Aggregate proportion of sentiments over sentences
+        sent_vector = np.zeros(3)
+        for i, pred in enumerate(preds):
+            sent_vector[sent_dict[pred]] += 1
+
+        sent_vector = sent_vector / len(turn_sentences)
+    
+        sentwise_sentiments.append({"start": turn["start"], "end": turn["end"], "speaker": turn["speaker"],
+                                    "vector": sent_vector})
+    
+    # Speaker-Turn-wise sentiment
+    all_texts = [text_seg["text"].strip() for text_seg in speaker_turns]
+    preds, probs = sen_model.predict_sentiment(all_texts, output_probabilities=True)
+    spkturn_sentiments = [{"start": seg["start"], "end": seg["end"], "speaker": seg["speaker"],
+                    "pred": preds[i], "prob": [probs[i][0][1], probs[i][1][1], probs[i][2][1]]} 
+                    for i, seg in enumerate(speaker_turns)]
+    
+    video_feat_dict["output_data"]["sentence_wise"] = sentwise_sentiments
+    video_feat_dict["output_data"]["speakerturn_wise"] = spkturn_sentiments
+
+    return video_feat_dict
+
+
+def perform_pos(video_path, speaker_segments, nlp, pos_dict):
+    """
+    Takes ASR segments and performs POS tagging of text segments
+
+    Args:
+        video_path (str): Full path to the video file
+        segments (list): List of ASR segments
+        nlp (stanza.Pipeline): Stanza NLP pipeline
+        pos_dict (dict): Dictionary mapping POS tags to indices
+
+    Returns:
+        dict: Dictionary containing:
+            github_repo (str): GitHub repositories of models used separated by ;
+            commit_id (str): Commit ID of the repositories (same order as github_repo) used separated by ;
+            parameters (str): Parameters used for the Whisper model
+            video_file (str): Full path to the video file
+            output_data (dict): Dictionary containing POS outputs for sentence-wise, segment-wise and speaker-segment-wise segments
+    """
+    video_feat_dict = {"github_repo": "https://github.com/stanfordnlp/stanza",
+                        "commit_id": "a85cce6816f40fa03ab06f6497c7d65ba1244a33",
+                        "parameters": "default",
+                        "video_file":  video_path.replace("results_pkl", "videos"),
+                        "output_data": {"speakerseg_wise": {}, "speakerturn_wise": {}, "pos_labelmap": pos_dict}
+                        }
+    
+    ## Speaker-Segment-wise POS Tags
+    speaker_seg_pos = []
+    for segment in speaker_segments:
+        seg_doc = nlp(segment["text"])
+        temp_pos = []
+        pos_vector = np.zeros(14)
+        for sent in seg_doc.sentences:    
+            for word in sent.words:
+                temp_pos.append((word.text, word.upos, word.xpos, word.start_char, word.end_char))
+                if word.upos in pos_dict:
+                    pos_vector[pos_dict[word.upos]] += 1
+                else:
+                    pos_vector[pos_dict['X']] += 1
+    
+        speaker_seg_pos.append({"start": segment["start"], "end": segment["end"],
+                                "speaker": segment["speaker"] if "speaker" in segment else "Unknown", 
+                                "tags": temp_pos, "vector": pos_vector})
+    
+    ## Speaker-Turn-wise POS Tags
+    speaker_turns = get_speaker_turns(speaker_segments)
+    spkturn_pos = []
+    for segment in speaker_turns:
+        seg_doc = nlp(segment["text"])
+        temp_pos = []
+        pos_vector = np.zeros(14)
+        for sent in seg_doc.sentences:    
+            for word in sent.words:
+                temp_pos.append((word.text, word.upos, word.xpos, word.start_char, word.end_char))
+                if word.upos in pos_dict:
+                    pos_vector[pos_dict[word.upos]] += 1
+                else:
+                    pos_vector[pos_dict['X']] += 1
+    
+        spkturn_pos.append({"start": segment["start"], "end": segment["end"],
+                                "speaker": segment["speaker"], "tags": temp_pos, "vector": pos_vector})
+        
+    video_feat_dict["output_data"]["speakerseg_wise"] = speaker_seg_pos
+    video_feat_dict["output_data"]["speakerturn_wise"] = spkturn_pos
+
+    return video_feat_dict
 
 
 def main():
     args = parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    sent_dict = {"positive": 0, "negative": 1, "neutral": 2}
 
     pos_dict = {"ADJ": 0, "ADP": 1, "ADV": 2, "AUX": 3, "CONJ": 4, "CCONJ": 4, "SCONJ": 4, "DET": 5, "INTJ": 6, 
             "NOUN": 7, "NUM": 8, "PART": 9, "PRON": 10, "PROPN": 11, "VERB": 12, "X": 13, "PUNCT": 13, "SYM": 13}
@@ -300,23 +225,49 @@ def main():
     nlp, sen_model = get_model()
 
     for i, input_path in enumerate(input_paths):
-        print("Video: ", i+1, input_path)
+        print(f"Processing Video [{i+1}/{len(input_paths)}]\t{input_path}")
 
         out_loc = output_paths[i]
 
         if not os.path.exists(out_loc):
             os.makedirs(out_loc)
 
-        if not os.path.exists(os.path.join(out_loc, "asr_textnlp.pkl")):
-            asr_dict = pickle.load(open(os.path.join(input_path, "asr.pkl"), "rb"))
-            asr_dict = add_transcript_boundaries(asr_dict)
-            video_path = input_path.replace("results_pkl", "videos")
+        if os.path.exists(os.path.join(out_loc, "whisper_ner.pkl")):
+            print("Already processed. Skipping...")
+            continue
 
-            video_feat_dict = perform_nlp(video_path, asr_dict, nlp, 
-                                            sen_model, pos_dict, ner_dict, event_set)
-                
-            with open(os.path.join(out_loc, "asr_textnlp.pkl"), "wb") as output_file:
-                pickle.dump(video_feat_dict, output_file)
+        whisper_segments = pickle.load(open(os.path.join(input_path, "asr_whisper.pkl"), "rb"))["output_data"]["speaker_segments"]
+        whisperx_segments = pickle.load(open(os.path.join(input_path, "asr_whisperx.pkl"), "rb"))["output_data"]["speaker_segments"]
+        # asr_dict = add_transcript_boundaries(asr_dict)
+
+        # sentiment_feat_dict = perform_sentiment(input_path, whisper_segments, nlp, sen_model, sent_dict)
+        # sentiment_feat_dict2 = perform_sentiment(input_path, whisperx_segments, nlp, sen_model, sent_dict)
+
+        # pos_feat_dict = perform_pos(input_path, whisper_segments, nlp, pos_dict)
+        # pos_feat_dict2 = perform_pos(input_path, whisperx_segments, nlp, pos_dict)
+
+        ner_feat_dict = perform_ner(input_path, whisper_segments, nlp, ner_dict, event_set)
+        ner_feat_dict2 = perform_ner(input_path, whisperx_segments, nlp, ner_dict, event_set)
+
+        # with open(os.path.join(out_loc, "whisper_sentiment.pkl"), "wb") as output_file:
+        #     pickle.dump(sentiment_feat_dict, output_file)
+        
+        # with open(os.path.join(out_loc, "whisperx_sentiment.pkl"), "wb") as output_file:
+        #     pickle.dump(sentiment_feat_dict2, output_file)
+
+        # with open(os.path.join(out_loc, "whisper_pos.pkl"), "wb") as output_file:
+        #     pickle.dump(pos_feat_dict, output_file)
+        
+        # with open(os.path.join(out_loc, "whisperx_pos.pkl"), "wb") as output_file:
+        #     pickle.dump(pos_feat_dict2, output_file)
+
+        with open(os.path.join(out_loc, "whisper_ner.pkl"), "wb") as output_file:
+            pickle.dump(ner_feat_dict, output_file)
+        
+        with open(os.path.join(out_loc, "whisperx_ner.pkl"), "wb") as output_file:
+            pickle.dump(ner_feat_dict2, output_file)
+
+        print()
 
 
 if __name__ == "__main__":
