@@ -9,7 +9,9 @@
 ##SBATCH -o /nfs/home/muellerer/fakenarratives/slurm
 
 FPS=1
-NEWSCHANNELS=(Tagesschau)
+NEWSCHANNELS=(Tagesschau)  # (BildTV, CompactTV, HeuteJournal, Tagesschau)
+
+QUERIES=("queries/actions.csv", "queries/news_events.csv", "queries/news_roles.csv")
 
 for c in ${NEWSCHANNELS[*]}
 do
