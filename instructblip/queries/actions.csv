@@ -1,85 +1,14 @@
 "holding things","Does this photo show people holding something? Please answer with yes or no!"
 "walking","Does this photo show people on the streen? Please answer with yes or no!"
 "crying","Is there a person crying? Please answer with yes or no!"
-"laughing","Is there a person laughing? Please answer with yes or no!"	
-"smiling","Is there a person smiling? Please answer with yes or no!" 	
-"fighting","Is there a person pushing another person down? Please answer with yes or no!" 	
-"shaking hands","Are there people shaking hands? Please answer with yes or no!"	
+"laughing","Is there a person laughing? Please answer with yes or no!"
+"smiling","Is there a person smiling? Please answer with yes or no!"
+"fighting","Is there a person pushing another person down? Please answer with yes or no!"
+"shaking hands","Are there people shaking hands? Please answer with yes or no!"
 "clapping","Is there a person clapping hands? Please answer with yes or no!"
-"waving","Is there a person waving the hand? Please answer with yes or no!""
-"pointing","Is there a person pointing something? Please answer with yes or no!"	
-"dining/eating","Does this photo show people in a restaurant? Please answer with yes or no!"	
+"waving","Is there a person waving the hand? Please answer with yes or no!"
+"pointing","Is there a person pointing something? Please answer with yes or no!"
+"dining/eating","Does this photo show people in a restaurant? Please answer with yes or no!"
 "drinking","Does this photo show people drinking in a bar? Please answer with yes or no!"
 "vaccinating","Does this photo show a doctor vaccinating a patient? Please answer with yes or no!"
 "talking/speech","Is there a person using a microphone? Please answer with yes or no!"
-	
-		
-								
-								
-News Roles								
-protester							does this image show protesters on the street? 	
-anchor							Does this image show a news anchor in the studio? Please answer with yes or no!	
-reporter							Does this photo show a news reporter? 	
-politician							Does this photo show a politician?	
-doctor							Does this photo show a doctor? 	
-layperson							Does this photo show a layperson?	
-								
-Places								
-outdoor - manmade							Does this photo show a city?	What is the main environmental setting depticted in this image? (1) city (2) nature (3) indoor
-	commercial buildings, shops, markets, cities, and towns						Does this photo show a commercial building, e.g., shops, markets in a city?	
-	houses, cabins, gardens, and farms							
-	industrial and construction							
-	sports fields, parks, leisure spaces							
-	political or historical building/place (millitary, religious, parliament)							
-	transportation (street, parking, bridges, boats, airports)							
-outdoor - natural							Does this photo show nature?	
-	mountains, hills, desert, forest							
-	water, ice, snow							
-indoor								
-	home							
-	office							
-	restaurant							
-	shop							
-	museum							
-	classroom							
-	religion/church							
-	court							
-	parliament							
-	studio							
-	conference room							
-Person Counting								
-single							Does this image show a single person? Please answer with yes or no!	How many persons are shown in this image? Please reply with: 1, 2, group, crowd.
-pair								
-crowd								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
-								
