@@ -1,5 +1,6 @@
 import argparse
 import logging
+import numpy as np
 import os
 import pickle
 import sys
@@ -54,15 +55,25 @@ def parse_args():
     parser = argparse.ArgumentParser(description="")
 
     # Required arguments
-    parser.add_argument("--videos", nargs="+", type=str, required=True, help="path to the video files")
-    parser.add_argument("--output", type=str, required=True, help="path to the output folder")
+    parser.add_argument(
+        "--videos", nargs="+", type=str, required=True, help="path to the video files"
+    )
+    parser.add_argument(
+        "--output", type=str, required=True, help="path to the output folder"
+    )
 
     # optional
-    parser.add_argument("--batch_size", type=int, required=False, default=8, help="batch size")
+    parser.add_argument(
+        "--batch_size", type=int, required=False, default=8, help="batch size"
+    )
     parser.add_argument("--cpu", action="store_true", help="process on cpu")
     parser.add_argument("--debug", action="store_true", help="debug output")
     parser.add_argument(
-        "--max_dimension", type=int, required=False, default=1920, help="max dimension of the video frames"
+        "--max_dimension",
+        type=int,
+        required=False,
+        default=1920,
+        help="max dimension of the video frames",
     )
     args = parser.parse_args()
     return args
@@ -77,11 +88,17 @@ def main():
     if args.debug:
         level = logging.DEBUG
 
-    logging.basicConfig(format="%(asctime)s %(levelname)s:%(message)s", datefmt="%Y-%m-%d %H:%M:%S", level=level)
+    logging.basicConfig(
+        format="%(asctime)s %(levelname)s:%(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        level=level,
+    )
 
     # Create model
     device = -1 if args.cpu else 0
-    model = SixDRepNet(gpu_id=device, dict_path="6DRepNet/model/6DRepNet_300W_LP_AFLW2000.pth")
+    model = SixDRepNet(
+        gpu_id=device, dict_path="6DRepNet/model/6DRepNet_300W_LP_AFLW2000.pth"
+    )
 
     # loop trough input videos
     videos = args.videos
@@ -93,7 +110,9 @@ def main():
         output_dir = os.path.join(args.output, vidname)
 
         if not os.path.isfile(os.path.join(output_dir, "face_analysis.pkl")):
-            logging.error(f"Missing file: {os.path.join(output_dir, 'face_analysis.pkl')}")
+            logging.error(
+                f"Missing file: {os.path.join(output_dir, 'face_analysis.pkl')}"
+            )
             continue
 
         # read faceanalyis.pkl and store face bboxes
@@ -119,12 +138,21 @@ def main():
             time = frame["time"]
             image = frame["frame"]
 
-            if time not in faces_dict:  # no face in frame
+            faces_times = np.asarray(list(faces_dict.keys()))
+            delta_time = np.abs(time - faces_times)
+            closest_face_time = faces_times[np.argmin(delta_time)]
+            eps = 1 / fps
+
+            # check if frame contains faces
+            if np.abs(closest_face_time - time) > eps / 2:
                 continue
 
+            logging.debug(f"video time: {time}, face time: {closest_face_time}")
+            if closest_face_time != time:
+                logging.warning(f"time difference: {np.abs(closest_face_time - time)}")
             logging.debug(f"{vidname}: Processing frame {frame['index']}")
 
-            for face in faces_dict[time]:  # loop through face(s) in frame
+            for face in faces_dict[closest_face_time]:  # loop through face(s) in frame
                 h, w, _ = image.shape
 
                 y1 = round(h * face["bbox"]["y"])
@@ -137,16 +165,23 @@ def main():
                 pitch, yaw, roll = model.predict(face_image)
 
                 headposes.append(
-                    {"bbox": face["bbox"], "headpose": {"pitch": pitch[0], "yaw": yaw[0], "roll": roll[0]}}
+                    {
+                        "id": face["id"],
+                        "headpose": {"pitch": pitch[0], "yaw": yaw[0], "roll": roll[0]},
+                    }
                 )
-                times.append(time)
+                times.append(closest_face_time)
 
         os.makedirs(output_dir, exist_ok=True)
         with open(os.path.join(output_dir, "headpose_6DRepNet.pkl"), "wb") as f:
             output_dict = headpose_pkl(headposes, times, args)
             pickle.dump(output_dict, f)
 
-        logging.info(f"Output written to: {os.path.join(output_dir, 'headpose_6DRepNet.pkl')}")
+        logging.info(
+            f"Output written to: {os.path.join(output_dir, 'headpose_6DRepNet.pkl')}"
+        )
+
+        logging.debug(len(times), len(faces["faces"]))
 
     return 0
 
