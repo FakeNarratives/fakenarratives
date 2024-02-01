@@ -18,6 +18,15 @@ nodes:
     type: attribute
     attribute:
       target: shot
+  instructblip_actions:
+    type: node
+    plugin_type: query
+    color: "#ffffff"
+    shape: dot
+    relation: 
+      target: shot
+      weight: mean
+      threshold: 0.5
   instructblip_daytime:
     type: node
     plugin_type: query
@@ -36,7 +45,16 @@ nodes:
       target: shot
       weight: mean
       threshold: 0.5
-  instructblip_events:
+  instructblip_news_events:
+    type: node
+    plugin_type: query
+    color: "#ffffff"
+    shape: dot
+    relation: 
+      target: shot
+      weight: mean
+      threshold: 0.5
+  instructblip_news_roles:
     type: node
     plugin_type: query
     color: "#ffffff"

@@ -1,6 +1,7 @@
 import argparse
 import json
 import logging
+import math
 import networkx as nx
 import numpy as np
 import os
@@ -16,17 +17,36 @@ def parse_args():
     parser.add_argument("-vv", "--debug", action="store_true", help="debug output")
 
     # inputs
-    parser.add_argument("--input", "-i", type=str, required=True, help="path to .pkl folder")
-    parser.add_argument("--config", "-c", type=str, default="config.yml", help="path to .yml config file")
-    parser.add_argument("--asr_type", "-a", type=str, default="whisper", help="whisper | whisperx")
+    parser.add_argument(
+        "--input", "-i", type=str, required=True, help="path to .pkl folder"
+    )
+    parser.add_argument(
+        "--config",
+        "-c",
+        type=str,
+        default="config.yml",
+        help="path to .yml config file",
+    )
+    parser.add_argument(
+        "--asr_type", "-a", type=str, default="whisper", help="whisper | whisperx"
+    )
 
     # output
-    parser.add_argument("--output", "-o", type=str, required=True, help="path to .graphml folder")
+    parser.add_argument(
+        "--output", "-o", type=str, required=True, help="path to .graphml folder"
+    )
 
     # optional params
     parser.add_argument("--pyviz", action="store_true", help="debug output")
-    parser.add_argument("--speaker_seg_tol", type=float, default=3.0, help="tolerance [s] to combine speaker segments")
-    parser.add_argument("--span_tol", type=float, default=3.0, help="tolerance [s] to combine spans")
+    parser.add_argument(
+        "--speaker_seg_tol",
+        type=float,
+        default=3.0,
+        help="tolerance [s] to combine speaker segments",
+    )
+    parser.add_argument(
+        "--span_tol", type=float, default=3.0, help="tolerance [s] to combine spans"
+    )
     args = parser.parse_args()
     return args
 
@@ -47,14 +67,16 @@ def create_base_graph(args, config):
 
     # read speaker segments
     logging.info(f"Create speaker segments")
-    fname = os.path.join(args.input, "asr_%s.pkl"%(args.asr_type))
+    fname = os.path.join(args.input, "asr_%s.pkl" % (args.asr_type))
     assert os.path.isfile(fname), f"Cannot find {fname}"
 
     data = read_pkl(fname)
     speaker_segments = data["output_data"]["speaker_segments"]
 
     # create speaker turns
-    speaker_turns, speaker_segments = get_speaker_turns(speaker_segments, args.speaker_seg_tol)
+    speaker_turns, speaker_segments = get_speaker_turns(
+        speaker_segments, args.speaker_seg_tol
+    )
 
     # add nodes for speaker turs
     G = add_speakerturn_nodes(G, speaker_turns, config["base"]["asr"])
@@ -73,8 +95,7 @@ def create_base_graph(args, config):
     return G
 
 
-
-def add_attributes_shot(G, plugin, data, config):
+def add_attributes_shot(G, plugin, data, config, args):
     logging.debug(f"Add attributes from {plugin} to shots")
 
     if "camera_size" in plugin:
@@ -105,7 +126,9 @@ def add_attributes_shot(G, plugin, data, config):
                 continue
 
             # get corresponding values
-            shot_values = data["output_data"]["y"][shot_idx[0] : shot_idx[-1] + 1, :]  # times x concepts
+            shot_values = data["output_data"]["y"][
+                shot_idx[0] : shot_idx[-1] + 1, :
+            ]  # times x concepts
 
             # aggregate values for each concept
             # TODO: other aggregation functions
@@ -132,40 +155,78 @@ def add_attributes_shot(G, plugin, data, config):
                 continue
 
             node_attr["title"] += "\n"
-            for lab, prob in zip(data["output_data"][node_attr["index"]]["labels"], data["output_data"][node_attr["index"]]["probs"]):
-                node_attr[f"{plugin}/{lab}"] = round(prob,2)
+            for lab, prob in zip(
+                data["output_data"][node_attr["index"]]["labels"],
+                data["output_data"][node_attr["index"]]["probs"],
+            ):
+                node_attr[f"{plugin}/{lab}"] = round(prob, 2)
                 node_attr["title"] += f"{lab}: {round(prob,2)}, "
     elif "face_analysis" in plugin:
+        fps = data["plugins"][0]["parameters"]["fps"]
         faces = data["output_data"][0]["faces"]
+
+        ## read face clustering results
+        face_clusters = read_pkl(os.path.join(args.input, "face_clustering.pkl"))
+        cluster_lut = {}
+        for i, face_id in enumerate(face_clusters["y"]["ids"]):
+            cluster_id = face_clusters["y"]["clusters"][i]
+            cluster_lut[face_id] = cluster_id
+
+            if not G.has_node(cluster_id):
+                G.add_node(
+                    f"person_{cluster_id}",
+                    label=f"person_{cluster_id}",
+                    title=f"person_{cluster_id}",
+                    type="person",
+                )
+
         f_iter = iter(faces)
-        
-        curr_face = next(f_iter) ## Each face bbox relative position: {'x', 'y', 'w', 'h'}
+        curr_face = next(
+            f_iter
+        )  ## Each face bbox relative position: {'x', 'y', 'w', 'h'}
 
         for node in G.nodes(data=True):
             _, node_attr = node
             if node_attr["type"] != "shot":
                 continue
-        
+
             st = node_attr["start_time"]
             et = node_attr["end_time"]
+            shot_idx = node_attr["index"]
+            num_frames = (et - st) * fps
 
             ## Iter over faces and add attributes to the shot node if the face is within the shot
-            face_cnt = 0
-            face_pos_vec = [0, 0, 0]  # left, center, right
+            persons_shot = {}
+
             while curr_face["time"] >= st and curr_face["time"] <= et:
-                face_cnt += 1
+                # get cluster id of the face
+                face_cluster_id = cluster_lut[curr_face["id"]]
+                if face_cluster_id not in persons_shot:
+                    persons_shot[face_cluster_id] = {
+                        "f_cnt": 0,  # whole frame
+                        "f_cnt_pos": [0, 0, 0],  # left, right, center
+                        "a_cnt": 0,  # whole frame
+                        "a_cnt_pos": [0, 0, 0],  # left, right, center
+                    }
+
+                # check if face is an actor; TODO: better implementation
+                is_actor = curr_face["bbox"]["h"] > 0.1
+
+                # count percentage of the time the person is visible
+                persons_shot[face_cluster_id]["f_cnt"] += 1 / num_frames
+                if is_actor:
+                    persons_shot[face_cluster_id]["a_cnt"] += 1 / num_frames
 
                 ## Compute centre of the face bbox
-                mid_x = curr_face["bbox"]["x"] + curr_face["bbox"]["w"]/2
+                mid_x = curr_face["bbox"]["x"] + curr_face["bbox"]["w"] / 2
 
                 ## Compute the relative position of the face bbox
-                if mid_x <= 0.33:
-                    face_pos_vec[0] += 1
-                elif mid_x > 0.33 and mid_x < 0.66:
-                    face_pos_vec[1] += 1
-                else:
-                    face_pos_vec[2] += 1
-                
+                ## Count faces per position and frame in shot
+                idx = min(math.floor(mid_x * 3), 2)
+                persons_shot[face_cluster_id]["f_cnt_pos"][idx] += 1 / num_frames
+                if is_actor:
+                    persons_shot[face_cluster_id]["a_cnt_pos"][idx] += 1 / num_frames
+
                 # ## Emotion of the face
                 # emotion = curr_face["emotion"]
                 # print(emotion)
@@ -175,21 +236,66 @@ def add_attributes_shot(G, plugin, data, config):
                 except StopIteration:
                     break
 
+            face_cnt = 0
+            face_cnt_pos = [0, 0, 0]
+            actor_cnt = 0
+            actor_cnt_pos = [0, 0, 0]
+            for person_id, data in persons_shot.items():
+                # statistics over all faces
+                face_cnt += data["f_cnt"]
+                actor_cnt += data["a_cnt"]
+
+                for i in range(len(data["f_cnt_pos"])):
+                    face_cnt_pos[i] += data["f_cnt_pos"][i]
+                    actor_cnt_pos[i] += data["a_cnt_pos"][i]
+
+                # add relation of person to shot
+                if face_cnt > 0:
+                    G.add_edge(
+                        f"person_{person_id}",
+                        f"shot_{shot_idx}",
+                        weight=data["f_cnt"],
+                        face_count=data["f_cnt"],
+                        face_count_left=data["f_cnt_pos"][0],
+                        face_count_center=data["f_cnt_pos"][1],
+                        face_count_right=data["f_cnt_pos"][2],
+                    )
+
+                if actor_cnt > 0:
+                    G.add_edge(
+                        f"person_{person_id}",
+                        f"shot_{shot_idx}",
+                        weight=data["a_cnt"],
+                        actor_count=data["a_cnt"],
+                        actor_count_left=data["a_cnt_pos"][0],
+                        actor_count_center=data["a_cnt_pos"][1],
+                        actor_count_right=data["a_cnt_pos"][2],
+                    )
+
             ## Face count in the shot
             node_attr[f"{plugin}/face_count"] = face_cnt
             ## Relative position of the faces in the shot
-            node_attr[f"{plugin}/face_count_left"] = face_pos_vec[0]
-            node_attr[f"{plugin}/face_count_center"] = face_pos_vec[1]
-            node_attr[f"{plugin}/face_count_right"] = face_pos_vec[2]
+            node_attr[f"{plugin}/face_count_left"] = face_cnt_pos[0]
+            node_attr[f"{plugin}/face_count_center"] = face_cnt_pos[1]
+            node_attr[f"{plugin}/face_count_right"] = face_cnt_pos[2]
 
-            node_attr["title"] += f"\nFace Count: {face_cnt}, Face Positions: {face_pos_vec}"
+            ## Actor count in the shot
+            node_attr[f"{plugin}/actor_count"] = actor_cnt
+            ## Relative position of the actors in the shot
+            node_attr[f"{plugin}/actor_count_left"] = actor_cnt_pos[0]
+            node_attr[f"{plugin}/actor_count_center"] = actor_cnt_pos[1]
+            node_attr[f"{plugin}/actor_count_right"] = actor_cnt_pos[2]
+
+            node_attr[
+                "title"
+            ] += f"\nFace Count: {face_cnt}, Face Positions: {face_cnt_pos}"
 
     return G
 
 
 def add_attributes_speakerturn(G, plugin, data, config):
     logging.debug(f"Add attributes from {plugin} to speaker turns")
-    
+
     if "sentiment" in plugin:
         for node in G.nodes(data=True):
             _, node_attr = node
@@ -199,8 +305,15 @@ def add_attributes_speakerturn(G, plugin, data, config):
             vector = data["output_data"]["sentence_wise"][node_attr["index"]]["vector"]
             proportion_sentiment = config["labels"][np.argmax(vector)]
             proportion_max_value = round(np.max(vector), 2)
-            prediction = data["output_data"]["speakerturn_wise"][node_attr["index"]]["pred"]
-            max_value = round(np.max(data["output_data"]["speakerturn_wise"][node_attr["index"]]["prob"]), 2)
+            prediction = data["output_data"]["speakerturn_wise"][node_attr["index"]][
+                "pred"
+            ]
+            max_value = round(
+                np.max(
+                    data["output_data"]["speakerturn_wise"][node_attr["index"]]["prob"]
+                ),
+                2,
+            )
             node_attr[f"{plugin}/positive_ratio"] = round(vector[0], 2)
             node_attr[f"{plugin}/negative_ratio"] = round(vector[1], 2)
             node_attr[f"{plugin}/neutral_ratio"] = round(vector[2], 2)
@@ -213,7 +326,9 @@ def add_attributes_speakerturn(G, plugin, data, config):
             else:
                 node_attr["color"] = "#00ffff"
 
-            node_attr["title"] += f"\nOverall Sentiment: {prediction} [{max_value}], \
+            node_attr[
+                "title"
+            ] += f"\nOverall Sentiment: {prediction} [{max_value}], \
                                     Proportion Sentiment: {proportion_sentiment} [{proportion_max_value}]"
     elif "pos" in plugin:
         for node in G.nodes(data=True):
@@ -221,13 +336,17 @@ def add_attributes_speakerturn(G, plugin, data, config):
             if node_attr["type"] != "speaker_turn":
                 continue
 
-            pos_vector = data["output_data"]["speakerturn_wise"][node_attr["index"]]["vector"]
+            pos_vector = data["output_data"]["speakerturn_wise"][node_attr["index"]][
+                "vector"
+            ]
 
             node_attr["title"] += "\n"
             cnt = 0
             for ind, key in config["labels"].items():
                 node_attr[f"{plugin}/{key}/count"] = pos_vector[ind]
-                node_attr[f"{plugin}/{key}/frequency"] = pos_vector[ind]/node_attr["num_words"]
+                node_attr[f"{plugin}/{key}/frequency"] = (
+                    pos_vector[ind] / node_attr["num_words"]
+                )
                 if cnt == 6:
                     node_attr["title"] += "\n"
                 node_attr["title"] += f"{key}: {pos_vector[ind]}, "
@@ -239,8 +358,11 @@ def add_attributes_speakerturn(G, plugin, data, config):
                 continue
 
             node_attr["title"] += "\n"
-            for lab, prob in zip(data["output_data"][node_attr["index"]]["labels"], data["output_data"][node_attr["index"]]["probs"]):
-                node_attr[f"{plugin}/{lab}"] = round(prob,2)
+            for lab, prob in zip(
+                data["output_data"][node_attr["index"]]["labels"],
+                data["output_data"][node_attr["index"]]["probs"],
+            ):
+                node_attr[f"{plugin}/{lab}"] = round(prob, 2)
                 node_attr["title"] += f"{lab}: {round(prob,2)}, "
     elif "segmentClf" in plugin:
         for node in G.nodes(data=True):
@@ -249,12 +371,16 @@ def add_attributes_speakerturn(G, plugin, data, config):
                 continue
 
             gender = data["output_data"][node_attr["index"]]["gender_pred"]
-            gender_prob = round(float(data["output_data"][node_attr["index"]]["gender_prob"]), 2)
+            gender_prob = round(
+                float(data["output_data"][node_attr["index"]]["gender_prob"]), 2
+            )
             node_attr[f"{plugin}/gender/{gender}"] = gender_prob
             node_attr["title"] += f"\n{gender}: {gender_prob}"
 
             emotion = data["output_data"][node_attr["index"]]["emotion_pred"]
-            emotion_prob = round(data["output_data"][node_attr["index"]]["emotion_prob"], 2)
+            emotion_prob = round(
+                data["output_data"][node_attr["index"]]["emotion_prob"], 2
+            )
             node_attr[f"{plugin}/emotion/{emotion}"] = emotion_prob
             node_attr["title"] += f", {emotion}: {emotion_prob}"
 
@@ -268,23 +394,34 @@ def add_ner_nodes(G, plugin, data, config):
         entities = segment["tags"]
         for ent in entities:
             if not G.has_node(ent["wd_label"]):
-                title = "WD-Label: %s, Url: %s"%(ent["wd_label"], ent["url"])
+                title = "WD-Label: %s, Url: %s" % (ent["wd_label"], ent["url"])
                 label = ent["text"] if ent["wd_label"] == "unk" else ent["wd_label"]
                 if "PER" in ent["type"]:
-                    G.add_node(label, label=label, title=title, type=plugin, color="pink")
+                    G.add_node(
+                        label, label=label, title=title, type=plugin, color="pink"
+                    )
                 elif "ORG" in ent["type"]:
-                    G.add_node(label, label=label, title=title, type=plugin, color="yellow")
+                    G.add_node(
+                        label, label=label, title=title, type=plugin, color="yellow"
+                    )
                 elif "LOC" in ent["type"]:
-                    G.add_node(label, label=label, title=title, type=plugin, color="purple")
+                    G.add_node(
+                        label, label=label, title=title, type=plugin, color="purple"
+                    )
                 elif "EVENT" in ent["type"]:
-                    G.add_node(label, label=label, title=title, type=plugin, color="brown")
+                    G.add_node(
+                        label, label=label, title=title, type=plugin, color="brown"
+                    )
                 else:
-                    G.add_node(label, label=label, title=title, type=plugin, color="gray")    
+                    G.add_node(
+                        label, label=label, title=title, type=plugin, color="gray"
+                    )
 
-                G.add_edge(f"spk_turn_{i}", label, title="mentioned as %s"%(ent["text"]))    
+                G.add_edge(
+                    f"spk_turn_{i}", label, title="mentioned as %s" % (ent["text"])
+                )
 
     return G
-
 
 
 def add_nodes(G, plugin, data, config):
@@ -299,8 +436,12 @@ def add_nodes(G, plugin, data, config):
             "shot": add_shot_relation,
         }
 
-        G = add_node_function[config["plugin_type"]](G=G, plugin=plugin, data=data, config=config)
-        G = add_relation_function[config["relation"]["target"]](G=G, plugin=plugin, data=data, config=config)
+        G = add_node_function[config["plugin_type"]](
+            G=G, plugin=plugin, data=data, config=config
+        )
+        G = add_relation_function[config["relation"]["target"]](
+            G=G, plugin=plugin, data=data, config=config
+        )
     return G
 
 
@@ -336,7 +477,9 @@ def add_shot_relation(G, plugin, data, config):
             continue
 
         # get corresponding values
-        shot_values = data["responses"][:, span_places[0] : span_places[-1] + 1]  # concepts x times
+        shot_values = data["responses"][
+            :, span_places[0] : span_places[-1] + 1
+        ]  # concepts x times
 
         # aggregate values for each concept
         # TODO: other aggregation functions
@@ -351,7 +494,13 @@ def add_shot_relation(G, plugin, data, config):
         # add edges based on threshold
         for i, concept in enumerate(data["labels"]):
             if scores[i] > config["relation"]["threshold"]:
-                G.add_edge(concept, f"shot_{idx}", weight=scores[i], mean=mean_scores[i], median=median_scores[i])
+                G.add_edge(
+                    concept,
+                    f"shot_{idx}",
+                    weight=scores[i],
+                    mean=mean_scores[i],
+                    median=median_scores[i],
+                )
 
     return G
 
@@ -422,7 +571,9 @@ def get_speaker_turns(speaker_segments, speaker_seg_tol=3.0):
         end_time = round(segment["end"], 2)
         if i < len(speaker_segments) - 1:
             if speaker_segments[i + 1]["start"] - end_time < speaker_seg_tol:
-                end_time = round(speaker_segments[i + 1]["start"] - 0.04, 2)  ## Similar to shots
+                end_time = round(
+                    speaker_segments[i + 1]["start"] - 0.04, 2
+                )  ## Similar to shots
 
         segment["start"] = start_time
         segment["end"] = end_time
@@ -446,7 +597,10 @@ def add_span_nodes(G, speaker_turns, shots, config, tolerance=3.0):
     # Combine the two lists and sort by start time
     intervals = sorted(
         [{"start": shot["start"], "end": shot["end"]} for shot in shots]
-        + [{"start": speaker["start"], "end": speaker["end"]} for speaker in speaker_turns],
+        + [
+            {"start": speaker["start"], "end": speaker["end"]}
+            for speaker in speaker_turns
+        ],
         key=lambda interval: interval["end"],
     )
 
@@ -461,7 +615,10 @@ def add_span_nodes(G, speaker_turns, shots, config, tolerance=3.0):
             ## For intervals where start time is more than current_end and under tolerance
             span_start = current_end
             span_end = end_time
-            if i < len(intervals) - 1 and abs(intervals[i + 1]["start"] - end_time) < tolerance:
+            if (
+                i < len(intervals) - 1
+                and abs(intervals[i + 1]["start"] - end_time) < tolerance
+            ):
                 span_end = intervals[i + 1]["start"]
 
             spans.append({"start": span_start, "end": span_end})
@@ -470,11 +627,15 @@ def add_span_nodes(G, speaker_turns, shots, config, tolerance=3.0):
             ## Add filler span first if gap is greater than or equal to 3 seconds
             span_start = current_end
             span_end = start_time
-            spans.append({"start": span_start, "end": span_end})  ## Add the filler span first
+            spans.append(
+                {"start": span_start, "end": span_end}
+            )  ## Add the filler span first
 
             span_start = start_time
             span_end = end_time
-            spans.append({"start": span_start, "end": span_end})  ## Add current interval now
+            spans.append(
+                {"start": span_start, "end": span_end}
+            )  ## Add current interval now
 
             current_end = span_end
         else:
@@ -516,7 +677,9 @@ def link_attributes_to_spans(G, spans, event_list, place_list):
         #         for e in span_events:
         #             G.add_edge(e, f"span_{i}")
 
-        span_places = list(set([p for p, t in place_list if t > start_time and t < end_time]))
+        span_places = list(
+            set([p for p, t in place_list if t > start_time and t < end_time])
+        )
 
         for p in span_places:
             G.add_edge(p, f"span_{i}")
@@ -532,7 +695,9 @@ def add_edges_to_spans(G, shots, speaker_turns, spans):
 
         # Find the spans that overlap with this shot
         overlapping_spans = [
-            f"span_{j}" for j, span in enumerate(spans) if not (end_time <= span["start"] or start_time >= span["end"])
+            f"span_{j}"
+            for j, span in enumerate(spans)
+            if not (end_time <= span["start"] or start_time >= span["end"])
         ]
 
         # Add edges from the shot to the overlapping spans
@@ -546,7 +711,9 @@ def add_edges_to_spans(G, shots, speaker_turns, spans):
 
         # Find the spans that overlap with this speaker segment
         overlapping_spans = [
-            f"span_{j}" for j, span in enumerate(spans) if not (end_time <= span["start"] or start_time >= span["end"])
+            f"span_{j}"
+            for j, span in enumerate(spans)
+            if not (end_time <= span["start"] or start_time >= span["end"])
         ]
 
         # Add edges from the speaker segment to the overlapping spans
@@ -565,7 +732,11 @@ def main():
     if args.debug:
         level = logging.DEBUG
 
-    logging.basicConfig(format="%(asctime)s %(levelname)s:%(message)s", datefmt="%Y-%m-%d %H:%M:%S", level=level)
+    logging.basicConfig(
+        format="%(asctime)s %(levelname)s:%(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        level=level,
+    )
 
     # read config
     with open(args.config, "r") as stream:
@@ -577,7 +748,11 @@ def main():
 
     # add additional nodes to the graph
     for plugin in config["nodes"]:
-        if plugin in ["transnet_shotdetection", "asr", "span"]:  # already computed for base graph
+        if plugin in [
+            "transnet_shotdetection",
+            "asr",
+            "span",
+        ]:  # already computed for base graph
             continue
 
         fname = os.path.join(args.input, plugin + ".pkl")
@@ -591,7 +766,7 @@ def main():
             G = add_nodes(G, plugin, data, config["nodes"][plugin])
         else:  # attribute
             if config["nodes"][plugin]["attribute"]["target"] == "shot":
-                G = add_attributes_shot(G, plugin, data, config["nodes"][plugin])
+                G = add_attributes_shot(G, plugin, data, config["nodes"][plugin], args)
             elif config["nodes"][plugin]["attribute"]["target"] == "speaker":
                 add_attributes_speakerturn(G, plugin, data, config["nodes"][plugin])
 
@@ -600,7 +775,7 @@ def main():
     # export graph
     os.makedirs(args.output, exist_ok=True)
     vidname = os.path.basename(args.input)
-    outfile = os.path.join(args.output,f"{args.asr_type}_{vidname}.graphml")
+    outfile = os.path.join(args.output, f"{args.asr_type}_{vidname}.graphml")
 
     logging.info(f"Store networkx graph to: {outfile}")
     nx.write_graphml(G, outfile)
@@ -610,7 +785,14 @@ def main():
         net = Network()
         net.from_nx(G)
         net.set_options(
-            json.dumps({"physics": {"solver": "barnesHut", "hierarchicalRepulsion": {"nodeDistance": 150}}})
+            json.dumps(
+                {
+                    "physics": {
+                        "solver": "barnesHut",
+                        "hierarchicalRepulsion": {"nodeDistance": 150},
+                    }
+                }
+            )
         )
         outfile = os.path.join(args.output, f"{args.asr_type}_{vidname}.html")
 
