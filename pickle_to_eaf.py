@@ -14,7 +14,9 @@ def parse_args():
 
     parser.add_argument("--shots", action="store_true", help="save shots into eaf")
     parser.add_argument("--scenes", action="store_true", help="save scenes into eaf")
-    parser.add_argument("--speakers", action="store_true", help="save speakers into eaf")
+    parser.add_argument(
+        "--speakers", action="store_true", help="save speakers into eaf"
+    )
 
     parser.add_argument("-vv", "--debug", action="store_true", help="debug output")
     args = parser.parse_args()
@@ -82,8 +84,12 @@ def create_speaker_tier(eaf, input_pickle):
         if start == end:
             continue
 
-        eaf.add_annotation(tier_speaker, start=start, end=end, value=speaker_segment["speaker"])
-        eaf.add_annotation(tier_transcript, start=start, end=end, value=speaker_segment["text"])
+        eaf.add_annotation(
+            tier_speaker, start=start, end=end, value=speaker_segment["speaker"]
+        )
+        eaf.add_annotation(
+            tier_transcript, start=start, end=end, value=speaker_segment["text"]
+        )
         i += 1
 
     return eaf
@@ -98,7 +104,11 @@ def main():
     if args.debug:
         level = logging.DEBUG
 
-    logging.basicConfig(format="%(asctime)s %(levelname)s:%(message)s", datefmt="%Y-%m-%d %H:%M:%S", level=level)
+    logging.basicConfig(
+        format="%(asctime)s %(levelname)s:%(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        level=level,
+    )
 
     videoname = os.path.basename(args.input)
 
@@ -110,13 +120,15 @@ def main():
         if "transnet_shotdetection.pkl" not in os.listdir(args.input):
             logging.error(f"Cannot find transnet_shotdetection.pkl for {videoname}")
         else:
-            eaf = create_shot_tier(eaf, os.path.join(args.input, "transnet_shotdetection.pkl"))
+            eaf = create_shot_tier(
+                eaf, os.path.join(args.input, "transnet_shotdetection.pkl")
+            )
 
     if args.speakers:
-        if "asr.pkl" not in os.listdir(args.input):
-            logging.error(f"Cannot find asr.pkl for {videoname}")
+        if "asr_whisper.pkl" not in os.listdir(args.input):
+            logging.error(f"Cannot find asr_whisper.pkl for {videoname}")
         else:
-            eaf = create_speaker_tier(eaf, os.path.join(args.input, "asr.pkl"))
+            eaf = create_speaker_tier(eaf, os.path.join(args.input, "asr_whisper.pkl"))
 
     # write elan file
     # print(videoname)
