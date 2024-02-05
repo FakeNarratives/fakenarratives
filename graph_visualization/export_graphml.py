@@ -87,7 +87,7 @@ def create_base_graph(args, config):
     # add edges between shots and speaker turns to spans
     G = add_edges_to_spans(G, shots, speaker_turns, spans)
 
-    logging.info(f"## Graph created!")
+    logging.info(f"# Graph created!")
     logging.info(f"   - Number of shots: {len(shots)}")
     logging.info(f"   - Number of speaker turns: {len(speaker_turns)}")
     logging.info(f"   - Number of spans: {len(spans)}")
@@ -111,15 +111,20 @@ def add_attributes_shot(G, plugin, data, config, args):
             et = node_attr["end_time"]
 
             shot_idx = []
-            while t < st:
-                idx, t = next(t_iter)
+            while t <= st:
+                try:
+                    idx, t = next(t_iter)
+                except StopIteration:
+                    break
 
             while t <= et:
-                shot_idx.append(idx)
+                if t >= data["output_data"]["time"][-1]:
+                    break
 
-                if idx < len(data["output_data"]["time"]) - 1:
+                shot_idx.append(idx)
+                try:
                     idx, t = next(t_iter)
-                else:
+                except StopIteration:
                     break
 
             if len(shot_idx) < 1:
@@ -154,6 +159,11 @@ def add_attributes_shot(G, plugin, data, config, args):
             if node_attr["type"] != "shot":
                 continue
 
+            # TODO Gullal: Why can it happen that the audioClf output has less entries as there are shots?
+            if node_attr["index"] > len(data["output_data"]) - 1:
+                logging.warning("audioClf: Number of shots does not match output data")
+                continue
+
             node_attr["title"] += "\n"
             for lab, prob in zip(
                 data["output_data"][node_attr["index"]]["labels"],
@@ -162,16 +172,13 @@ def add_attributes_shot(G, plugin, data, config, args):
                 node_attr[f"{plugin}/{lab}"] = round(prob, 2)
                 node_attr["title"] += f"{lab}: {round(prob,2)}, "
     elif "face_analysis" in plugin:
+        # get plugin fps and face information
         fps = data["plugins"][0]["parameters"]["fps"]
-        faces = data["output_data"][0]["faces"]
+        faces = data["faces"]
 
-        ## read face clustering results
-        face_clusters = read_pkl(os.path.join(args.input, "face_clustering.pkl"))
-        cluster_lut = {}
-        for i, face_id in enumerate(face_clusters["y"]["ids"]):
-            cluster_id = face_clusters["y"]["clusters"][i]
-            cluster_lut[face_id] = cluster_id
-
+        # create node for face clusters
+        for face in faces:
+            cluster_id = face["cluster_id"]
             if not G.has_node(cluster_id):
                 G.add_node(
                     f"person_{cluster_id}",
@@ -180,115 +187,136 @@ def add_attributes_shot(G, plugin, data, config, args):
                     type="person",
                 )
 
-        f_iter = iter(faces)
-        curr_face = next(
-            f_iter
-        )  ## Each face bbox relative position: {'x', 'y', 'w', 'h'}
-
+        # loop over shots
         for node in G.nodes(data=True):
             _, node_attr = node
             if node_attr["type"] != "shot":
                 continue
 
+            # get index, start time, end time of the shot
             st = node_attr["start_time"]
             et = node_attr["end_time"]
             shot_idx = node_attr["index"]
-            num_frames = (et - st) * fps
 
-            ## Iter over faces and add attributes to the shot node if the face is within the shot
+            # calculate the number of frames the shot contains for normalization
+            num_frames = max(1, math.floor((et - st) * fps))
+
+            # iterate over faces and add attributes to the shot node if the face is within the shot
             persons_shot = {}
+            for face in faces:
+                if face["time"] < st or face["time"] > et:
+                    continue
 
-            while curr_face["time"] >= st and curr_face["time"] <= et:
-                # get cluster id of the face
-                face_cluster_id = cluster_lut[curr_face["id"]]
-                if face_cluster_id not in persons_shot:
-                    persons_shot[face_cluster_id] = {
-                        "f_cnt": 0,  # whole frame
-                        "f_cnt_pos": [0, 0, 0],  # left, right, center
-                        "a_cnt": 0,  # whole frame
-                        "a_cnt_pos": [0, 0, 0],  # left, right, center
+                # get cluster id, emotion, and headpose of the face
+                cluster_id = face["cluster_id"]
+                emotion = face["emotion"]
+                headpose = face["headpose"]
+
+                # check if face is an actor
+                # TODO: better implementation
+                is_actor = face["bbox"]["h"] > 0.1
+
+                # init data for persons in shot
+                if cluster_id not in persons_shot:
+                    persons_shot[cluster_id] = {
+                        # information for faces
+                        "face": {
+                            "cnt": 0,  # counter for occurrences in the whole frame
+                            "cnt_pos": [0, 0, 0],  # ... left, right, center
+                            "emotion": np.zeros(emotion.shape),  # 7 basic emotions
+                            "headpose": np.zeros(headpose.shape),  # yaw, pitch, roll
+                        },
+                        # information for actors
+                        "actor": {
+                            "cnt": 0,  # counter for occurrences in the whole frame
+                            "cnt_pos": [0, 0, 0],  # ... left, right, center
+                            "emotion": np.zeros(emotion.shape),  # 7 basic emotions
+                            "headpose": np.zeros(headpose.shape),  # yaw, pitch, roll
+                        },
                     }
 
-                # check if face is an actor; TODO: better implementation
-                is_actor = curr_face["bbox"]["h"] > 0.1
-
-                # count percentage of the time the person is visible
-                persons_shot[face_cluster_id]["f_cnt"] += 1 / num_frames
+                # count number of frames the person is visible
+                persons_shot[cluster_id]["face"]["cnt"] += 1
+                persons_shot[cluster_id]["face"]["emotion"] += emotion
+                persons_shot[cluster_id]["face"]["headpose"] += headpose
                 if is_actor:
-                    persons_shot[face_cluster_id]["a_cnt"] += 1 / num_frames
+                    persons_shot[cluster_id]["actor"]["cnt"] += 1
+                    persons_shot[cluster_id]["actor"]["emotion"] += emotion
+                    persons_shot[cluster_id]["actor"]["headpose"] += headpose
 
-                ## Compute centre of the face bbox
-                mid_x = curr_face["bbox"]["x"] + curr_face["bbox"]["w"] / 2
+                # Compute centre of the face bbox
+                mid_x = face["bbox"]["x"] + face["bbox"]["w"] / 2
 
-                ## Compute the relative position of the face bbox
-                ## Count faces per position and frame in shot
+                # Compute the relative position of the face bbox
+                # Count faces per position in shot
                 idx = min(math.floor(mid_x * 3), 2)
-                persons_shot[face_cluster_id]["f_cnt_pos"][idx] += 1 / num_frames
+                persons_shot[cluster_id]["face"]["cnt_pos"][idx] += 1
                 if is_actor:
-                    persons_shot[face_cluster_id]["a_cnt_pos"][idx] += 1 / num_frames
+                    persons_shot[cluster_id]["actor"]["cnt_pos"][idx] += 1
 
-                # ## Emotion of the face
-                # emotion = curr_face["emotion"]
-                # print(emotion)
+            # get statistics over all faces in the shot
+            # add edges for visible person (i.e., face clusters) to the shot
+            shot_cnt = {
+                "face": {"cnt": 0, "cnt_pos": [0, 0, 0]},
+                "actor": {"cnt": 0, "cnt_pos": [0, 0, 0]},
+            }
 
-                try:
-                    curr_face = next(f_iter)
-                except StopIteration:
-                    break
-
-            face_cnt = 0
-            face_cnt_pos = [0, 0, 0]
-            actor_cnt = 0
-            actor_cnt_pos = [0, 0, 0]
             for person_id, data in persons_shot.items():
-                # statistics over all faces
-                face_cnt += data["f_cnt"]
-                actor_cnt += data["a_cnt"]
+                # print(data)
+                for t in ["face", "actor"]:
+                    # statistics over all faces
+                    shot_cnt[t]["cnt"] += data[t]["cnt"] / num_frames
 
-                for i in range(len(data["f_cnt_pos"])):
-                    face_cnt_pos[i] += data["f_cnt_pos"][i]
-                    actor_cnt_pos[i] += data["a_cnt_pos"][i]
+                    for i in range(len(shot_cnt["face"]["cnt_pos"])):
+                        shot_cnt[t]["cnt_pos"][i] += data[t]["cnt_pos"][i] / num_frames
 
-                # add relation of person to shot
-                if face_cnt > 0:
+                    if data[t]["cnt"] < 1:
+                        continue
+
+                    # add relation of person to shot
                     G.add_edge(
+                        # edge (from, to)
                         f"person_{person_id}",
                         f"shot_{shot_idx}",
-                        weight=data["f_cnt"],
-                        face_count=data["f_cnt"],
-                        face_count_left=data["f_cnt_pos"][0],
-                        face_count_center=data["f_cnt_pos"][1],
-                        face_count_right=data["f_cnt_pos"][2],
+                        # face counts are divided by the number of frames
+                        # to get the percentage of visibility within the shot
+                        weight=data[t]["cnt"] / num_frames,
+                        face_count=data[t]["cnt"] / num_frames,
+                        face_count_left=data[t]["cnt_pos"][0] / num_frames,
+                        face_count_center=data[t]["cnt_pos"][1] / num_frames,
+                        face_count_right=data[t]["cnt_pos"][2] / num_frames,
+                        # attributes are divided by the number of times the face
+                        # is visible to get an average value within the shot
+                        face_emotion_angry=data[t]["emotion"][0] / data[t]["cnt"],
+                        face_emotion_disgust=data[t]["emotion"][1] / data[t]["cnt"],
+                        face_emotion_fear=data[t]["emotion"][2] / data[t]["cnt"],
+                        face_emotion_happy=data[t]["emotion"][3] / data[t]["cnt"],
+                        face_emotion_sad=data[t]["emotion"][4] / data[t]["cnt"],
+                        face_emotion_surprise=data[t]["emotion"][5] / data[t]["cnt"],
+                        face_emotion_neutral=data[t]["emotion"][6] / data[t]["cnt"],
+                        #
+                        face_headpose_yaw=data[t]["headpose"][0] / data[t]["cnt"],
+                        face_headpose_pitch=data[t]["headpose"][1] / data[t]["cnt"],
+                        face_headpose_roll=data[t]["headpose"][2] / data[t]["cnt"],
                     )
 
-                if actor_cnt > 0:
-                    G.add_edge(
-                        f"person_{person_id}",
-                        f"shot_{shot_idx}",
-                        weight=data["a_cnt"],
-                        actor_count=data["a_cnt"],
-                        actor_count_left=data["a_cnt_pos"][0],
-                        actor_count_center=data["a_cnt_pos"][1],
-                        actor_count_right=data["a_cnt_pos"][2],
-                    )
+            # face count in the shot
+            node_attr[f"{plugin}/face_count"] = shot_cnt["face"]["cnt"]
+            # relative position of the faces in the shot
+            node_attr[f"{plugin}/face_count_left"] = shot_cnt["face"]["cnt_pos"][0]
+            node_attr[f"{plugin}/face_count_center"] = shot_cnt["face"]["cnt_pos"][1]
+            node_attr[f"{plugin}/face_count_right"] = shot_cnt["face"]["cnt_pos"][2]
 
-            ## Face count in the shot
-            node_attr[f"{plugin}/face_count"] = face_cnt
-            ## Relative position of the faces in the shot
-            node_attr[f"{plugin}/face_count_left"] = face_cnt_pos[0]
-            node_attr[f"{plugin}/face_count_center"] = face_cnt_pos[1]
-            node_attr[f"{plugin}/face_count_right"] = face_cnt_pos[2]
-
-            ## Actor count in the shot
-            node_attr[f"{plugin}/actor_count"] = actor_cnt
-            ## Relative position of the actors in the shot
-            node_attr[f"{plugin}/actor_count_left"] = actor_cnt_pos[0]
-            node_attr[f"{plugin}/actor_count_center"] = actor_cnt_pos[1]
-            node_attr[f"{plugin}/actor_count_right"] = actor_cnt_pos[2]
+            # actor count in the shot
+            node_attr[f"{plugin}/actor_count"] = shot_cnt["actor"]["cnt"]
+            # relative position of the actors in the shot
+            node_attr[f"{plugin}/actor_count_left"] = shot_cnt["actor"]["cnt_pos"][0]
+            node_attr[f"{plugin}/actor_count_center"] = shot_cnt["actor"]["cnt_pos"][1]
+            node_attr[f"{plugin}/actor_count_right"] = shot_cnt["actor"]["cnt_pos"][2]
 
             node_attr[
                 "title"
-            ] += f"\nFace Count: {face_cnt}, Face Positions: {face_cnt_pos}"
+            ] += f"\nFace Count: {shot_cnt['face']['cnt']}, Face Positions: {shot_cnt['face']['cnt_pos']}"
 
     return G
 
@@ -300,6 +328,13 @@ def add_attributes_speakerturn(G, plugin, data, config):
         for node in G.nodes(data=True):
             _, node_attr = node
             if node_attr["type"] != "speaker_turn":
+                continue
+
+            # TODO Gullal: Why can it happen that the sentiment output has less entries as there are speaker turns?
+            if node_attr["index"] > len(data["output_data"]["sentence_wise"]) - 1:
+                logging.warning(
+                    "sentiment: Number of speaker turns does not match output data"
+                )
                 continue
 
             vector = data["output_data"]["sentence_wise"][node_attr["index"]]["vector"]
@@ -318,7 +353,7 @@ def add_attributes_speakerturn(G, plugin, data, config):
             node_attr[f"{plugin}/negative_ratio"] = round(vector[1], 2)
             node_attr[f"{plugin}/neutral_ratio"] = round(vector[2], 2)
             node_attr[f"{plugin}/prediction"] = prediction
-            ## Change Speaker Turn node color based on sentiment: greed - positive, red - negative, light blue - neutral
+            # Change Speaker Turn node color based on sentiment: greed - positive, red - negative, light blue - neutral
             if prediction == "positive":
                 node_attr["color"] = "#00ff00"
             elif prediction == "negative":
@@ -344,9 +379,19 @@ def add_attributes_speakerturn(G, plugin, data, config):
             cnt = 0
             for ind, key in config["labels"].items():
                 node_attr[f"{plugin}/{key}/count"] = pos_vector[ind]
-                node_attr[f"{plugin}/{key}/frequency"] = (
-                    pos_vector[ind] / node_attr["num_words"]
-                )
+
+                # TODO Gullal:
+                # After fixing sentiment and audiClf, I received a warning here caused by a division with 0
+                # So, I guess the reason is that you somehow did not store outputs for sentiment and audioClf
+                # if there was a speaker turn with 0 words
+                if node_attr["num_words"] > 0:
+                    node_attr[f"{plugin}/{key}/frequency"] = (
+                        pos_vector[ind] / node_attr["num_words"]
+                    )
+                else:
+                    logging.warning("pos: Speaker turn with 0 words")
+                    node_attr[f"{plugin}/{key}/frequency"] = 0
+
                 if cnt == 6:
                     node_attr["title"] += "\n"
                 node_attr["title"] += f"{key}: {pos_vector[ind]}, "
@@ -355,6 +400,13 @@ def add_attributes_speakerturn(G, plugin, data, config):
         for node in G.nodes(data=True):
             _, node_attr = node
             if node_attr["type"] != "speaker_turn":
+                continue
+
+            # TODO Gullal: Why can it happen that the audioClf output has less entries as there are speaker turns?
+            if node_attr["index"] > len(data["output_data"]) - 1:
+                logging.warning(
+                    "audioClf: Number of speaker turns does not match output data"
+                )
                 continue
 
             node_attr["title"] += "\n"
@@ -573,7 +625,7 @@ def get_speaker_turns(speaker_segments, speaker_seg_tol=3.0):
             if speaker_segments[i + 1]["start"] - end_time < speaker_seg_tol:
                 end_time = round(
                     speaker_segments[i + 1]["start"] - 0.04, 2
-                )  ## Similar to shots
+                )  # Similar to shots
 
         segment["start"] = start_time
         segment["end"] = end_time
@@ -612,7 +664,7 @@ def add_span_nodes(G, speaker_turns, shots, config, tolerance=3.0):
         end_time = interval["end"]
 
         if start_time >= current_end and (start_time - current_end) < tolerance:
-            ## For intervals where start time is more than current_end and under tolerance
+            # For intervals where start time is more than current_end and under tolerance
             span_start = current_end
             span_end = end_time
             if (
@@ -624,22 +676,22 @@ def add_span_nodes(G, speaker_turns, shots, config, tolerance=3.0):
             spans.append({"start": span_start, "end": span_end})
             current_end = span_end
         elif start_time >= current_end and (start_time - current_end) > tolerance:
-            ## Add filler span first if gap is greater than or equal to 3 seconds
+            # Add filler span first if gap is greater than or equal to 3 seconds
             span_start = current_end
             span_end = start_time
             spans.append(
                 {"start": span_start, "end": span_end}
-            )  ## Add the filler span first
+            )  # Add the filler span first
 
             span_start = start_time
             span_end = end_time
             spans.append(
                 {"start": span_start, "end": span_end}
-            )  ## Add current interval now
+            )  # Add current interval now
 
             current_end = span_end
         else:
-            ## For intervals ent time is greater than current (to handle shot intervals shorter than speaker turns)
+            # For intervals ent time is greater than current (to handle shot intervals shorter than speaker turns)
             if end_time > current_end:
                 spans.append({"start": current_end, "end": end_time})
                 current_end = end_time
@@ -671,7 +723,7 @@ def link_attributes_to_spans(G, spans, event_list, place_list):
     for i, span in enumerate(spans):
         start_time = span["start"]
         end_time = span["end"]
-        ## Strictly between the spans
+        # Strictly between the spans
         #         span_events = list(set([e for e, t in event_list if t > start_time and t < end_time]))
 
         #         for e in span_events:
@@ -775,7 +827,7 @@ def main():
     # export graph
     os.makedirs(args.output, exist_ok=True)
     vidname = os.path.basename(args.input)
-    outfile = os.path.join(args.output, f"{args.asr_type}_{vidname}.graphml")
+    outfile = os.path.join(args.output, f"{vidname}.graphml")
 
     logging.info(f"Store networkx graph to: {outfile}")
     nx.write_graphml(G, outfile)
@@ -794,10 +846,10 @@ def main():
                 }
             )
         )
-        outfile = os.path.join(args.output, f"{args.asr_type}_{vidname}.html")
+        outfile = os.path.join(args.output, f"{vidname}.html")
 
         logging.info(f"Store pyviz network to : {outfile}")
-        net.save_graph(os.path.join(args.output, f"{args.asr_type}_{vidname}.html"))
+        net.save_graph(os.path.join(args.output, f"{vidname}.html"))
 
 
 if __name__ == "__main__":
