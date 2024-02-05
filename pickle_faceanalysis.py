@@ -119,9 +119,6 @@ def main():
         face["headpose"] = headpose_lut[face["id"]]
         face["cluster_id"] = cluster_lut[face["id"]]
 
-        # print(face)
-        break
-
     # write pkl file
     with open(os.path.join(args.input, "face_analysis.pkl"), "wb") as f:
         output_dict = faceanalysis_pkl(faces_data)
