@@ -17,20 +17,14 @@ def headpose_pkl(
     """Converts outputs from 6DRepNet for head pose estimation to a pkl
 
     Args:
-        headposes (list<dict>): list (length n) containing the bbox and headpose of a face
-        times (list): time values for each headpose output (length n)
+        headposes (list<dict>): list (length n) containing the id and headpose of a face
+        times (lismmocr): time values for each headpose output (length n)
         args (Namespace): arguments the script has been executed with
 
     Returns:
         dict: dictionary ready to write in a .pkl
-            y (list<dict>): list of dicts containing the mmocr outputs per frame
-                bbox (dict): dictionary containing the bounding box for the face
-                    x (float): x-coordinate of the face normalized by the image width
-                    y (float): y-coordinate of the face normalized by the image height
-                    w (float): width of the face normalized by the image width
-                    h (float): height of the face normalized by the image height
-                    det_score (float): likelihood of the bounding box beeing a face
-
+            y (list<dict>): list of dicts containing the headpose outputs per frame
+                id (dict): face id according to the face_analysis.pkl input file
                 headpose (list<dict>): list (length n) of head poses including
                     pitch (float): pitch angle of the face (in degree)
                     yaw (float): yaw angle of the face (in degree)
