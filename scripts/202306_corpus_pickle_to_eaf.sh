@@ -14,6 +14,6 @@ do
         # echo $out_folder
         # echo %%%%
 
-        python pickle_to_eaf.py --input $in_folder --output $out_folder --speaker
+        python pickle_to_eaf.py --input $in_folder --output $out_folder --shots --speaker
     done
 done
