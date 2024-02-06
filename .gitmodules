@@ -16,3 +16,6 @@
 [submodule "unilm"]
 	path = unilm
 	url = git@github.com:microsoft/unilm.git
+[submodule "3DGazeNet"]
+	path = 3DGazeNet
+	url = git@github.com:FakeNarratives/3DGazeNet.git
