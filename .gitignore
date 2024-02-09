@@ -5,6 +5,7 @@ slurm*.out
 .vscode
 *.yml
 !graph_visualization/config.yml
+debug_results.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
