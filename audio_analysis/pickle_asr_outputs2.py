@@ -13,6 +13,7 @@ def parse_args():
     parser.add_argument("-f", "--file", type=str, required=True, help="Text file containing paths to videos as <media>/<video_name>")
     parser.add_argument("-i", "--inp_dir", type=str, default="/nfs/data/fakenarratives/202306_corpus/videos", help="Base directory for input videos")
     parser.add_argument("-o", "--out_dir", type=str, default="/nfs/data/fakenarratives/202306_corpus/results_pkl", help="Base directory for output results")
+    parser.add_argument("-r", "--rewrite", action="store_true", help="Rewrite existing files")
     args = parser.parse_args()
     return args
 
@@ -24,7 +25,7 @@ def read_video_paths(file_path, base_input_dir, base_output_dir):
 
 
 def get_model(device, config):
-    model = whisperx.load_model("large-v2", device=device, compute_type="float16")
+    model = whisperx.load_model("large-v3", device=device, compute_type="float16")
 
     diarize_model = whisperx.DiarizationPipeline(use_auth_token=config['huggingface']['token'], device=device)
 
@@ -126,7 +127,7 @@ def main():
 
         out_loc = output_paths[i]
 
-        if os.path.exists(os.path.join(out_loc, "asr_whisperx.pkl")):
+        if not args.rewrite:
             print("Already processed. Skipping...")
             continue
 
@@ -136,6 +137,7 @@ def main():
         video_feat_dict = transcribe_video(script_dir, input_path, model, diarize_model, 
                                             alignment_model, metadata, device, config)
 
+        print("Saving to", os.path.join(out_loc, "asr_whisperx.pkl"))
         with open(os.path.join(out_loc, "asr_whisperx.pkl"), "wb") as f:
             pickle.dump(video_feat_dict, f)
 

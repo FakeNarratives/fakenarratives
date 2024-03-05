@@ -74,8 +74,8 @@ def create_base_graph(args, config):
     speaker_segments = data["output_data"]["speaker_segments"]
 
     # create speaker turns
-    speaker_turns, speaker_segments = get_speaker_turns(
-        speaker_segments, args.speaker_seg_tol
+    speaker_turns = get_speaker_turns(
+        speaker_segments, gap=0.01
     )
 
     # add nodes for speaker turs
@@ -165,12 +165,17 @@ def add_attributes_shot(G, plugin, data, config, args):
                 continue
 
             node_attr["title"] += "\n"
-            for lab, prob in zip(
-                data["output_data"][node_attr["index"]]["labels"],
-                data["output_data"][node_attr["index"]]["probs"],
-            ):
-                node_attr[f"{plugin}/{lab}"] = round(prob, 2)
-                node_attr["title"] += f"{lab}: {round(prob,2)}, "
+            ## To handle None values added for cuts with no time difference
+            if "None" in data["output_data"][node_attr["index"]]["top3_label"]:
+                node_attr[f"{plugin}/None"] = 1
+                node_attr["title"] += f"None: 1, "
+            else:
+                for lab, prob in zip(
+                    data["output_data"][node_attr["index"]]["top3_label"],
+                    data["output_data"][node_attr["index"]]["top3_label_prob"],
+                ):
+                    node_attr[f"{plugin}/{lab}"] = round(prob, 2)
+                    node_attr["title"] += f"{lab}: {round(prob,2)}, "
     elif "face_analysis" in plugin:
         # get plugin fps and face information
         fps = data["plugins"][0]["parameters"]["fps"]
@@ -353,7 +358,7 @@ def add_attributes_speakerturn(G, plugin, data, config):
             node_attr[f"{plugin}/negative_ratio"] = round(vector[1], 2)
             node_attr[f"{plugin}/neutral_ratio"] = round(vector[2], 2)
             node_attr[f"{plugin}/prediction"] = prediction
-            # Change Speaker Turn node color based on sentiment: greed - positive, red - negative, light blue - neutral
+            # Change Speaker Turn node color based on sentiment: green - positive, red - negative, light blue - neutral
             if prediction == "positive":
                 node_attr["color"] = "#00ff00"
             elif prediction == "negative":
@@ -410,12 +415,17 @@ def add_attributes_speakerturn(G, plugin, data, config):
                 continue
 
             node_attr["title"] += "\n"
-            for lab, prob in zip(
-                data["output_data"][node_attr["index"]]["labels"],
-                data["output_data"][node_attr["index"]]["probs"],
-            ):
-                node_attr[f"{plugin}/{lab}"] = round(prob, 2)
-                node_attr["title"] += f"{lab}: {round(prob,2)}, "
+            ## To handle None values added for speaker turn with 0 words
+            if "None" in data["output_data"][node_attr["index"]]["top3_label"]:
+                node_attr[f"{plugin}/None"] = 1
+                node_attr["title"] += f"None: 1, "
+            else:
+                for lab, prob in zip(
+                    data["output_data"][node_attr["index"]]["top3_label"],
+                    data["output_data"][node_attr["index"]]["top3_label_prob"],
+                ):
+                    node_attr[f"{plugin}/{lab}"] = round(prob, 2)
+                    node_attr["title"] += f"{lab}: {round(prob,2)}, "
     elif "segmentClf" in plugin:
         for node in G.nodes(data=True):
             _, node_attr = node
@@ -429,13 +439,20 @@ def add_attributes_speakerturn(G, plugin, data, config):
             node_attr[f"{plugin}/gender/{gender}"] = gender_prob
             node_attr["title"] += f"\n{gender}: {gender_prob}"
 
-            emotion = data["output_data"][node_attr["index"]]["emotion_pred"]
-            emotion_prob = round(
-                data["output_data"][node_attr["index"]]["emotion_prob"], 2
-            )
-            node_attr[f"{plugin}/emotion/{emotion}"] = emotion_prob
-            node_attr["title"] += f", {emotion}: {emotion_prob}"
-
+            ## Check if object is not list
+            if not isinstance(data["output_data"][node_attr["index"]]["emotion_pred_top3"], list):
+                node_attr[f"{plugin}/{data['output_data'][node_attr['index']]['emotion_pred_top3']}"] = round(
+                    float(data["output_data"][node_attr["index"]]["emotion_prob_top3"]), 2
+                )
+                node_attr["title"] += f", {data['output_data'][node_attr['index']]['emotion_pred_top3']}: \
+                    {round(float(data['output_data'][node_attr['index']]['emotion_prob_top3']), 2)}, "
+            else:
+                for lab, prob in zip(
+                        data["output_data"][node_attr["index"]]["emotion_pred_top3"],
+                        data["output_data"][node_attr["index"]]["emotion_prob_top3"],
+                    ):
+                        node_attr[f"{plugin}/{lab}"] = round(prob, 2)
+                        node_attr["title"] += f", {lab}: {round(prob,2)}, "
     return G
 
 
@@ -559,8 +576,8 @@ def add_shot_relation(G, plugin, data, config):
 
 def add_shot_nodes(G, data, config):
     for i, shot in enumerate(data):
-        start_time = shot["start"]
-        end_time = shot["end"]
+        start_time = round(shot["start"], 2)
+        end_time = round(shot["end"], 2)
 
         label = f"Shot {i}"
         title = f"Start: {start_time}, End: {end_time}"
@@ -586,8 +603,8 @@ def add_shot_nodes(G, data, config):
 
 def add_speakerturn_nodes(G, speaker_turns, config):
     for i, turn in enumerate(speaker_turns):
-        start_time = turn["start"]
-        end_time = turn["end"]
+        start_time = round(turn["start"], 2)
+        end_time = round(turn["end"], 2)
 
         speaker_label = turn["speaker"] if turn["speaker"] else "None"
         num_words = turn["n_words"]
@@ -617,32 +634,65 @@ def add_speakerturn_nodes(G, speaker_turns, config):
     return G
 
 
-def get_speaker_turns(speaker_segments, speaker_seg_tol=3.0):
-    for i, segment in enumerate(speaker_segments):
-        start_time = round(segment["start"], 2)
-        end_time = round(segment["end"], 2)
-        if i < len(speaker_segments) - 1:
-            if speaker_segments[i + 1]["start"] - end_time < speaker_seg_tol:
-                end_time = round(
-                    speaker_segments[i + 1]["start"] - 0.04, 2
-                )  # Similar to shots
+# def get_speaker_turns(speaker_segments, speaker_seg_tol=3.0):
+#     for i, segment in enumerate(speaker_segments):
+#         start_time = round(segment["start"], 2)
+#         end_time = round(segment["end"], 2)
+#         if i < len(speaker_segments) - 1:
+#             if speaker_segments[i + 1]["start"] - end_time < speaker_seg_tol:
+#                 end_time = round(
+#                     speaker_segments[i + 1]["start"] - 0.04, 2
+#                 )  # Similar to shots
 
-        segment["start"] = start_time
-        segment["end"] = end_time
-        segment["n_words"] = len(segment["text"].split())
+#         segment["start"] = start_time
+#         segment["end"] = end_time
+#         segment["n_words"] = len(segment["text"].split())
+
+#     speaker_turns = []
+#     current_span = None
+#     for segment in speaker_segments:
+#         if current_span is None or segment["speaker"] != current_span["speaker"]:
+#             current_span = segment.copy()
+#             speaker_turns.append(current_span)
+#         else:
+#             current_span["end"] = segment["end"]
+#             current_span["text"] += " " + segment["text"].strip()
+#             current_span["n_words"] += segment["n_words"]
+
+#     return speaker_turns, speaker_segments
+
+def get_speaker_turns(speaker_segments, gap=0.01):
+    speaker_segments = sorted(speaker_segments, key=lambda x: x["start"])
 
     speaker_turns = []
-    current_span = None
-    for segment in speaker_segments:
-        if current_span is None or segment["speaker"] != current_span["speaker"]:
-            current_span = segment.copy()
-            speaker_turns.append(current_span)
-        else:
-            current_span["end"] = segment["end"]
-            current_span["text"] += " " + segment["text"].strip()
-            current_span["n_words"] += segment["n_words"]
 
-    return speaker_turns, speaker_segments
+    for segment in speaker_segments:
+
+        segment["n_words"] = len(segment["text"].split()) if "text" in segment else 0
+
+        if "speaker" not in segment or segment["speaker"] is None:
+            segment["speaker"] = "Unknown"
+
+        if not speaker_turns:
+            speaker_turns.append(segment.copy())
+        else:
+            last_turn = speaker_turns[-1]
+
+            ## Checking if current segment belongs to same speaker
+            if last_turn["speaker"] == segment["speaker"]:
+                # last_turn["end"] = max(last_turn["end"], segment["end"]) # If no gap to be add
+                last_turn["end"] = max(last_turn["end"], segment["end"] - gap)   # Just to ensure some gap between turns
+
+                last_turn["text"] += " " + segment["text"].strip()
+                last_turn["n_words"] += len(segment["text"].split())
+            else:
+            ## Treat otherwise as a new speaker turn
+                if segment["start"] - last_turn["end"] < gap:       ## Comment if no gap to add
+                    segment["start"] = last_turn["end"] + gap
+                
+                speaker_turns.append(segment.copy())
+    
+    return speaker_turns
 
 
 def add_span_nodes(G, speaker_turns, shots, config, tolerance=3.0):
@@ -691,7 +741,7 @@ def add_span_nodes(G, speaker_turns, shots, config, tolerance=3.0):
 
             current_end = span_end
         else:
-            # For intervals ent time is greater than current (to handle shot intervals shorter than speaker turns)
+            # For intervals end time is greater than current (to handle shot intervals shorter than speaker turns)
             if end_time > current_end:
                 spans.append({"start": current_end, "end": end_time})
                 current_end = end_time

@@ -13,6 +13,7 @@ def parse_args():
     parser.add_argument("-f", "--file", type=str, required=True, help="Text file containing paths to video transcriptions as <media>/<video_name>")
     parser.add_argument("-i", "--inp_dir", type=str, default="/nfs/data/fakenarratives/202306_corpus/results_pkl", help="Base directory for input transcriptions")
     parser.add_argument("-o", "--out_dir", type=str, default="/nfs/data/fakenarratives/202306_corpus/results_pkl", help="Base directory for output results")
+    parser.add_argument("-r", "--rewrite", action="store_true", help="Rewrite existing files")
     args = parser.parse_args()
     return args
 
@@ -28,7 +29,7 @@ def get_model():
     return nlp, sen_model
 
 
-def perform_ner(video_path, speaker_segments, nlp, ner_dict, event_set):
+def perform_ner(video_path, speaker_turns, nlp, ner_dict, event_set):
     """
     Takes ASR segments and performs NER on text segments
 
@@ -54,7 +55,6 @@ def perform_ner(video_path, speaker_segments, nlp, ner_dict, event_set):
                         "output_data": {"speakerturn_wise": {}, "ner_labelmap": ner_dict}
                         }
     
-    speaker_turns = get_speaker_turns(speaker_segments)
     ## Speaker-turn wise NER Tags
     speaker_turn_ner = []
     for segment in speaker_turns:
@@ -76,7 +76,7 @@ def perform_ner(video_path, speaker_segments, nlp, ner_dict, event_set):
     return video_feat_dict
 
 
-def perform_sentiment(video_path, speaker_segments, nlp, sen_model, sent_dict):
+def perform_sentiment(video_path, speaker_turns, nlp, sen_model, sent_dict):
     """
     Takes ASR segments and performs sentiment analysis of text segments
 
@@ -100,8 +100,6 @@ def perform_sentiment(video_path, speaker_segments, nlp, sen_model, sent_dict):
                         "video_file":  video_path.replace("results_pkl", "videos"),
                         "output_data": {"sentence_wise": {}, "speakerturn_wise": {}, "sent_labelmap": sent_dict}
                         }
-    
-    speaker_turns = get_speaker_turns(speaker_segments)
 
     # Sentence-wise sentiment aggregation over speaker turns
     sentwise_sentiments = []
@@ -134,7 +132,7 @@ def perform_sentiment(video_path, speaker_segments, nlp, sen_model, sent_dict):
     return video_feat_dict
 
 
-def perform_pos(video_path, speaker_segments, nlp, pos_dict):
+def perform_pos(video_path, speaker_turns, nlp, pos_dict):
     """
     Takes ASR segments and performs POS tagging of text segments
 
@@ -156,29 +154,29 @@ def perform_pos(video_path, speaker_segments, nlp, pos_dict):
                         "commit_id": "a85cce6816f40fa03ab06f6497c7d65ba1244a33",
                         "parameters": "default",
                         "video_file":  video_path.replace("results_pkl", "videos"),
-                        "output_data": {"speakerseg_wise": {}, "speakerturn_wise": {}, "pos_labelmap": pos_dict}
+                        "output_data": {"speakerturn_wise": {}, "pos_labelmap": pos_dict}
                         }
     
-    ## Speaker-Segment-wise POS Tags
-    speaker_seg_pos = []
-    for segment in speaker_segments:
-        seg_doc = nlp(segment["text"])
-        temp_pos = []
-        pos_vector = np.zeros(14)
-        for sent in seg_doc.sentences:    
-            for word in sent.words:
-                temp_pos.append((word.text, word.upos, word.xpos, word.start_char, word.end_char))
-                if word.upos in pos_dict:
-                    pos_vector[pos_dict[word.upos]] += 1
-                else:
-                    pos_vector[pos_dict['X']] += 1
+    # ## Speaker-Segment-wise POS Tags
+    # speaker_seg_pos = []
+    # for segment in speaker_segments:
+    #     seg_doc = nlp(segment["text"])
+    #     temp_pos = []
+    #     pos_vector = np.zeros(14)
+    #     for sent in seg_doc.sentences:    
+    #         for word in sent.words:
+    #             temp_pos.append((word.text, word.upos, word.xpos, word.start_char, word.end_char))
+    #             if word.upos in pos_dict:
+    #                 pos_vector[pos_dict[word.upos]] += 1
+    #             else:
+    #                 pos_vector[pos_dict['X']] += 1
     
-        speaker_seg_pos.append({"start": segment["start"], "end": segment["end"],
-                                "speaker": segment["speaker"] if "speaker" in segment else "Unknown", 
-                                "tags": temp_pos, "vector": pos_vector})
+    #     speaker_seg_pos.append({"start": segment["start"], "end": segment["end"],
+    #                             "speaker": segment["speaker"] if "speaker" in segment else "Unknown", 
+    #                             "tags": temp_pos, "vector": pos_vector})
+    # video_feat_dict["output_data"]["speakerseg_wise"] = speaker_seg_pos
     
     ## Speaker-Turn-wise POS Tags
-    speaker_turns = get_speaker_turns(speaker_segments)
     spkturn_pos = []
     for segment in speaker_turns:
         seg_doc = nlp(segment["text"])
@@ -195,7 +193,7 @@ def perform_pos(video_path, speaker_segments, nlp, pos_dict):
         spkturn_pos.append({"start": segment["start"], "end": segment["end"],
                                 "speaker": segment["speaker"], "tags": temp_pos, "vector": pos_vector})
         
-    video_feat_dict["output_data"]["speakerseg_wise"] = speaker_seg_pos
+
     video_feat_dict["output_data"]["speakerturn_wise"] = spkturn_pos
 
     return video_feat_dict
@@ -232,40 +230,54 @@ def main():
         if not os.path.exists(out_loc):
             os.makedirs(out_loc)
 
-        if os.path.exists(os.path.join(out_loc, "whisper_ner.pkl")):
+        if not args.rewrite:
             print("Already processed. Skipping...")
             continue
 
         whisper_segments = pickle.load(open(os.path.join(input_path, "asr_whisper.pkl"), "rb"))["output_data"]["speaker_segments"]
-        whisperx_segments = pickle.load(open(os.path.join(input_path, "asr_whisperx.pkl"), "rb"))["output_data"]["speaker_segments"]
+        # whisperx_segments = pickle.load(open(os.path.join(input_path, "asr_whisperx.pkl"), "rb"))["output_data"]["speaker_segments"]
         # asr_dict = add_transcript_boundaries(asr_dict)
+        
+        speaker_turns = get_speaker_turns(whisper_segments)
 
-        # sentiment_feat_dict = perform_sentiment(input_path, whisper_segments, nlp, sen_model, sent_dict)
+        sentiment_feat_dict = perform_sentiment(input_path, speaker_turns, nlp, sen_model, sent_dict)
         # sentiment_feat_dict2 = perform_sentiment(input_path, whisperx_segments, nlp, sen_model, sent_dict)
+        
+        print("Number of sentiment features:", len(sentiment_feat_dict["output_data"]["speakerturn_wise"]), ", Number of speaker turns:", len(speaker_turns))
+        assert len(sentiment_feat_dict["output_data"]["speakerturn_wise"]) == len(speaker_turns)
 
-        # pos_feat_dict = perform_pos(input_path, whisper_segments, nlp, pos_dict)
+        pos_feat_dict = perform_pos(input_path, speaker_turns, nlp, pos_dict)
         # pos_feat_dict2 = perform_pos(input_path, whisperx_segments, nlp, pos_dict)
+        
+        print("Number of PoS features:", len(pos_feat_dict["output_data"]["speakerturn_wise"]), ", Number of speaker turns:", len(speaker_turns))
+        assert len(pos_feat_dict["output_data"]["speakerturn_wise"]) == len(speaker_turns)
 
-        ner_feat_dict = perform_ner(input_path, whisper_segments, nlp, ner_dict, event_set)
-        ner_feat_dict2 = perform_ner(input_path, whisperx_segments, nlp, ner_dict, event_set)
+        ner_feat_dict = perform_ner(input_path, speaker_turns, nlp, ner_dict, event_set)
+        # ner_feat_dict2 = perform_ner(input_path, whisperx_segments, nlp, ner_dict, event_set)
+        
+        print("Number of NER features:", len(ner_feat_dict["output_data"]["speakerturn_wise"]), ", Number of speaker turns:", len(speaker_turns))
+        assert len(ner_feat_dict["output_data"]["speakerturn_wise"]) == len(speaker_turns)
 
-        # with open(os.path.join(out_loc, "whisper_sentiment.pkl"), "wb") as output_file:
-        #     pickle.dump(sentiment_feat_dict, output_file)
+        print("Saving to", os.path.join(out_loc, "whisper_sentiment.pkl"))
+        with open(os.path.join(out_loc, "whisper_sentiment.pkl"), "wb") as output_file:
+            pickle.dump(sentiment_feat_dict, output_file)
         
         # with open(os.path.join(out_loc, "whisperx_sentiment.pkl"), "wb") as output_file:
         #     pickle.dump(sentiment_feat_dict2, output_file)
 
-        # with open(os.path.join(out_loc, "whisper_pos.pkl"), "wb") as output_file:
-        #     pickle.dump(pos_feat_dict, output_file)
+        print("Saving to", os.path.join(out_loc, "whisper_pos.pkl"))
+        with open(os.path.join(out_loc, "whisper_pos.pkl"), "wb") as output_file:
+            pickle.dump(pos_feat_dict, output_file)
         
         # with open(os.path.join(out_loc, "whisperx_pos.pkl"), "wb") as output_file:
         #     pickle.dump(pos_feat_dict2, output_file)
 
+        print("Saving to", os.path.join(out_loc, "whisper_ner.pkl"))
         with open(os.path.join(out_loc, "whisper_ner.pkl"), "wb") as output_file:
             pickle.dump(ner_feat_dict, output_file)
         
-        with open(os.path.join(out_loc, "whisperx_ner.pkl"), "wb") as output_file:
-            pickle.dump(ner_feat_dict2, output_file)
+        # with open(os.path.join(out_loc, "whisperx_ner.pkl"), "wb") as output_file:
+        #     pickle.dump(ner_feat_dict2, output_file)
 
         print()
 

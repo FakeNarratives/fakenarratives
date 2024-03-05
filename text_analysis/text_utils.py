@@ -370,36 +370,39 @@ def get_stanza_ner_annotations(proc_text):
     return named_entities
 
 
-def get_speaker_turns(speaker_segments, speaker_seg_tol=3):
-    for i, segment in enumerate(speaker_segments):
-        start_time = round(segment["start"], 2)
-        end_time = round(segment["end"], 2)
-        if i < len(speaker_segments)-1:
-            if speaker_segments[i+1]["start"] - end_time < speaker_seg_tol:
-                end_time = round(speaker_segments[i+1]["start"]- 0.04, 2)     ## Similar to shots
-                
-        segment["start"] = start_time
-        segment["end"] = end_time
-        segment["n_words"] = len(segment["text"].split())
-        
-        if "speaker" not in segment:
+def get_speaker_turns(speaker_segments, gap=0.01):
+    speaker_segments = sorted(speaker_segments, key=lambda x: x["start"])
+
+    speaker_turns = []
+
+    for segment in speaker_segments:
+
+        segment["n_words"] = len(segment["text"].split()) if "text" in segment else 0
+
+        if "speaker" not in segment or segment["speaker"] is None:
             segment["speaker"] = "Unknown"
 
-        if segment["speaker"] == None:
-            segment["speaker"] = "Unknown"
-                
-    speaker_turns = []
-    current_span = None
-    for segment in speaker_segments:
-        if current_span is None or segment['speaker'] != current_span['speaker']:
-            current_span = segment.copy()
-            speaker_turns.append(current_span)
+        if not speaker_turns:
+            speaker_turns.append(segment.copy())
         else:
-            current_span['end'] = segment['end']
-            current_span['text'] += ' ' + segment['text'].strip()
-            current_span['n_words'] += segment['n_words']
-        
+            last_turn = speaker_turns[-1]
+
+            ## Checking if current segment belongs to same speaker
+            if last_turn["speaker"] == segment["speaker"]:
+                # last_turn["end"] = max(last_turn["end"], segment["end"]) # If no gap to be add
+                last_turn["end"] = max(last_turn["end"], segment["end"] - gap)   # Just to ensure some gap between turns
+
+                last_turn["text"] += " " + segment["text"].strip()
+                last_turn["n_words"] += len(segment["text"].split())
+            else:
+            ## Treat otherwise as a new speaker turn
+                if segment["start"] - last_turn["end"] < gap:       ## Comment if no gap to add
+                    segment["start"] = last_turn["end"] + gap
+                
+                speaker_turns.append(segment.copy())
+    
     return speaker_turns
+
 
 def add_transcript_boundaries(asr_dict):    ## Segment boundaries are needed to match stanza NERs with Wikifier annotations
     ## Load ASR transcript and add start/end characters of segments

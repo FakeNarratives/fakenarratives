@@ -4,11 +4,9 @@ import pickle
 import json
 import argparse
 import tempfile
-import numpy as np
-import torch
 import torchaudio
-import torch.nn.functional as F
 from moviepy.editor import VideoFileClip
+from audio_utils import *
 sys.path.append("unilm/beats/")
 from BEATs import BEATs, BEATsConfig
 
@@ -18,6 +16,7 @@ def parse_args():
     parser.add_argument("-f", "--file", type=str, required=True, help="Text file containing paths to videos as <media>/<video_name>")
     parser.add_argument("-i", "--inp_dir", type=str, default="/nfs/data/fakenarratives/202306_corpus/videos", help="Base directory for input videos")
     parser.add_argument("-o", "--out_dir", type=str, default="/nfs/data/fakenarratives/202306_corpus/results_pkl", help="Base directory for output results")
+    parser.add_argument("-r", "--rewrite", action="store_true", help="Rewrite existing files")
     args = parser.parse_args()
     return args
 
@@ -50,27 +49,29 @@ def get_models(device, script_dir):
     return BEATs_model, label_map
 
 
-def chop_audio_segments(waveform, sampling_rate, window):
-    samples_per_segment = window * sampling_rate  # 10 seconds * 16000 samples/second
-    num_full_segments = waveform.shape[0] // samples_per_segment
-    segments = []
-    ## Full segments
-    for i in range(num_full_segments):
-        start = i * samples_per_segment
-        end = start + samples_per_segment
-        segment = waveform[start:end]
-        segments.append(segment.numpy())
+def aggregate_probs(top3_label_probs):
+    """
+    Aggregates probabilities of each label across segments
+    """
+    ## Accumulate probabilities for each label
+    label_probs = {}
+    for labels, probs in top3_label_probs:
+        for l, p in zip(labels, probs):
+            if l in label_probs:
+                label_probs[l] += p
+            else:
+                label_probs[l] = p
+    
+    ## Normalize probabilities
+    total_prob = sum(label_probs.values())
+    for l in label_probs:
+        label_probs[l] /= total_prob
+        
+    ## Get top 3 labels
+    top3_label_probs = sorted(label_probs.items(), key=lambda x: x[1], reverse=True)[:3]
 
-    # Add the remaining segment if it exists
-    if waveform.shape[0] % samples_per_segment != 0:
-        start = num_full_segments * samples_per_segment
-        end = waveform.shape[0] 
-        segment = waveform[start:end]
-        num_zeroes = samples_per_segment - (end - start)
-        padded_segment = F.pad(segment, (0, num_zeroes))
-        segments.append(padded_segment.numpy())
+    return top3_label_probs
 
-    return segments
 
 
 def classify_shot_segments(script_dir, video_path, video, shots, 
@@ -110,14 +111,16 @@ def classify_shot_segments(script_dir, video_path, video, shots,
 
     shot_predictions = []
     for shot in shots:
-        start_time = shot["start"]
-        end_time = shot["end"]
-        if (start_time - end_time) == 0:
+        start_time, end_time = shot["start"], shot["end"]
+        if end_time <= start_time:
+            
+            shot_predictions.append({"start": start_time, "end": end_time, "top3_label": "None", "top3_label_prob": "None"})
+            
             continue
 
         audio_data = video.audio.subclip(start_time, end_time)
         with tempfile.NamedTemporaryFile(dir=os.path.join(script_dir, "temp/"), suffix=".wav", delete=True) as tmp:
-            audio_data.write_audiofile(tmp.name, fps=required_sr)
+            audio_data.write_audiofile(tmp.name, fps=required_sr, verbose=False, logger=None)
             waveform, _ = torchaudio.load(tmp.name)
             if waveform.shape[0] > 1:  # if stereo
                 waveform = waveform.mean(dim=0)  # convert to mono
@@ -132,10 +135,15 @@ def classify_shot_segments(script_dir, video_path, video, shots,
             with torch.no_grad():
                 probs = beats_model.extract_features(audio_segments, padding_mask=padding_mask)[0]
             
+            top3_label_probs = []
             for i, (top3_label_prob, top3_label_idx) in enumerate(zip(*probs.topk(k=3))):
-                top3_label = [label_map[label_idx.item()] for label_idx in top3_label_idx]
-
-                shot_predictions.append({"start": start_time, "end": end_time, "top3_label": top3_label, "top3_label_prob": top3_label_prob.tolist()})
+                top3_label_probs.append(([label_map[label_idx.item()] for label_idx in top3_label_idx], top3_label_prob.tolist()))        
+                
+            if len(top3_label_probs) > 1:
+                top3_label_probs = aggregate_probs(top3_label_probs)
+                shot_predictions.append({"start": start_time, "end": end_time, "top3_label": [l for l, _ in top3_label_probs], "top3_label_prob": [p for _, p in top3_label_probs]})
+            else:
+                shot_predictions.append({"start": start_time, "end": end_time, "top3_label": top3_label_probs[0][0], "top3_label_prob": top3_label_probs[0][1]})
         
     video_feat_dict["output_data"] = shot_predictions
 
@@ -177,17 +185,22 @@ def classify_speaker_segments(script_dir, video_path, video, speaker_segments,
     
     ## The model is trained using 16kHz audio
     required_sr = 16000
+    
+    ## Merge speaker segments with the same speaker ID, called speaker turns
+    speaker_segments = get_speaker_turns(speaker_segments)
 
     segment_predictions = []
     for segment in speaker_segments:
         start_time = segment["start"]
         end_time = segment["end"]
-        if (start_time - end_time) == 0:
+        if end_time <= start_time:
+            
+            segment_predictions.append({"start": start_time, "end": end_time, "top3_label": "None", "top3_label_prob": "None"})
             continue
 
         audio_data = video.audio.subclip(start_time, end_time)
         with tempfile.NamedTemporaryFile(dir=os.path.join(script_dir, "temp/"), suffix=".wav", delete=True) as tmp:
-            audio_data.write_audiofile(tmp.name, fps=required_sr)
+            audio_data.write_audiofile(tmp.name, fps=required_sr, verbose=False, logger=None)
             waveform, _ = torchaudio.load(tmp.name)
             if waveform.shape[0] > 1:  # if stereo
                 waveform = waveform.mean(dim=0)  # convert to mono
@@ -202,20 +215,27 @@ def classify_speaker_segments(script_dir, video_path, video, speaker_segments,
             with torch.no_grad():
                 probs = beats_model.extract_features(audio_segments, padding_mask=padding_mask)[0]
             
+            top3_label_probs = []
             for i, (top3_label_prob, top3_label_idx) in enumerate(zip(*probs.topk(k=3))):
-                top3_label = [label_map[label_idx.item()] for label_idx in top3_label_idx]
-
-                segment_predictions.append({"start": start_time, "end": end_time, "top3_label": top3_label, "top3_label_prob": top3_label_prob.tolist()})
+                top3_label_probs.append(([label_map[label_idx.item()] for label_idx in top3_label_idx], top3_label_prob.tolist()))        
+                
+            if len(top3_label_probs) > 1:
+                top3_label_probs = aggregate_probs(top3_label_probs)
+                segment_predictions.append({"start": start_time, "end": end_time, "top3_label": [l for l, _ in top3_label_probs], "top3_label_prob": [p for _, p in top3_label_probs]})
+            else:
+                segment_predictions.append({"start": start_time, "end": end_time, "top3_label": top3_label_probs[0][0], "top3_label_prob": top3_label_probs[0][1]})
         
     video_feat_dict["output_data"] = segment_predictions
 
-    return video_feat_dict
+    return video_feat_dict, speaker_segments
 
 
 def main():
     args = parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    set_seeds(42)
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -236,9 +256,9 @@ def main():
         if not os.path.exists(out_loc):
             os.makedirs(out_loc)
 
-        # if os.path.exists(os.path.join(out_loc, "shot_audio_classification_beats.pkl")):
-        #     print("Already processed. Skipping...")
-        #     continue
+        if not args.rewrite:
+            print("Already processed. Skipping...")
+            continue
 
         shot_segments = pickle.load(open(os.path.join(out_loc, "transnet_shotdetection.pkl"), "rb"))["output_data"]["shots"]
         whisper_spk_segments = pickle.load(open(os.path.join(out_loc, "asr_whisper.pkl"), "rb"))["output_data"]["speaker_segments"]
@@ -249,18 +269,30 @@ def main():
         video_feat_dict = classify_shot_segments(script_dir, input_path, video, shot_segments, 
                                                     beats_model, label_map, device)
         
-        video_feat_dict2 = classify_speaker_segments(script_dir, input_path, video, whisper_spk_segments, 
+        print("Number of features:", len(video_feat_dict["output_data"]), ", Number of shot segments:", len(shot_segments))
+        assert len(video_feat_dict["output_data"]) == len(shot_segments)
+        
+        video_feat_dict2, speaker_segments2 = classify_speaker_segments(script_dir, input_path, video, whisper_spk_segments, 
                                                     beats_model, label_map, device)
         
-        video_feat_dict3 = classify_speaker_segments(script_dir, input_path, video, whisperx_spk_segments,
+        print("Number of features:", len(video_feat_dict2["output_data"]), ", Number of speaker turns:", len(speaker_segments2))
+        assert len(video_feat_dict2["output_data"]) == len(speaker_segments2)
+        
+        video_feat_dict3, speaker_segments3 = classify_speaker_segments(script_dir, input_path, video, whisperx_spk_segments,
                                                     beats_model, label_map, device)
+        
+        print("Number of features:", len(video_feat_dict3["output_data"]), ", Number of speaker turns:", len(speaker_segments3))
+        assert len(video_feat_dict3["output_data"]) == len(speaker_segments3)
 
+        print("Saving to", os.path.join(out_loc, "shot_audioClf.pkl"))
         with open(os.path.join(out_loc, "shot_audioClf.pkl"), "wb") as f:
             pickle.dump(video_feat_dict, f)
 
+        print("Saving to", os.path.join(out_loc, "whisperspeaker_audioClf.pkl"))
         with open(os.path.join(out_loc, "whisperspeaker_audioClf.pkl"), "wb") as f:
             pickle.dump(video_feat_dict2, f)
         
+        print("Saving to", os.path.join(out_loc, "whisperxspeaker_audioClf.pkl"))
         with open(os.path.join(out_loc, "whisperxspeaker_audioClf.pkl"), "wb") as f:
             pickle.dump(video_feat_dict3, f)
 

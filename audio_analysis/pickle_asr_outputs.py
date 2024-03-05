@@ -16,6 +16,7 @@ def parse_args():
     parser.add_argument("-f", "--file", type=str, required=True, help="Text file containing paths to videos as <media>/<video_name>")
     parser.add_argument("-i", "--inp_dir", type=str, default="/nfs/data/fakenarratives/202306_corpus/videos", help="Base directory for input videos")
     parser.add_argument("-o", "--out_dir", type=str, default="/nfs/data/fakenarratives/202306_corpus/results_pkl", help="Base directory for output results")
+    parser.add_argument("-r", "--rewrite", action="store_true", help="Rewrite existing files")
     args = parser.parse_args()
     return args
 
@@ -112,7 +113,7 @@ def main():
 
         out_loc = output_paths[i]
 
-        if os.path.exists(os.path.join(out_loc, "asr_whisper.pkl")):
+        if not args.rewrite:
             print("Already processed. Skipping...")
             continue
 
@@ -121,6 +122,7 @@ def main():
 
         video_feat_dict = transcribe_video(script_dir, input_path, model, pipeline)
 
+        print("Saving to", os.path.join(out_loc, "asr_whisper.pkl"))
         with open(os.path.join(out_loc, "asr_whisper.pkl"), "wb") as f:
             pickle.dump(video_feat_dict, f)
 
