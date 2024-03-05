@@ -114,7 +114,7 @@ def classify_shot_segments(script_dir, video_path, video, shots,
         start_time, end_time = shot["start"], shot["end"]
         if end_time <= start_time:
             
-            shot_predictions.append({"start": start_time, "end": end_time, "top3_label": "None", "top3_label_prob": "None"})
+            shot_predictions.append({"start": start_time, "end": end_time, "top3_label": None, "top3_label_prob": None})
             
             continue
 
@@ -195,7 +195,7 @@ def classify_speaker_segments(script_dir, video_path, video, speaker_segments,
         end_time = segment["end"]
         if end_time <= start_time:
             
-            segment_predictions.append({"start": start_time, "end": end_time, "top3_label": "None", "top3_label_prob": "None"})
+            segment_predictions.append({"start": start_time, "end": end_time, "top3_label": None, "top3_label_prob": None})
             continue
 
         audio_data = video.audio.subclip(start_time, end_time)

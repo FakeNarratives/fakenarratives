@@ -85,7 +85,8 @@ def classify_asr_segments(script_dir, video_path, video, speaker_segments,
         if seg["end"] <= seg["start"]:
             ## "Skipping segment with same start_sample and end_sample")
             speaker_segment_preds.append({"id": str(id), "start": seg["start"], "end": seg["end"], 
-                                          "speaker": seg["speaker"], "gender": "None", "emotion": "None"})
+                                          "speaker": seg["speaker"], "gender_pred": None, "gender_prob": None, 
+                                            "emotion_pred_top3": None, "emotion_prob_top3": None})
             continue
         
         

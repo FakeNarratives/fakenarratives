@@ -167,8 +167,8 @@ def add_attributes_shot(G, plugin, data, config, args):
             node_attr["title"] += "\n"
             ## To handle None values added for cuts with no time difference
             if "None" in data["output_data"][node_attr["index"]]["top3_label"]:
-                node_attr[f"{plugin}/None"] = 1
-                node_attr["title"] += f"None: 1, "
+                node_attr[f"{plugin}"] = "None"
+                node_attr["title"] += f"{plugin}: None, "
             else:
                 for lab, prob in zip(
                     data["output_data"][node_attr["index"]]["top3_label"],
@@ -342,65 +342,73 @@ def add_attributes_speakerturn(G, plugin, data, config):
                 )
                 continue
 
-            vector = data["output_data"]["sentence_wise"][node_attr["index"]]["vector"]
-            proportion_sentiment = config["labels"][np.argmax(vector)]
-            proportion_max_value = round(np.max(vector), 2)
-            prediction = data["output_data"]["speakerturn_wise"][node_attr["index"]][
-                "pred"
-            ]
-            max_value = round(
-                np.max(
-                    data["output_data"]["speakerturn_wise"][node_attr["index"]]["prob"]
-                ),
-                2,
-            )
-            node_attr[f"{plugin}/positive_ratio"] = round(vector[0], 2)
-            node_attr[f"{plugin}/negative_ratio"] = round(vector[1], 2)
-            node_attr[f"{plugin}/neutral_ratio"] = round(vector[2], 2)
-            node_attr[f"{plugin}/prediction"] = prediction
-            # Change Speaker Turn node color based on sentiment: green - positive, red - negative, light blue - neutral
-            if prediction == "positive":
-                node_attr["color"] = "#00ff00"
-            elif prediction == "negative":
-                node_attr["color"] = "#ff0000"
-            else:
-                node_attr["color"] = "#00ffff"
 
-            node_attr[
-                "title"
-            ] += f"\nOverall Sentiment: {prediction} [{max_value}], \
-                                    Proportion Sentiment: {proportion_sentiment} [{proportion_max_value}]"
+            if data["output_data"]["sentence_wise"][node_attr["index"]]["vector"] is None:
+                node_attr[f"{plugin}"] = "None"
+                node_attr["title"] += f"{plugin}: None"
+            else:
+                vector = data["output_data"]["sentence_wise"][node_attr["index"]]["vector"]
+                proportion_sentiment = config["labels"][np.argmax(vector)]
+                proportion_max_value = round(np.max(vector), 2)
+                prediction = data["output_data"]["speakerturn_wise"][node_attr["index"]][
+                    "pred"
+                ]
+                max_value = round(
+                    np.max(
+                        data["output_data"]["speakerturn_wise"][node_attr["index"]]["prob"]
+                    ),
+                    2,
+                )
+                node_attr[f"{plugin}/positive_ratio"] = round(vector[0], 2)
+                node_attr[f"{plugin}/negative_ratio"] = round(vector[1], 2)
+                node_attr[f"{plugin}/neutral_ratio"] = round(vector[2], 2)
+                node_attr[f"{plugin}/prediction"] = prediction
+                # Change Speaker Turn node color based on sentiment: green - positive, red - negative, light blue - neutral
+                if prediction == "positive":
+                    node_attr["color"] = "#00ff00"
+                elif prediction == "negative":
+                    node_attr["color"] = "#ff0000"
+                else:
+                    node_attr["color"] = "#00ffff"
+
+                node_attr[
+                    "title"
+                ] += f"\nOverall Sentiment: {prediction} [{max_value}], \
+                                        Proportion Sentiment: {proportion_sentiment} [{proportion_max_value}]"
     elif "pos" in plugin:
         for node in G.nodes(data=True):
             _, node_attr = node
             if node_attr["type"] != "speaker_turn":
                 continue
 
-            pos_vector = data["output_data"]["speakerturn_wise"][node_attr["index"]][
-                "vector"
-            ]
+            if data["output_data"]["speakerturn_wise"][node_attr["index"]]["vector"] is None:
+                node_attr[f"{plugin}"] = "None"
+                node_attr["title"] += f"{plugin}: None"
+            else:
+                pos_vector = data["output_data"]["speakerturn_wise"][node_attr["index"]][
+                    "vector"
+                ]
 
-            node_attr["title"] += "\n"
-            cnt = 0
-            for ind, key in config["labels"].items():
-                node_attr[f"{plugin}/{key}/count"] = pos_vector[ind]
+                node_attr["title"] += "\n"
+                cnt = 0
+                for ind, key in config["labels"].items():
+                    node_attr[f"{plugin}/{key}/count"] = pos_vector[ind]
 
-                # TODO Gullal:
-                # After fixing sentiment and audiClf, I received a warning here caused by a division with 0
-                # So, I guess the reason is that you somehow did not store outputs for sentiment and audioClf
-                # if there was a speaker turn with 0 words
-                if node_attr["num_words"] > 0:
-                    node_attr[f"{plugin}/{key}/frequency"] = (
-                        pos_vector[ind] / node_attr["num_words"]
-                    )
-                else:
-                    logging.warning("pos: Speaker turn with 0 words")
-                    node_attr[f"{plugin}/{key}/frequency"] = 0
+                    # TODO Gullal:
+                    # After fixing sentiment and audiClf, I received a warning here caused by a division with 0
+                    # So, I guess the reason is that you somehow did not store outputs for sentiment and audioClf
+                    # if there was a speaker turn with 0 words
+                    if node_attr["num_words"] > 0:
+                        node_attr[f"{plugin}/{key}/frequency"] = (
+                            pos_vector[ind] / node_attr["num_words"]
+                        )
+                    else:
+                        node_attr[f"{plugin}/{key}/frequency"] = 0
 
-                if cnt == 6:
-                    node_attr["title"] += "\n"
-                node_attr["title"] += f"{key}: {pos_vector[ind]}, "
-                cnt += 1
+                    if cnt == 6:
+                        node_attr["title"] += "\n"
+                    node_attr["title"] += f"{key}: {pos_vector[ind]}, "
+                    cnt += 1
     elif "audioClf" in plugin:
         for node in G.nodes(data=True):
             _, node_attr = node
@@ -416,9 +424,9 @@ def add_attributes_speakerturn(G, plugin, data, config):
 
             node_attr["title"] += "\n"
             ## To handle None values added for speaker turn with 0 words
-            if "None" in data["output_data"][node_attr["index"]]["top3_label"]:
-                node_attr[f"{plugin}/None"] = 1
-                node_attr["title"] += f"None: 1, "
+            if data["output_data"][node_attr["index"]]["top3_label"] is None:
+                node_attr[f"{plugin}"] = "None"
+                node_attr["title"] += f"{plugin}: None, "
             else:
                 for lab, prob in zip(
                     data["output_data"][node_attr["index"]]["top3_label"],
@@ -432,27 +440,31 @@ def add_attributes_speakerturn(G, plugin, data, config):
             if node_attr["type"] != "speaker_turn":
                 continue
 
-            gender = data["output_data"][node_attr["index"]]["gender_pred"]
-            gender_prob = round(
-                float(data["output_data"][node_attr["index"]]["gender_prob"]), 2
-            )
-            node_attr[f"{plugin}/gender/{gender}"] = gender_prob
-            node_attr["title"] += f"\n{gender}: {gender_prob}"
-
-            ## Check if object is not list
-            if not isinstance(data["output_data"][node_attr["index"]]["emotion_pred_top3"], list):
-                node_attr[f"{plugin}/{data['output_data'][node_attr['index']]['emotion_pred_top3']}"] = round(
-                    float(data["output_data"][node_attr["index"]]["emotion_prob_top3"]), 2
-                )
-                node_attr["title"] += f", {data['output_data'][node_attr['index']]['emotion_pred_top3']}: \
-                    {round(float(data['output_data'][node_attr['index']]['emotion_prob_top3']), 2)}, "
+            if data["output_data"][node_attr["index"]]["gender_pred"] is None:
+                node_attr[f"{plugin}"] = "None"
+                node_attr["title"] += f"\n{plugin}: None"
             else:
-                for lab, prob in zip(
-                        data["output_data"][node_attr["index"]]["emotion_pred_top3"],
-                        data["output_data"][node_attr["index"]]["emotion_prob_top3"],
-                    ):
-                        node_attr[f"{plugin}/{lab}"] = round(prob, 2)
-                        node_attr["title"] += f", {lab}: {round(prob,2)}, "
+                gender = data["output_data"][node_attr["index"]]["gender_pred"]
+                gender_prob = round(
+                    float(data["output_data"][node_attr["index"]]["gender_prob"]), 2
+                )
+                node_attr[f"{plugin}/gender/{gender}"] = gender_prob
+                node_attr["title"] += f"\n{gender}: {gender_prob}"
+
+                ## Check if object is not list
+                if not isinstance(data["output_data"][node_attr["index"]]["emotion_pred_top3"], list):
+                    node_attr[f"{plugin}/{data['output_data'][node_attr['index']]['emotion_pred_top3']}"] = round(
+                        float(data["output_data"][node_attr["index"]]["emotion_prob_top3"]), 2
+                    )
+                    node_attr["title"] += f", {data['output_data'][node_attr['index']]['emotion_pred_top3']}: \
+                        {round(float(data['output_data'][node_attr['index']]['emotion_prob_top3']), 2)}, "
+                else:
+                    for lab, prob in zip(
+                            data["output_data"][node_attr["index"]]["emotion_pred_top3"],
+                            data["output_data"][node_attr["index"]]["emotion_prob_top3"],
+                        ):
+                            node_attr[f"{plugin}/{lab}"] = round(prob, 2)
+                            node_attr["title"] += f", {lab}: {round(prob,2)}, "
     return G
 
 
@@ -461,6 +473,8 @@ def add_ner_nodes(G, plugin, data, config):
 
     for i, segment in enumerate(data["output_data"]["speakerturn_wise"]):
         entities = segment["tags"]
+        if entities is None:
+            continue
         for ent in entities:
             if not G.has_node(ent["wd_label"]):
                 title = "WD-Label: %s, Url: %s" % (ent["wd_label"], ent["url"])
