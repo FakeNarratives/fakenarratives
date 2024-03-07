@@ -107,7 +107,6 @@ def process_video(video_path, output_path, model, processor, device="cuda"):
     vr = VideoReader(video_path+".mp4", num_threads=4, ctx=cpu(0))
     fps = vr.get_avg_fps()
 
-    similarities = []
     for i, ref_shot in enumerate(shot_dict["output_data"]["shots"]):
         ## For each shot and reference shot - have [mean, median and max] similarity scores
         similarities = {"shot": ref_shot, "prev_1": [0, 0, 0], "prev_2": [0, 0, 0], "next_1": [0, 0, 0], "next_2": [0, 0, 0]}
