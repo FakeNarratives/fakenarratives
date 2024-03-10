@@ -1,4 +1,5 @@
 import os
+os.environ['DECORD_EOF_RETRY_MAX'] = '20480'
 import torch
 import pickle
 import av
@@ -9,7 +10,9 @@ from decord import VideoReader, cpu
 from transformers import XCLIPProcessor, XCLIPModel
 import torch.nn.functional as F
 from sklearn.metrics.pairwise import cosine_similarity
+import cv2
 import argparse
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Generates shot similarity between two neibhboring shots in a video.")
@@ -22,8 +25,8 @@ def parse_args():
 
 def get_model(device):
     ## Using Microsoft's X-CLIP model
-    model = XCLIPModel.from_pretrained("microsoft/xclip-large-patch14-16-frames")
-    processor = XCLIPProcessor.from_pretrained("microsoft/xclip-large-patch14-16-frames")
+    model = XCLIPModel.from_pretrained("microsoft/xclip-base-patch16-16-frames")
+    processor = XCLIPProcessor.from_pretrained("microsoft/xclip-base-patch16-16-frames")
     model.eval()
     model.to(device)
     return model, processor
@@ -41,63 +44,31 @@ def get_shot_time(index, shots):
     return None, None
 
 
-def read_video_pyav(container, indices):
-    '''
-    Decode the video with PyAV decoder.
-    Args:
-        container (`av.container.input.InputContainer`): PyAV container.
-        indices (`List[int]`): List of frame indices to decode.
-    Returns:
-        result (np.ndarray): np array of decoded frames of shape (num_frames, height, width, 3).
-    '''
-    frames = []
-    container.seek(0)
-    start_index = indices[0]
-    end_index = indices[-1]
-    for i, frame in enumerate(container.decode(video=0)):
-        if i > end_index:
-            break
-        if i >= start_index and i in indices:
-            frames.append(frame)
-
-    return np.stack([x.to_ndarray(format="rgb24") for x in frames])
-
-
 def sample_frame_indices(clip_len, indices):
-    '''
-    Sample a given number of frame indices from the video.
-    Args:
-        clip_len (`int`): Total number of frames to sample.
-        indices (`List[int]`): List of frame indices to sample from.
-    Returns:
-        sub_indices (`List[int]`): List of sampled frame indices
-    '''
-    ## If the number of frames is less than the clip length, repeat last frame to get 16 frames
     if len(indices) <= clip_len:
         return indices + [indices[-1]] * (clip_len - len(indices))
     else:
-        step_size = max(1, int(len(indices) // clip_len))
+        step_size = max(1, len(indices) // clip_len)
         return [indices[i] for i in range(0, len(indices), step_size)][:clip_len]
 
 
-def get_subclip_indices(start_time, end_time, fps, video_indices):
-    start_index = int(start_time * fps)
-    end_index = int(end_time * fps)
-    
-    return [x for x in video_indices if start_index <= x <= end_index]
+def get_subclip_indices(start_time, end_time, fps, total_frames):
+    start_index = int(round(start_time * fps))
+    end_index = int(round(end_time * fps))
+    return [i for i in range(start_index, min(end_index + 1, total_frames))]
 
 
 def resize_frames(frames, size=(336, 336)):
     resized_frames = []
     for frame in frames:
-        img = Image.fromarray(frame)
+        img = Image.fromarray(np.array(frame))
         resized_img = img.resize(size)
         resized_frames.append(np.array(resized_img))
     return resized_frames
 
 
 def compute_similarity(ref_feats, query_video, model, processor, device):
-    query_inputs = processor(videos=resize_frames(query_video), return_tensors="pt", do_reisze=False, do_center_crop=False).to(device)
+    query_inputs = processor(videos=query_video, return_tensors="pt").to(device)
     
     with torch.no_grad():
         query_feats = model.get_video_features(**query_inputs).cpu().numpy()
@@ -150,11 +121,12 @@ def process_video(video_path, output_path, model, processor, device="cuda"):
 
 
     shot_dict = pickle.load(open(os.path.join(output_path, "transnet_shotdetection.pkl"), "rb"))
+    print("Number of shots: ", len(shot_dict["output_data"]["shots"]))
 
     # Load the video
-    # vr = VideoReader(video_path+".mp4", num_threads=4, ctx=cpu(0))
-    container = av.open(video_path+".mp4")
-    fps = container.streams.video[0].average_rate
+    vr = VideoReader(video_path+".mp4", num_threads=12, ctx=cpu(0), width=480, height=270)
+    fps = vr.get_avg_fps()
+    total_frames = len(vr)
 
     for i, ref_shot in enumerate(shot_dict["output_data"]["shots"]):
         ## For each shot and reference shot - have one video level similarity score
@@ -162,12 +134,10 @@ def process_video(video_path, output_path, model, processor, device="cuda"):
 
         ## Compute reference shot feats
         sr_time, er_time = ref_shot["start"], ref_shot["end"]
-        ref_indices = get_subclip_indices(sr_time, er_time, fps, range(container.streams.video[0].frames))
-        ## Sample 16 frames from the reference shot
+        ref_indices = get_subclip_indices(sr_time, er_time, fps, total_frames)
         ref_indices = sample_frame_indices(16, ref_indices)
-        ref_video = read_video_pyav(container, ref_indices)
-        print(ref_video.shape)
-        ref_inputs = processor(videos=resize_frames(ref_video), return_tensors="pt", do_reisze=False, do_center_crop=False).to(device)
+        ref_frames = vr.get_batch(ref_indices)
+        ref_inputs = processor(videos=list(ref_frames), return_tensors="pt").to(device)
         with torch.no_grad():
             ref_feats = model.get_video_features(**ref_inputs).cpu().numpy()
 
@@ -177,15 +147,13 @@ def process_video(video_path, output_path, model, processor, device="cuda"):
         # Extract and compute for each neighboring shot
         for j, (start_time, end_time) in enumerate(shot_times):
             if start_time is not None and end_time is not None:
-                query_indices = get_subclip_indices(start_time, end_time, fps, range(container.streams.video[0].frames))
-                ## Sample 16 frames from the reference shot
+                query_indices = get_subclip_indices(start_time, end_time, fps, total_frames)
                 query_indices = sample_frame_indices(16, query_indices)
-                query_video = read_video_pyav(container, query_indices)
-                print(query_video.shape)
+                query_frames = vr.get_batch(query_indices)
                 similarity_key = ["prev_2", "prev_1", "next_1", "next_2"][j]
-                similarities[similarity_key] = compute_similarity(ref_feats, query_video, model, processor, device)
+                similarities[similarity_key] = compute_similarity(ref_feats, list(query_frames), model, processor, device)
 
-        print(similarities)
+        print(i, similarities)
         video_feat_dict["output_data"].append(similarities)
 
     return video_feat_dict

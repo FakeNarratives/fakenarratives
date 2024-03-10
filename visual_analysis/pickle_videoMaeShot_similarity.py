@@ -1,4 +1,5 @@
 import os
+os.environ['DECORD_EOF_RETRY_MAX'] = '20480'
 import torch
 import pickle
 import av
@@ -41,50 +42,18 @@ def get_shot_time(index, shots):
     return None, None
 
 
-def read_video_pyav(container, indices):
-    '''
-    Decode the video with PyAV decoder.
-    Args:
-        container (`av.container.input.InputContainer`): PyAV container.
-        indices (`List[int]`): List of frame indices to decode.
-    Returns:
-        result (np.ndarray): np array of decoded frames of shape (num_frames, height, width, 3).
-    '''
-    frames = []
-    container.seek(0)
-    start_index = indices[0]
-    end_index = indices[-1]
-    for i, frame in enumerate(container.decode(video=0)):
-        if i > end_index:
-            break
-        if i >= start_index and i in indices:
-            frames.append(frame)
-
-    return np.stack([x.to_ndarray(format="rgb24") for x in frames])
-
-
 def sample_frame_indices(clip_len, indices):
-    '''
-    Sample a given number of frame indices from the video.
-    Args:
-        clip_len (`int`): Total number of frames to sample.
-        indices (`List[int]`): List of frame indices to sample from.
-    Returns:
-        sub_indices (`List[int]`): List of sampled frame indices
-    '''
-    ## If the number of frames is less than the clip length, repeat last frame to get 16 frames
     if len(indices) <= clip_len:
         return indices + [indices[-1]] * (clip_len - len(indices))
     else:
-        step_size = max(1, int(len(indices) // clip_len))
+        step_size = max(1, len(indices) // clip_len)
         return [indices[i] for i in range(0, len(indices), step_size)][:clip_len]
 
 
-def get_subclip_indices(start_time, end_time, fps, video_indices):
-    start_index = int(start_time * fps)
-    end_index = int(end_time * fps)
-    
-    return [x for x in video_indices if start_index <= x <= end_index]
+def get_subclip_indices(start_time, end_time, fps, total_frames):
+    start_index = int(round(start_time * fps))
+    end_index = int(round(end_time * fps))
+    return [i for i in range(start_index, min(end_index + 1, total_frames))]
 
 
 def compute_similarity(ref_feat, query_video, model, processor, device):
@@ -143,11 +112,12 @@ def process_video(video_path, output_path, model, processor, device="cuda"):
 
 
     shot_dict = pickle.load(open(os.path.join(output_path, "transnet_shotdetection.pkl"), "rb"))
+    print("Number of shots: ", len(shot_dict["output_data"]["shots"]))
 
-    # Load the video
-    # vr = VideoReader(video_path+".mp4", num_threads=4, ctx=cpu(0))
-    container = av.open(video_path+".mp4")
-    fps = container.streams.video[0].average_rate
+    # Load video
+    vr = VideoReader(video_path+".mp4", num_threads=12, ctx=cpu(0), width=480, height=270)
+    fps = vr.get_avg_fps()
+    total_frames = len(vr)
 
     for i, ref_shot in enumerate(shot_dict["output_data"]["shots"]):
         ## For each shot and reference shot - cls tag similarity from last hidden state
@@ -155,12 +125,11 @@ def process_video(video_path, output_path, model, processor, device="cuda"):
 
         ## Compute reference shot feats
         sr_time, er_time = ref_shot["start"], ref_shot["end"]
-        ref_indices = get_subclip_indices(sr_time, er_time, fps, range(container.streams.video[0].frames))
+        ref_indices = get_subclip_indices(sr_time, er_time, fps, total_frames)
         ## Sample 16 frames from the reference shot
         ref_indices = sample_frame_indices(16, ref_indices)
-        ref_video = read_video_pyav(container, ref_indices)
-        print(ref_video.shape)
-        ref_inputs = processor(list(ref_video), return_tensors="pt").to(device)
+        ref_frames = vr.get_batch(ref_indices)
+        ref_inputs = processor(list(ref_frames), return_tensors="pt").to(device)
         with torch.no_grad():
             outputs = model(**ref_inputs).last_hidden_state.squeeze(0)
             ref_feat = outputs[0].unsqueeze(0).cpu().numpy()
@@ -171,15 +140,14 @@ def process_video(video_path, output_path, model, processor, device="cuda"):
         # Extract and compute for each neighboring shot
         for j, (start_time, end_time) in enumerate(shot_times):
             if start_time is not None and end_time is not None:
-                query_indices = get_subclip_indices(start_time, end_time, fps, range(container.streams.video[0].frames))
+                query_indices = get_subclip_indices(start_time, end_time, fps, total_frames)
                 ## Sample 16 frames from the reference shot
                 query_indices = sample_frame_indices(16, query_indices)
-                query_video = read_video_pyav(container, query_indices)
-                print(query_video.shape)
+                query_frames = vr.get_batch(query_indices)
                 similarity_key = ["prev_2", "prev_1", "next_1", "next_2"][j]
-                similarities[similarity_key] = compute_similarity(ref_feat, list(query_video), model, processor, device)
+                similarities[similarity_key] = compute_similarity(ref_feat, list(query_frames), model, processor, device)
 
-        print(similarities)
+        print(i, similarities)
         video_feat_dict["output_data"].append(similarities)
 
     return video_feat_dict

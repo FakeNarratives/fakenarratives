@@ -4,10 +4,12 @@ import torch
 import pickle
 import numpy as np
 from PIL import Image
-from torch.nn import functional as F
 import decord
 from decord import VideoReader, cpu
-from transformers import AutoProcessor, AutoModel
+from torchvision import models
+from torch import nn
+from torchvision.models.feature_extraction import get_graph_node_names
+from torchvision.models.feature_extraction import create_feature_extractor
 from sklearn.metrics.pairwise import cosine_similarity
 import argparse
 from memory_profiler import profile
@@ -22,12 +24,18 @@ def parse_args():
 
 
 def get_model(device):
-    ## Using Google's SigLIP model - The best model for the task
-    model = AutoModel.from_pretrained("google/siglip-large-patch16-256")
-    processor = AutoProcessor.from_pretrained("google/siglip-large-patch16-256")
-    model.eval()
-    model.to(device)
-    return model, processor
+    ## Using Pytorch vision models
+    model = models.vit_b_16(weights="IMAGENET1K_SWAG_E2E_V1")
+    transforms = models.ViT_B_16_Weights.IMAGENET1K_SWAG_E2E_V1.transforms()
+
+    # feature_extractor = nn.Sequential(*list(model.children())[:-1])
+    return_nodes = {'encoder': 'ln'}
+    feature_extractor = create_feature_extractor(model, return_nodes=return_nodes)
+
+    feature_extractor.eval()
+    feature_extractor.to(device)
+
+    return feature_extractor, transforms
 
 
 def read_video_paths(file_path, base_input_dir, base_output_dir):
@@ -41,22 +49,21 @@ def get_shot_time(index, shots):
         return shots[index]["start"], shots[index]["end"]
     return None, None
 
-
-def extract_frames(vr, start_time, end_time, fps, subsample_rate=2):
+def extract_frames(vr, start_time, end_time, fps, subsample_rate=2, processor=None):
     step_size = max(1, int(fps // subsample_rate))
     start_frame = int(start_time * fps)
     end_frame = int(end_time * fps)
     frames = vr.get_batch(range(start_frame, end_frame + 1))
     frames = frames[::step_size]
-    return frames
+    tensors = [processor(Image.fromarray(frame.numpy())) for frame in frames]
+    return torch.stack(tensors)
 
 
-def compute_similarity(ref_feats, query_frames, model, processor, device):
+def compute_similarity(ref_feats, query_inputs, model):
+
     with torch.no_grad():
-        query_inputs = processor(images=query_frames, return_tensors="pt").to(device)
-        query_feats = model.get_image_features(**query_inputs)
+        query_feats = model(query_inputs)['ln'][:,0,:] 
         query_feats = query_feats / query_feats.norm(dim=1)[:, None]
-        # similarity = cosine_similarity(ref_feats, query_feats)
         res = torch.mm(ref_feats, query_feats.T)
 
     return [res.mean().item(), res.median().item(), res.max().item()]
@@ -65,22 +72,22 @@ def compute_similarity(ref_feats, query_frames, model, processor, device):
 @profile
 def process_video(video_path, output_path, model, processor, device="cuda"):
     """
-    Take SigLIP model and process the video to get shot similarity between two neibhboring shots from the reference shot in a video.
+    Take Vit B model and process the video to get shot similarity between two neibhboring shots from the reference shot in a video.
     Reference shot: i, Neighboring shots: i-2, i+1, i+1, i+2
 
     Args:
         video_path (str): path to video
         output_path (str): path to load shot output
-        model (AutoModel): SigLIP model
-        processor (AutoProcessor): SigLIP processor
+        model (AutoModel): Vit B model
+        processor (AutoProcessor): Vit B processor
         device (str, optional): device to run inference on. Defaults to "cuda".
 
     Returns:
         video_feat_dict (dict): dictionary containing shot similarity between two neibhboring shots from the reference shot in a video.
         As:
         {
-            "github_repo": "https://huggingface.co/google/siglip-large-patch16-256",
-            "commit_id": "3bae8ca81b490faa0803ba07cf45159cec2f2ef4",
+            "github_repo": "https://pytorch.org/vision/main/models/generated/torchvision.models.vit_b_16.html",
+            "commit_id": "",
             "parameters": "default",
             "video_file": video_path,
             "output_data": [
@@ -98,8 +105,8 @@ def process_video(video_path, output_path, model, processor, device="cuda"):
         }
     """
 
-    video_feat_dict = {"github_repo": "https://huggingface.co/google/siglip-large-patch16-256",
-                        "commit_id": "3bae8ca81b490faa0803ba07cf45159cec2f2ef4",
+    video_feat_dict = {"github_repo": "https://pytorch.org/vision/main/models/generated/torchvision.models.vit_b_16.html",
+                        "commit_id": "",
                         "parameters": "default",
                         "video_file": video_path,
                         "output_data": []
@@ -119,10 +126,9 @@ def process_video(video_path, output_path, model, processor, device="cuda"):
 
         ## Compute reference shot feats
         sr_time, er_time = ref_shot["start"], ref_shot["end"]
-        ref_frames = extract_frames(vr, sr_time, er_time, fps, subsample_rate=2)
+        ref_inputs = extract_frames(vr, sr_time, er_time, fps, subsample_rate=2, processor=processor).to(device)
         with torch.no_grad():
-            ref_inputs = processor(images=ref_frames, return_tensors="pt").to(device)
-            ref_feats = model.get_image_features(**ref_inputs)
+            ref_feats = model(ref_inputs)['ln'][:,0,:]      ## CLS tag holds the image representation
             ref_feats = ref_feats / ref_feats.norm(dim=1)[:, None]
 
         # Time frames for the current and neighboring shots
@@ -131,9 +137,9 @@ def process_video(video_path, output_path, model, processor, device="cuda"):
         # Extract and compute for each neighboring shot
         for j, (start_time, end_time) in enumerate(shot_times):
             if start_time is not None and end_time is not None:
-                query_frames = extract_frames(vr, start_time, end_time, fps, subsample_rate=2)
+                query_inputs = extract_frames(vr, start_time, end_time, fps, subsample_rate=2, processor=processor).to(device)
                 similarity_key = ["prev_2", "prev_1", "next_1", "next_2"][j]
-                similarities[similarity_key] = compute_similarity(ref_feats, query_frames, model, processor, device)
+                similarities[similarity_key] = compute_similarity(ref_feats, query_inputs, model)
 
         print(i, similarities)
         video_feat_dict["output_data"].append(similarities)
@@ -160,11 +166,11 @@ def main():
 
         if not os.path.exists(out_loc):
             os.makedirs(out_loc)
-
-        if not os.path.exists(os.path.join(out_loc, "siglip_shot_similarity.pkl")):
+        
+        if not os.path.exists(os.path.join(out_loc, "vitB_shot_similarity.pkl")):
             video_feat_dict = process_video(input_path, out_loc, model, processor, device)
 
-            with open(os.path.join(out_loc, "siglip_shot_similarity.pkl"), "wb") as output_file:
+            with open(os.path.join(out_loc, "vitB_shot_similarity.pkl"), "wb") as output_file:
                 pickle.dump(video_feat_dict, output_file)
 
         print("%%\n")
