@@ -112,12 +112,26 @@ def main():
                 entry["headpose"]["roll"],
             ]
         )
+        
+    ## read headgaze results
+    headgazes = read_pkl(os.path.join(args.input, "headgaze_3DGazeNet.pkl"))
+    headgaze_lut = {}
+    for entry in headgazes["y"]:
+        headgaze_lut[entry["id"]] = np.asarray(
+            [
+                entry["headgaze"]["left_gaze_rad"],
+                entry["headgaze"]["right_gaze_rad"],
+                entry["headgaze"]["left_gaze_deg"],
+                entry["headgaze"]["right_gaze_deg"],
+            ]
+        )
 
     # read faces and store all information
     faces_data = read_pkl(os.path.join(args.input, "face_analysis_tibava.pkl"))
     for face in faces_data["output_data"][0]["faces"]:
         face["headpose"] = headpose_lut[face["id"]]
         face["cluster_id"] = cluster_lut[face["id"]]
+        face["headgaze"] = headgaze_lut[face["id"]]
 
     # write pkl file
     with open(os.path.join(args.input, "face_analysis.pkl"), "wb") as f:
