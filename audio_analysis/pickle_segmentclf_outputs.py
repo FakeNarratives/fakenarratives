@@ -4,10 +4,10 @@ from moviepy.editor import VideoFileClip
 import argparse
 import tempfile
 import torchaudio
-
-from audio_utils import *
 from speechbrain.pretrained.interfaces import foreign_class
 from transformers import Wav2Vec2FeatureExtractor, Wav2Vec2ForSequenceClassification
+
+from audio_utils import *
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Runs speech emotion and gender classification on speakder diarization segments")
