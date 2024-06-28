@@ -19,3 +19,6 @@
 [submodule "3DGazeNet"]
 	path = 3DGazeNet
 	url = git@github.com:FakeNarratives/3DGazeNet.git
+[submodule "Light-ASD"]
+	path = Light-ASD
+	url = git@github.com:FakeNarratives/Light-ASD.git
