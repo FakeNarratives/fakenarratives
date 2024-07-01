@@ -22,3 +22,6 @@
 [submodule "Light-ASD"]
 	path = Light-ASD
 	url = git@github.com:FakeNarratives/Light-ASD.git
+[submodule "ByteTrack"]
+	path = ByteTrack
+	url = git@github.com:FakeNarratives/ByteTrack.git
