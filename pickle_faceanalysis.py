@@ -24,12 +24,12 @@ def save_pickle(data, file_path):
 
 def combine_face_analysis(features_dir):
     # Load all individual analysis results
-    face_detection = load_pickle(os.path.join(features_dir, "pywork/face_detection_insightface.pkl"))
-    face_tracking = load_pickle(os.path.join(features_dir, "pywork/face_tracking.pkl"))
-    face_clustering = load_pickle(os.path.join(features_dir, "pywork/face_clustering.pkl"))
-    headgaze = load_pickle(os.path.join(features_dir, "pywork/headgaze_3DGazeNet.pkl"))
-    asd_results = load_pickle(os.path.join(features_dir, "pywork/asd_results.pkl"))
-    emotions = load_pickle(os.path.join(features_dir, "pywork/emotions_deepface.pkl"))
+    face_detection = load_pickle(os.path.join(features_dir, "face_detection_insightface.pkl"))
+    face_tracking = load_pickle(os.path.join(features_dir, "face_tracking.pkl"))
+    face_clustering = load_pickle(os.path.join(features_dir, "face_clustering.pkl"))
+    headgaze = load_pickle(os.path.join(features_dir, "headgaze_3DGazeNet.pkl"))
+    asd_results = load_pickle(os.path.join(features_dir, "asd_light-asd.pkl"))
+    emotions = load_pickle(os.path.join(features_dir, "face_emotions_deepface.pkl"))
 
     # Create mappings for quick lookups
     face_id_to_track_id = {}
@@ -73,9 +73,9 @@ def combine_face_analysis(features_dir):
     # Save the combined results
     os.makedirs(features_dir, exist_ok=True)
     save_pickle({"faces": combined_faces, "args": face_detection['args']}, 
-                os.path.join(features_dir, "pywork/face_analysis.pkl"))
+                os.path.join(features_dir, "face_analysis.pkl"))
 
-    logger.info(f"Combined face analysis saved to {os.path.join(features_dir, 'pywork/face_analysis.pkl')}")
+    logger.info(f"Combined face analysis saved to {os.path.join(features_dir, 'face_analysis.pkl')}")
     logger.info(f"Total faces: {len(combined_faces)}")
     logger.info(f"Speaking faces: {sum(1 for face in combined_faces if face['speaking'])}")
 
