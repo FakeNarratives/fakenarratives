@@ -3,50 +3,25 @@ import os.path as osp
 import os
 import pickle
 import sys
+import cv2
+import numpy as np
+from tqdm import tqdm
+import logging
 
 sys.path.append("3DGazeNet/")
 from models import GazeModel
 from handler import *
-from video_decoder import VideoDecoder
 
+from decord import VideoReader, cpu
 
-def read_video_paths(file_path, base_input_dir, base_output_dir):
-    with open(file_path, 'r') as f:
-        video_paths = f.read().splitlines()
-    return [os.path.join(base_input_dir, vp+".mp4") for vp in video_paths], [os.path.join(base_output_dir, vp) for vp in video_paths]
-
-def headgaze_pkl(
-    headgazes: list,
-    times: list,
-    args,
-) -> dict:
-    """Converts outputs from 6DRepNet for head pose estimation to a pkl
-
-    Args:
-        headgazes (list<dict>): list (length n) containing the id and headgaze (left and right eye)
-        times (lismmocr): time values for each headgaze output (length n)
-        args (Namespace): arguments the script has been executed with
-
-    Returns:
-        dict: dictionary ready to write in a .pkl
-            y (list<dict>): list of dicts containing the headpose outputs per frame
-                id (dict): face id according to the face_analysis.pkl input file
-                headgaze (list<dict>): list (length n) of head gazes including
-                    left_gaze_rad (list<float>): left eye gaze in radians [x,y]
-                    right_gaze_rad (list<float>): right eye gaze in radians [x,y]
-                    left_gaze_deg (list<float>): left eye gaze in degrees [x,y]
-                    right_gaze_deg (list<float>): right eye gaze in degrees [x,y]
-            time (list): t time values (length t)
-            args (dict): arguments the script has been executed with
-    """
+def headgaze_pkl(headgazes: list, args) -> dict:
+    """Converts outputs from 3DGazeNet for gaze estimation to a pkl"""
     args_dict = vars(args)
-
     if "videos" in args_dict:
         del args_dict["videos"]
 
     return {
         "y": headgazes,
-        "time": times,
         "args": args_dict,
     }
 
@@ -55,9 +30,12 @@ def parse_args():
     parser = argparse.ArgumentParser(description="")
 
     # Required arguments
-    parser.add_argument("-f", "--file", type=str, required=True, help="Text file containing paths to videos as <media>/<video_name>")
-    parser.add_argument("-i", "--inp_dir", type=str, default="/nfs/data/fakenarratives/202306_corpus/videos", help="Base directory for input videos")
-    parser.add_argument("-o", "--out_dir", type=str, default="/nfs/data/fakenarratives/202306_corpus/results_pkl", help="Base directory for output results")
+    parser.add_argument(
+        "--videos", nargs="+", type=str, required=True, help="path to the video files"
+    )
+    parser.add_argument(
+        "--pkl_dir", type=str, required=True, help="path to the output folder"
+    )
     parser.add_argument(
         "--ckpt_path", type=str, default="3DGazeNet/assets/latest_a.ckpt", help="path to checkpoint file",
     )
@@ -67,11 +45,31 @@ def parse_args():
         "--max_dimension",
         type=int,
         required=False,
-        default=1920,
+        default=980,
         help="max dimension of the video frames",
     )
     args = parser.parse_args()
     return args
+
+
+def read_video_and_get_info(video_path, args):
+    cap = cv2.VideoCapture(video_path)
+    original_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    original_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    cap.release()
+
+    ## Make longer side of the frame equal to max_dimension  if it is greater than max_dimension
+    if original_width > args.max_dimension:
+        new_width = args.max_dimension
+        new_height = int(original_height * new_width / original_width)
+    else:
+        new_width = original_width
+        new_height = original_height
+
+    vr = VideoReader(video_path, num_threads=12, ctx=cpu(0), width=new_width, height=new_height)
+    fps = vr.get_avg_fps()
+    
+    return vr, new_width, new_height, fps
 
 
 def main():
@@ -89,115 +87,85 @@ def main():
         level=level,
     )
 
-    # Create model and load fixed model parameters
+    # load 3DGazeNet model
     handler = GazeHandler(args.ckpt_path)
 
-    # loop trough input videos
-    ## File has lines with video names such as "Tagesschau/TV-20220101-2019-5100.webl.h264"
-    input_paths, output_paths = read_video_paths(args.file, args.inp_dir, args.out_dir)
-
-    for i, video_path in enumerate(input_paths):
-        logging.info(f"Processing video {i+1}/{len(input_paths)}: {video_path}")
-
-        output_path = output_paths[i]
-        vidname = output_path.split("/")[-1]
+    videos = args.videos
+    for vi, video_path in enumerate(videos):
+        logging.info(f"Processing video [{vi+1}/{len(videos)}]: {video_path}")
 
         # setup output dir
-        if not os.path.isfile(os.path.join(output_path, "face_analysis.pkl")):
+        vidname = os.path.splitext(os.path.basename(video_path))[0]
+        output_dir = os.path.join(args.pkl_dir, vidname)
+
+        if not os.path.isfile(os.path.join(output_dir, "face_detection_insightface.pkl")):
             logging.error(
-                f"Missing file: {os.path.join(output_path, 'face_analysis.pkl')}"
+                f"Missing file: {os.path.join(output_dir, 'face_detection_insightface.pkl')}"
             )
             continue
 
         # read faceanalyis.pkl and store face bboxes
-        with open(os.path.join(output_path, "face_analysis.pkl"), "rb") as pklfile:
-            content = pickle.load(pklfile)
-
-        fps = content["plugins"][0]["parameters"]["fps"]
-        faces = content["faces"]
-
-        faces_dict = {}
-        for face in faces:
-            if face["time"] not in faces_dict:
-                faces_dict[face["time"]] = []
-
-            faces_dict[face["time"]].append(face)
+        with open(os.path.join(output_dir, "face_detection_insightface.pkl"), "rb") as pklfile:
+            face_content = pickle.load(pklfile)
 
         # get frames from video
-        vd = VideoDecoder(path=video_path, max_dimension=args.max_dimension, fps=fps)
+        vd, new_width, new_height, fps = read_video_and_get_info(video_path, args)
+        args.fps = fps
+        logging.info(f"Video info: {len(vd)} frames, {fps} FPS, {new_width} x {new_height}")
 
-        times = []
         headgazes = []
-        for frame in vd:
-            time = frame["time"]
-            image = frame["frame"]
-
-            faces_times = np.asarray(list(faces_dict.keys()))
-            delta_time = np.abs(time - faces_times)
-            closest_face_time = faces_times[np.argmin(delta_time)]
-            eps = 1 / fps
-
-            # check if frame contains faces
-            if np.abs(closest_face_time - time) > eps / 2:
+        for fid, frame in enumerate(tqdm(vd, desc="Processing frames")):
+            # image = frame["frame"]
+            # frame_index = frame["index"]
+            image = frame.asnumpy()
+            frame_index = fid
+            
+            # Filter faces for the current frame
+            frame_faces = []
+            for face in face_content["y"]:
+                if face["frame"] == frame_index and face['det_score'] >= 0.6 and face["bbox"]["h"] > 0.05:
+                    frame_faces.append(face)
+            
+            if not frame_faces:
                 continue
 
-            logging.debug(f"video time: {time}, face time: {closest_face_time}")
-            if closest_face_time != time:
-                logging.warning(f"time difference: {np.abs(closest_face_time - time)}")
-            logging.debug(f"{vidname}: Processing frame {frame['index']}")
+            logging.debug(f"{vidname}: Processing frame {frame_index}")
 
-            frame_faces = faces_dict[closest_face_time]
-            ## Rescale normalized bounding boxes, kps to the original image size
+            # Rescale normalized bounding boxes and keypoints to the original image size
             for face in frame_faces:
-                face["bbox"]["w"] = face["bbox"]["w"] * image.shape[1]
-                face["bbox"]["h"] = face["bbox"]["h"] * image.shape[0]
-                face["bbox"]["x"] = face["bbox"]["x"] * image.shape[1]
-                face["bbox"]["y"] = face["bbox"]["y"] * image.shape[0]
-                face["kps"][:, 0] = face["kps"][:, 0] * image.shape[1] 
-                face["kps"][:, 1] = face["kps"][:, 1] * image.shape[0]
+                face["bbox"]["w"] *= image.shape[1]
+                face["bbox"]["h"] *= image.shape[0]
+                face["bbox"]["x"] *= image.shape[1]
+                face["bbox"]["y"] *= image.shape[0]
+                face["kps"] = np.array(face["kps"]) * [image.shape[1], image.shape[0]]
             
-            if len(frame_faces) > 0:
-                results = handler.get(frame_faces, image)
+            results = handler.get(frame_faces, image)
+            
+            for face, result in zip(frame_faces, results):
+                gaze_pred_l_rad, gaze_pred_r_rad = handler.get_gaze(eye_kps=result[2])
+                gaze_pred_l_deg, gaze_pred_r_deg = np.degrees(gaze_pred_l_rad), np.degrees(gaze_pred_r_rad)
                 
-                for face, result in zip(frame_faces, results):
-                
-                    gaze_pred_l_rad, gaze_pred_r_rad = handler.get_gaze(eye_kps=result[2])   ## In radians
+                headgazes.append({
+                    "face_id": face["id"],
+                    "frame": frame_index,
+                    "time": face["time"],
+                    "headgaze": {
+                        "left_gaze_rad": gaze_pred_l_rad.tolist(),
+                        "right_gaze_rad": gaze_pred_r_rad.tolist(),
+                        "left_gaze_deg": gaze_pred_l_deg.tolist(),
+                        "right_gaze_deg": gaze_pred_r_deg.tolist(),
+                    },
+                })
 
-                    ## Convert to degrees
-                    gaze_pred_l_deg, gaze_pred_r_deg = np.degrees(gaze_pred_l_rad), np.degrees(gaze_pred_r_rad)
-                    
-                    # print(f"Left eye gaze: {gaze_pred_l_deg}, Right eye gaze: {gaze_pred_r_deg}")
-
-                    headgazes.append(
-                        {
-                            "id": face["id"],
-                            "headgaze": {
-                                "left_gaze_rad": gaze_pred_l_rad.tolist(),
-                                "right_gaze_rad": gaze_pred_r_rad.tolist(),
-                                "left_gaze_deg": gaze_pred_l_deg.tolist(),
-                                "right_gaze_deg": gaze_pred_r_deg.tolist(),
-                            },
-                        }
-                    )
-                    times.append(closest_face_time)
-                    
-                
-                # # only for debugging
-                # eimg = handler.draw_on(image, results)
-                # oimg = np.concatenate((image, eimg), axis=1)
-                # oimg = cv2.cvtColor(oimg, cv2.COLOR_BGR2RGB)
-                # cv2.imwrite("3DGazeNet/output/test.jpg", oimg)
-
-        os.makedirs(output_path, exist_ok=True)
-        with open(os.path.join(output_path, "headgaze_3DGazeNet.pkl"), "wb") as f:
-            output_dict = headgaze_pkl(headgazes, times, args)
+        os.makedirs(os.path.join(output_dir), exist_ok=True)
+        output_path = os.path.join(output_dir, "headgaze_3DGazeNet.pkl")
+        with open(output_path, "wb") as f:
+            output_dict = headgaze_pkl(headgazes, args)
             pickle.dump(output_dict, f)
 
-        logging.info(
-            f"Output written to: {os.path.join(output_path, 'headgaze_3DGazeNet.pkl')}"
-        )
+        logging.info(f"Output written to: {output_path}")
 
-        logging.debug(len(times), len(faces))
+        print()
 
     return 0
 

@@ -2,12 +2,16 @@ import argparse
 import logging
 from pathlib import Path
 import pickle
+from tqdm import tqdm
 import sys
 import uuid
+import cv2
+import time
 import torch
 import insightface
 from insightface.app import FaceAnalysis
-from video_decoder import VideoDecoder
+from decord import VideoReader, cpu
+import decord
 
 assert insightface.__version__ >= "0.3"
 
@@ -35,11 +39,13 @@ def parse_args() -> dict:
     parser.add_argument("--ctx", default=0, type=int, help="ctx id, <0 means using cpu")
     parser.add_argument("--det-size", default=640, type=int, help="detection size")
 
-    # optional video paramters (currently unused)
     parser.add_argument(
-        "--max_dimension", default=640, type=int, help="maximum image resolution"
+        "--max_dimension",
+        type=int,
+        required=False,
+        default=1280,
+        help="max dimension of the video frames",
     )
-    parser.add_argument("--fps", default=25, type=int, help="fps to read video")
     args = parser.parse_args()
     return args
 
@@ -56,14 +62,35 @@ def faceanalysis_pkl(faces: list, args: dict) -> dict:
     }
 
 
+
+def read_video_and_get_info(video_path, args):
+    cap = cv2.VideoCapture(video_path)
+    original_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    original_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    cap.release()
+
+    ## Make longer side of the frame equal to max_dimension  if it is greater than max_dimension
+    if original_width > args.max_dimension:
+        new_width = args.max_dimension
+        new_height = int(original_height * new_width / original_width)
+    else:
+        new_width = original_width
+        new_height = original_height
+
+    vr = VideoReader(video_path, num_threads=12, ctx=cpu(0), width=new_width, height=new_height)
+    fps = vr.get_avg_fps()
+    
+    return vr, new_width, new_height, fps
+
+
 def get_faces(model, vd) -> list:
     """predict all faces in a video"""
     faces = []
-    for frame in vd:
-        time = float(frame["time"])
-        image = frame["frame"]
+    for fid, frame in enumerate(tqdm(vd)):
+        time = vd.get_frame_timestamp(fid)[0]
+        image = frame.asnumpy()
         logging.debug(time)
-        print(time)
+        # print(time)
 
         for face in model.get(image):
             x, y = round(max(0, face["bbox"][0])), round(max(0, face["bbox"][1]))
@@ -82,16 +109,19 @@ def get_faces(model, vd) -> list:
                         "w": float(w / image_width),
                         "h": float(h / image_height),
                     },
-                    "kps": {
-                        "x": [x.item() / image_width for x in face["kps"][:, 0]],
-                        "y": [y.item() / image_height for y in face["kps"][:, 1]],
-                    },
+                    "kps": [
+                        [
+                            float(face["kps"][i, 0] / image_width),
+                            float(face["kps"][i, 1] / image_height)
+                        ]
+                        for i in range(face["kps"].shape[0])
+                    ],
                     "det_score": float(face["det_score"]),
                     "time": time,
+                    "frame": fid,
+                    "embedding": face["embedding"].tolist(),
                 }
             )
-        if time > 10:
-            break
 
     return faces
 
@@ -116,17 +146,26 @@ def main() -> int:
     model.prepare(ctx_id=args.ctx, det_size=(args.det_size, args.det_size))
 
     # loop trough input videos
-    for video_path in args.videos:
+    videos = args.videos
+    for vi, video_path in enumerate(videos):
+        logging.info(f"Processing video [{vi+1}/{len(videos)}]: {video_path}")
         video_path = Path(video_path)
         videoname = video_path.stem
-        logging.info(f"Processing video: {video_path}")
+
+        start = time.time()
 
         # get frames from video
-        vd = VideoDecoder(path=video_path)
+        vd, frame_width, frame_height, fps = read_video_and_get_info(str(video_path), args)
+        logging.info(f"Video info: {len(vd)} frames, {fps} FPS, {frame_width} x {frame_height}")
+        args.fps = fps
+
         faces = get_faces(model, vd)
 
+        logging.info(f"Total faces: {len(faces)}")
+        logging.info(f"Processing time: {time.time() - start:.2f} seconds")
+
         # return results
-        output_file = Path(args.pkl_dir, videoname, "face_analysis.pkl")
+        output_file = Path(args.pkl_dir, videoname, "face_detection_insightface.pkl")
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
         with open(output_file, "wb") as f:
@@ -134,6 +173,7 @@ def main() -> int:
             pickle.dump(output_dict, f)
 
         logging.info(f"Output written to: {output_file}")
+        print()
 
     return 0
 
