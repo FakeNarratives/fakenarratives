@@ -3,145 +3,96 @@ import logging
 import numpy as np
 import os
 import pickle
-import sys
+from collections import defaultdict
 
-from graph_visualization.utils import read_pkl
-
-
-def faceanalysis_pkl(
-    faces: list,
-) -> dict:
-    """Converts outputs from 6DRepNet for head pose estimation to a pkl
-
-    Args:
-        faces (<dict>):
-
-    Returns:
-        dict: dictionary ready to write in a .pkl
-            faces (list<dict>): list of dicts containing extracted information of
-                                each face detected in the video
-                id (dict): face id according to the face_analysis.pkl input file
-                time (float): time of the frame the face is visible in (in seconds)
-                delta_time (float): frame duration the face is visible (in seconds)
-                bbox (dict): bounding box information of the face
-                    x (float): relative x position of the face in the frame
-                    y (float): relative y position of the face in the frame
-                    w (float): relative width of the face in the frame
-                    h (float): relative height position of the face in the frame
-                    det_score (float): detection score of the face detector
-                kps (list<float>): list of five two-dimensional facial keypoints
-                emotion (np.ndarray): np.ndarray containing the probabilities of 7 facial emotions
-                    Angry (float)
-                    Disgust (float)
-                    Fear (float)
-                    Happy (float)
-                    Sad (float)
-                    Surprise (float)
-                    Neutral (float)
-                headpose (np.array): np.ndarray containing three headpose angles
-                    pitch (float): pitch angle of the face (in degree)
-                    yaw (float): yaw angle of the face (in degree)
-                    roll (float): roll angle of the face (in degree)
-                cluster_id (int): cluster id of the face
-            plugins (dict): dictionary containing the parameters of the performed plugins
-    """
-
-    faceanalysis_dict = {"faces": []}
-    for key, val in faces.items():
-        if key == "output_data":
-            continue
-        faceanalysis_dict[key] = val
-
-    for face in faces["output_data"][0]["faces"]:
-        face_dict = {}
-        for key, val in face.items():
-            if key == "embedding":
-                continue
-            face_dict[key] = val
-
-        faceanalysis_dict["faces"].append(face_dict)
-
-    return faceanalysis_dict
-
+logger = logging.getLogger(__name__)
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="")
-
-    # Required arguments
-    parser.add_argument(
-        "--input", type=str, required=True, help="path to the pkl folder"
-    )
-
-    # optional
+    parser = argparse.ArgumentParser(description="Combine face analysis results")
+    parser.add_argument("--videos", nargs="+", type=str, required=True, help="path to the video files")
+    parser.add_argument("--pkl_dir", type=str, required=True, help="path to the output folder")
     parser.add_argument("--debug", action="store_true", help="debug output")
+    return parser.parse_args()
 
-    args = parser.parse_args()
-    return args
+def load_pickle(file_path):
+    with open(file_path, 'rb') as f:
+        return pickle.load(f)
+
+def save_pickle(data, file_path):
+    with open(file_path, 'wb') as f:
+        pickle.dump(data, f)
+
+def combine_face_analysis(features_dir):
+    # Load all individual analysis results
+    face_detection = load_pickle(os.path.join(features_dir, "pywork/face_detection_insightface.pkl"))
+    face_tracking = load_pickle(os.path.join(features_dir, "pywork/face_tracking.pkl"))
+    face_clustering = load_pickle(os.path.join(features_dir, "pywork/face_clustering.pkl"))
+    headgaze = load_pickle(os.path.join(features_dir, "pywork/headgaze_3DGazeNet.pkl"))
+    asd_results = load_pickle(os.path.join(features_dir, "pywork/asd_results.pkl"))
+    emotions = load_pickle(os.path.join(features_dir, "pywork/emotions_deepface.pkl"))
+
+    # Create mappings for quick lookups
+    face_id_to_track_id = {}
+    for track in face_tracking['tracks']:
+        for frame in track['frames']:
+            face_id_to_track_id[frame['face_id']] = track['track_id']
+
+
+    clustering_map = {item['face_id']: item['cluster_id'] for item in face_clustering['y']}
+    headgaze_map = {item['face_id']: item['headgaze'] for item in headgaze['y']}
+    asd_map = {track['track_id']: track for track in asd_results['tracks']}
+    emotions_map = {item['face_id']: item['emotions'] for item in emotions['y']}
+
+    combined_faces = []
+
+    for face in face_detection['y']:
+        face_id = face['id']
+        track_id = face_id_to_track_id.get(face_id)
+        
+        asd_info = asd_map.get(track_id, {})
+        
+        combined_face = {
+            "face_id": face_id,
+            "time": face['time'],
+            "frame": face['frame'],
+            "bbox": face['bbox'],
+            "kpss": face['kps'],
+            "emb": np.array(face['embedding']),
+            "track_id": track_id,
+            "cluster_id": clustering_map.get(face_id),
+            "gaze": headgaze_map.get(face_id, {}),
+            "speaking": asd_info.get('is_speaking', False),
+            "speaking_ratio": asd_info.get('speaking_ratio', 0),
+            "speaking_frames": asd_info.get('speaking_frames', 0),
+            "speaking_scores": asd_info.get('smoothed_scores', []),
+            "emotions": emotions_map.get(face_id, {})
+        }
+        
+        combined_faces.append(combined_face)
+
+    # Save the combined results
+    os.makedirs(features_dir, exist_ok=True)
+    save_pickle({"faces": combined_faces, "args": face_detection['args']}, 
+                os.path.join(features_dir, "pywork/face_analysis.pkl"))
+
+    logger.info(f"Combined face analysis saved to {os.path.join(features_dir, 'pywork/face_analysis.pkl')}")
+    logger.info(f"Total faces: {len(combined_faces)}")
+    logger.info(f"Speaking faces: {sum(1 for face in combined_faces if face['speaking'])}")
 
 
 def main():
-    # load arguments
     args = parse_args()
+    
+    level = logging.DEBUG if args.debug else logging.INFO
+    logging.basicConfig(format="%(asctime)s %(levelname)s:%(message)s", datefmt="%Y-%m-%d %H:%M:%S", level=level)
 
-    # define logging level and format
-    level = logging.INFO
-    if args.debug:
-        level = logging.DEBUG
-
-    logging.basicConfig(
-        format="%(asctime)s %(levelname)s:%(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-        level=level,
-    )
-
-    # read face clustering results
-    face_clusters = read_pkl(os.path.join(args.input, "face_clustering.pkl"))
-    cluster_lut = {}
-    for i, face_id in enumerate(face_clusters["y"]["ids"]):
-        cluster_id = face_clusters["y"]["clusters"][i]
-        cluster_lut[face_id] = cluster_id
-
-    # read head pose results
-    headposes = read_pkl(os.path.join(args.input, "headpose_6DRepNet.pkl"))
-    headpose_lut = {}
-    for entry in headposes["y"]:
-        headpose_lut[entry["id"]] = np.asarray(
-            [
-                entry["headpose"]["pitch"],
-                entry["headpose"]["yaw"],
-                entry["headpose"]["roll"],
-            ]
-        )
+    videos = args.videos
+    for vi, video_path in enumerate(videos):
+        logging.info(f"Processing video [{vi+1}/{len(videos)}]: {video_path}")
+        vidname = os.path.splitext(os.path.basename(video_path))[0]
+        input_dir = os.path.join(args.pkl_dir, vidname)
         
-    ## read headgaze results
-    headgazes = read_pkl(os.path.join(args.input, "headgaze_3DGazeNet.pkl"))
-    headgaze_lut = {}
-    for entry in headgazes["y"]:
-        headgaze_lut[entry["id"]] = np.asarray(
-            [
-                entry["headgaze"]["left_gaze_rad"],
-                entry["headgaze"]["right_gaze_rad"],
-                entry["headgaze"]["left_gaze_deg"],
-                entry["headgaze"]["right_gaze_deg"],
-            ]
-        )
-
-    # read faces and store all information
-    faces_data = read_pkl(os.path.join(args.input, "face_analysis_tibava.pkl"))
-    for face in faces_data["output_data"][0]["faces"]:
-        face["headpose"] = headpose_lut[face["id"]]
-        face["cluster_id"] = cluster_lut[face["id"]]
-        face["headgaze"] = headgaze_lut[face["id"]]
-
-    # write pkl file
-    with open(os.path.join(args.input, "face_analysis.pkl"), "wb") as f:
-        output_dict = faceanalysis_pkl(faces_data)
-        pickle.dump(output_dict, f)
-
-    logging.info(f"Output written to: {os.path.join(args.input, 'face_analysis.pkl')}")
-
-    return 0
-
+        combine_face_analysis(input_dir)
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

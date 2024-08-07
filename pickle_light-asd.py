@@ -1,274 +1,13 @@
-import sys, time, os, tqdm, torch, argparse, glob, subprocess, warnings, cv2, pickle, numpy, pdb, math, python_speech_features
+import sys, time, os, tqdm, torch, argparse, glob, subprocess, warnings, cv2, pickle, numpy, math, python_speech_features, logging
 
-from scipy import signal
-from shutil import rmtree
+from decord import VideoReader, cpu
 from scipy.io import wavfile
-from scipy.interpolate import interp1d
-from sklearn.metrics import accuracy_score, f1_score
+import numpy as np
 
-from scenedetect.video_manager import VideoManager
-from scenedetect.scene_manager import SceneManager
-from scenedetect.frame_timecode import FrameTimecode
-from scenedetect.stats_manager import StatsManager
-from scenedetect.detectors import ContentDetector
-
-from model.faceDetector.s3fd import S3FD
+sys.path.append("Light-ASD")
 from ASD import ASD
 
 warnings.filterwarnings("ignore")
-
-parser = argparse.ArgumentParser(description="Columbia ASD Evaluation")
-
-parser.add_argument("--videoName", type=str, default="col", help="Demo video name")
-parser.add_argument(
-    "--videoFolder",
-    type=str,
-    default="colDataPath",
-    help="Path for inputs, tmps and outputs",
-)
-parser.add_argument(
-    "--pretrainModel",
-    type=str,
-    default="weight/pretrain_AVA_CVPR.model",
-    help="Path for the pretrained model",
-)
-
-parser.add_argument(
-    "--nDataLoaderThread", type=int, default=10, help="Number of workers"
-)
-parser.add_argument(
-    "--facedetScale",
-    type=float,
-    default=0.25,
-    help="Scale factor for face detection, the frames will be scale to 0.25 orig",
-)
-parser.add_argument(
-    "--minTrack", type=int, default=10, help="Number of min frames for each shot"
-)
-parser.add_argument(
-    "--numFailedDet",
-    type=int,
-    default=10,
-    help="Number of missed detections allowed before tracking is stopped",
-)
-parser.add_argument(
-    "--minFaceSize", type=int, default=1, help="Minimum face size in pixels"
-)
-parser.add_argument("--cropScale", type=float, default=0.40, help="Scale bounding box")
-
-parser.add_argument("--start", type=int, default=0, help="The start time of the video")
-parser.add_argument(
-    "--duration",
-    type=int,
-    default=0,
-    help="The duration of the video, when set as 0, will extract the whole video",
-)
-
-parser.add_argument(
-    "--evalCol",
-    dest="evalCol",
-    action="store_true",
-    help="Evaluate on Columbia dataset",
-)
-parser.add_argument(
-    "--colSavePath",
-    type=str,
-    default="/colDataPath",
-    help="Path for inputs, tmps and outputs",
-)
-
-args = parser.parse_args()
-
-
-if args.evalCol == True:
-    # The process is: 1. download video and labels(I have modified the format of labels to make it easiler for using)
-    # 	              2. extract audio, extract video frames
-    #                 3. scend detection, face detection and face tracking
-    #                 4. active speaker detection for the detected face clips
-    #                 5. use iou to find the identity of each face clips, compute the F1 results
-    # The step 1 to 3 will take some time (That is one-time process). It depends on your cpu and gpu speed. For reference, I used 1.5 hour
-    # The step 4 and 5 need less than 10 minutes
-    # Need about 20G space finally
-    # ```
-    args.videoName = "col"
-    args.videoFolder = args.colSavePath
-    args.savePath = args.savepath
-    args.videoPath = os.path.join(args.videoFolder, args.videoName + ".mp4")
-    args.duration = 0
-    if os.path.isfile(args.videoPath) == False:  # Download video
-        link = "https://www.youtube.com/watch?v=6GzxbrO0DHM&t=2s"
-        cmd = "youtube-dl -f best -o %s '%s'" % (args.videoPath, link)
-        output = subprocess.call(cmd, shell=True, stdout=None)
-    if os.path.isdir(args.videoFolder + "/col_labels") == False:  # Download label
-        link = "1Tto5JBt6NsEOLFRWzyZEeV6kCCddc6wv"
-        cmd = "gdown --id %s -O %s" % (link, args.videoFolder + "/col_labels.tar.gz")
-        subprocess.call(cmd, shell=True, stdout=None)
-        cmd = "tar -xzvf %s -C %s" % (
-            args.videoFolder + "/col_labels.tar.gz",
-            args.videoFolder,
-        )
-        subprocess.call(cmd, shell=True, stdout=None)
-        os.remove(args.videoFolder + "/col_labels.tar.gz")
-else:
-    args.videoPath = glob.glob(os.path.join(args.videoFolder, args.videoName + ".*"))[0]
-    args.savePath = os.path.join(args.videoFolder, args.videoName)
-
-
-def scene_detect(args):
-    # CPU: Scene detection, output is the list of each shot's time duration
-    videoManager = VideoManager([args.videoFilePath])
-    statsManager = StatsManager()
-    sceneManager = SceneManager(statsManager)
-    sceneManager.add_detector(ContentDetector())
-    baseTimecode = videoManager.get_base_timecode()
-    videoManager.set_downscale_factor()
-    videoManager.start()
-    sceneManager.detect_scenes(frame_source=videoManager)
-    sceneList = sceneManager.get_scene_list(baseTimecode)
-    savePath = os.path.join(args.pyworkPath, "scene.pckl")
-    if sceneList == []:
-        sceneList = [
-            (videoManager.get_base_timecode(), videoManager.get_current_timecode())
-        ]
-    with open(savePath, "wb") as fil:
-        pickle.dump(sceneList, fil)
-        sys.stderr.write(
-            "%s - scenes detected %d\n" % (args.videoFilePath, len(sceneList))
-        )
-    return sceneList
-
-
-def inference_video(args):
-    # GPU: Face detection, output is the list contains the face location and score in this frame
-    DET = S3FD(device="cuda")
-    flist = glob.glob(os.path.join(args.pyframesPath, "*.jpg"))
-    flist.sort()
-    dets = []
-    for fidx, fname in enumerate(flist):
-        image = cv2.imread(fname)
-        imageNumpy = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        bboxes = DET.detect_faces(imageNumpy, conf_th=0.9, scales=[args.facedetScale])
-        dets.append([])
-        for bbox in bboxes:
-            dets[-1].append(
-                {"frame": fidx, "bbox": (bbox[:-1]).tolist(), "conf": bbox[-1]}
-            )  # dets has the frames info, bbox info, conf info
-        sys.stderr.write(
-            "%s-%05d; %d dets\r" % (args.videoFilePath, fidx, len(dets[-1]))
-        )
-    savePath = os.path.join(args.pyworkPath, "faces.pckl")
-    with open(savePath, "wb") as fil:
-        pickle.dump(dets, fil)
-    return dets
-
-
-def bb_intersection_over_union(boxA, boxB, evalCol=False):
-    # CPU: IOU Function to calculate overlap between two image
-    xA = max(boxA[0], boxB[0])
-    yA = max(boxA[1], boxB[1])
-    xB = min(boxA[2], boxB[2])
-    yB = min(boxA[3], boxB[3])
-    interArea = max(0, xB - xA) * max(0, yB - yA)
-    boxAArea = (boxA[2] - boxA[0]) * (boxA[3] - boxA[1])
-    boxBArea = (boxB[2] - boxB[0]) * (boxB[3] - boxB[1])
-    if evalCol == True:
-        iou = interArea / float(boxAArea)
-    else:
-        iou = interArea / float(boxAArea + boxBArea - interArea)
-    return iou
-
-
-def track_shot(args, sceneFaces):
-    # CPU: Face tracking
-    iouThres = 0.5  # Minimum IOU between consecutive face detections
-    tracks = []
-    while True:
-        track = []
-        for frameFaces in sceneFaces:
-            for face in frameFaces:
-                if track == []:
-                    track.append(face)
-                    frameFaces.remove(face)
-                elif face["frame"] - track[-1]["frame"] <= args.numFailedDet:
-                    iou = bb_intersection_over_union(face["bbox"], track[-1]["bbox"])
-                    if iou > iouThres:
-                        track.append(face)
-                        frameFaces.remove(face)
-                        continue
-                else:
-                    break
-        if track == []:
-            break
-        elif len(track) > args.minTrack:
-            frameNum = numpy.array([f["frame"] for f in track])
-            bboxes = numpy.array([numpy.array(f["bbox"]) for f in track])
-            frameI = numpy.arange(frameNum[0], frameNum[-1] + 1)
-            bboxesI = []
-            for ij in range(0, 4):
-                interpfn = interp1d(frameNum, bboxes[:, ij])
-                bboxesI.append(interpfn(frameI))
-            bboxesI = numpy.stack(bboxesI, axis=1)
-            if (
-                max(
-                    numpy.mean(bboxesI[:, 2] - bboxesI[:, 0]),
-                    numpy.mean(bboxesI[:, 3] - bboxesI[:, 1]),
-                )
-                > args.minFaceSize
-            ):
-                tracks.append({"frame": frameI, "bbox": bboxesI})
-    return tracks
-
-
-def crop_video(args, track, cropFile):
-    # CPU: crop the face clips
-    flist = glob.glob(os.path.join(args.pyframesPath, "*.jpg"))  # Read the frames
-    flist.sort()
-    vOut = cv2.VideoWriter(
-        cropFile + "t.avi", cv2.VideoWriter_fourcc(*"XVID"), 25, (224, 224)
-    )  # Write video
-    dets = {"x": [], "y": [], "s": []}
-    for det in track["bbox"]:  # Read the tracks
-        dets["s"].append(max((det[3] - det[1]), (det[2] - det[0])) / 2)
-        dets["y"].append((det[1] + det[3]) / 2)  # crop center x
-        dets["x"].append((det[0] + det[2]) / 2)  # crop center y
-    dets["s"] = signal.medfilt(dets["s"], kernel_size=13)  # Smooth detections
-    dets["x"] = signal.medfilt(dets["x"], kernel_size=13)
-    dets["y"] = signal.medfilt(dets["y"], kernel_size=13)
-    for fidx, frame in enumerate(track["frame"]):
-        cs = args.cropScale
-        bs = dets["s"][fidx]  # Detection box size
-        bsi = int(bs * (1 + 2 * cs))  # Pad videos by this amount
-        image = cv2.imread(flist[frame])
-        frame = numpy.pad(
-            image,
-            ((bsi, bsi), (bsi, bsi), (0, 0)),
-            "constant",
-            constant_values=(110, 110),
-        )
-        my = dets["y"][fidx] + bsi  # BBox center Y
-        mx = dets["x"][fidx] + bsi  # BBox center X
-        face = frame[
-            int(my - bs) : int(my + bs * (1 + 2 * cs)),
-            int(mx - bs * (1 + cs)) : int(mx + bs * (1 + cs)),
-        ]
-        vOut.write(cv2.resize(face, (224, 224)))
-    audioTmp = cropFile + ".wav"
-    audioStart = (track["frame"][0]) / 25
-    audioEnd = (track["frame"][-1] + 1) / 25
-    vOut.release()
-    command = (
-        "ffmpeg -y -i %s -async 1 -ac 1 -vn -acodec pcm_s16le -ar 16000 -threads %d -ss %.3f -to %.3f %s -loglevel panic"
-        % (args.audioFilePath, args.nDataLoaderThread, audioStart, audioEnd, audioTmp)
-    )
-    output = subprocess.call(command, shell=True, stdout=None)  # Crop audio file
-    _, audio = wavfile.read(audioTmp)
-    command = (
-        "ffmpeg -y -i %st.avi -i %s -threads %d -c:v copy -c:a copy %s.avi -loglevel panic"
-        % (cropFile, audioTmp, args.nDataLoaderThread, cropFile)
-    )  # Combine audio and video file
-    output = subprocess.call(command, shell=True, stdout=None)
-    os.remove(cropFile + "t.avi")
-    return {"track": track, "proc_track": dets}
 
 
 def extract_MFCC(file, outPath):
@@ -279,7 +18,28 @@ def extract_MFCC(file, outPath):
     numpy.save(featuresPath, mfcc)
 
 
-def evaluate_network(files, args):
+def read_video_and_get_info(video_path, args):
+    cap = cv2.VideoCapture(video_path)
+    original_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    original_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    cap.release()
+
+    ## Longer side of the frame equal to max_dimension if it is greater than max_dimension
+    if original_width > args.max_dimension:
+        new_width = args.max_dimension
+        new_height = int(original_height * new_width / original_width)
+    else:
+        new_width = original_width
+        new_height = original_height
+
+    vr = VideoReader(video_path, num_threads=12, ctx=cpu(0), width=new_width, height=new_height)
+    fps = vr.get_avg_fps()
+    
+    return vr, new_width, new_height, fps
+
+
+
+def evaluate_network(files, args, fps):
     # GPU: active speaker detection by pretrained model
     s = ASD()
     s.loadParameters(args.pretrainModel)
@@ -328,8 +88,15 @@ def evaluate_network(files, args):
             (audioFeature.shape[0] - audioFeature.shape[0] % 4) / 100,
             videoFeature.shape[0],
         )
+
+       # Check if either audioFeature or videoFeature is empty
+        if audioFeature.size == 0 or videoFeature.size == 0:
+            print(f"Skipping file {fileName} due to empty audio or video feature")
+            continue
+        
         audioFeature = audioFeature[: int(round(length * 100)), :]
-        videoFeature = videoFeature[: int(round(length * 25)), :, :]
+        videoFeature = videoFeature[: int(round(length * fps)), :, :]
+
         allScore = []  # Evaluation use model
         for duration in durationSet:
             batchSize = int(math.ceil(length / duration))
@@ -348,30 +115,62 @@ def evaluate_network(files, args):
                     inputV = (
                         torch.FloatTensor(
                             videoFeature[
-                                i * duration * 25 : (i + 1) * duration * 25, :, :
+                                i * duration * fps : (i + 1) * duration * fps, :, :
                             ]
                         )
                         .unsqueeze(0)
                         .cuda()
                     )
+
+
+                    ## --- Conditions for either audio or visual empty batches
+                    # If audio is empty but video is not, fill audio with zeros
+                    if inputA.size(1) == 0 and inputV.size(1) != 0:
+                        inputA = torch.zeros((1, inputV.size(1) * 4, inputA.size(2))).cuda()
+                    
+                    # If video is empty but audio is not, fill video with zeros
+                    elif inputV.size(1) == 0 and inputA.size(1) != 0:
+                        inputV = torch.zeros((1, inputA.size(1) // 4, 112, 112)).cuda()
+                    
+                    # If both are empty, skip this batch
+                    elif inputA.size(1) == 0 and inputV.size(1) == 0:
+                        print(f"Skipping batch {i} due to both inputs being empty")
+                        continue
+                    
+
                     embedA = s.model.forward_audio_frontend(inputA)
                     embedV = s.model.forward_visual_frontend(inputV)
+                    
+                    # Get the maximum length between audio and video embeddings
+                    max_length = max(embedA.size(1), embedV.size(1))
+
+                    # Pad audio embedding if necessary
+                    if embedA.size(1) < max_length:
+                        padding = torch.zeros(embedA.size(0), max_length - embedA.size(1), embedA.size(2)).cuda()
+                        embedA = torch.cat([embedA, padding], dim=1)
+
+                    # Pad video embedding if necessary
+                    if embedV.size(1) < max_length:
+                        padding = torch.zeros(embedV.size(0), max_length - embedV.size(1), embedV.size(2)).cuda()
+                        embedV = torch.cat([embedV, padding], dim=1)
+
                     out = s.model.forward_audio_visual_backend(embedA, embedV)
                     score = s.lossAV.forward(out, labels=None)
                     scores.extend(score)
             allScore.append(scores)
-        allScore = numpy.round((numpy.mean(numpy.array(allScore), axis=0)), 1).astype(
-            float
-        )
+        # Handle variable-length scores
+        max_length = max(len(scores) for scores in allScore)
+        padded_scores = [scores + [-5] * (max_length - len(scores)) for scores in allScore]
+        # allScore = numpy.round((numpy.mean(numpy.array(allScore), axis=0)), 1).astype(float)
+        allScore = numpy.round((numpy.mean(numpy.array(padded_scores), axis=0)), 1).astype(float)
         allScores.append(allScore)
+
     return allScores
 
 
-def visualization(tracks, scores, args):
+def visualization(tracks, scores, args, vr, fps):
     # CPU: visulize the result for video format
-    flist = glob.glob(os.path.join(args.pyframesPath, "*.jpg"))
-    flist.sort()
-    faces = [[] for i in range(len(flist))]
+    faces = [[] for i in range(len(vr))]
     for tidx, track in enumerate(tracks):
         if tidx < len(scores):  ## Added by me
             score = scores[tidx]
@@ -389,18 +188,18 @@ def visualization(tracks, scores, args):
                         "y": track["proc_track"]["y"][fidx],
                     }
                 )
-    firstImage = cv2.imread(flist[0])
+    firstImage = vr[0].asnumpy()
     fw = firstImage.shape[1]
     fh = firstImage.shape[0]
     vOut = cv2.VideoWriter(
-        os.path.join(args.pyaviPath, "video_only.avi"),
+        os.path.join(args.output_dir, "video_only.avi"),
         cv2.VideoWriter_fourcc(*"XVID"),
-        25,
+        fps,
         (fw, fh),
     )
     colorDict = {0: 0, 1: 255}
-    for fidx, fname in tqdm.tqdm(enumerate(flist), total=len(flist)):
-        image = cv2.imread(fname)
+    for fidx, image in tqdm.tqdm(enumerate(vr), total=len(vr)):
+        image = image.asnumpy()
         for face in faces[fidx]:
             clr = colorDict[int((face["score"] >= 0))]
             txt = round(face["score"], 1)
@@ -420,150 +219,140 @@ def visualization(tracks, scores, args):
                 (0, clr, 255 - clr),
                 5,
             )
-        vOut.write(image)
+        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        vOut.write(image_rgb)
     vOut.release()
     command = (
         "ffmpeg -y -i %s -i %s -threads %d -c:v copy -c:a copy %s -loglevel panic"
         % (
-            os.path.join(args.pyaviPath, "video_only.avi"),
-            os.path.join(args.pyaviPath, "audio.wav"),
+            os.path.join(args.output_dir, "video_only.avi"),
+            os.path.join(args.output_dir, "audio.wav"),
             args.nDataLoaderThread,
-            os.path.join(args.pyaviPath, "video_out.avi"),
+            os.path.join(args.output_dir, "video_out_%s.avi"%(args.model)),
         )
     )
     output = subprocess.call(command, shell=True, stdout=None)
 
 
+def combine_tracks_and_scores(tracks, scores):
+    assert len(tracks) == len(scores), "Number of tracks and scores must match"
+    combined_results = []
+    for track, score in zip(tracks, scores):
+        smoothed_scores = []
+        for i in range(len(score)):
+            s = score[max(i-2, 0):min(i+3, len(score))]  # average smoothing
+            smoothed_scores.append(float(np.mean(s)))
+        
+        speaking_frames = sum(s >= 0 for s in smoothed_scores)
+        speaking_ratio = speaking_frames / len(smoothed_scores)
+
+        combined_track = {
+            "track_id": track['track']['track_id'],
+            "frames": track['track']['frame'].tolist(),
+            "bbox": track['track']['bbox'].tolist(),
+            "is_speaking": speaking_ratio > 0.6,  # Threshold can be adjusted when directly using face_analysis.pkl
+            "speaking_ratio": speaking_ratio,
+            "speaking_frames": speaking_frames,
+            "mean_score": float(np.mean(smoothed_scores)),
+            "original_scores": score,
+            "smoothed_scores": smoothed_scores
+        }
+
+        combined_results.append(combined_track)
+        
+    return combined_results
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Light-ASD For Active Speaker Detection")
+    parser.add_argument("--videos", nargs="+", type=str, required=True, help="path to the video files")
+    parser.add_argument("--pkl_dir", type=str, required=True, help="path to the output folder")
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="talkset",
+        help="talkset or ava",
+    )
+    parser.add_argument(
+        "--nDataLoaderThread", type=int, default=10, help="Number of workers"
+    )
+    parser.add_argument(
+        "--minTrack", type=int, default=10, help="Number of min frames for each shot"
+    )
+    parser.add_argument("--start", type=int, default=0, help="The start time of the video")
+    parser.add_argument(
+        "--duration",
+        type=int,
+        default=0,
+        help="The duration of the video, when set as 0, will extract the whole video",
+    )
+    parser.add_argument("--debug", action="store_true", help="debug output")
+    parser.add_argument("--visualize", action="store_true", help="Visualize the result")
+    parser.add_argument(
+        "--max_dimension",
+        type=int,
+        required=False,
+        default=1280,
+        help="max dimension of the video frames",
+    )
+
+    return parser.parse_args()
+
+
 # Main function
 def main():
-    # This preprocesstion is modified based on this [repository](https://github.com/joonson/syncnet_python).
-    # ```
-    # .
-    # ├── pyavi
-    # │   ├── audio.wav (Audio from input video)
-    # │   ├── video.avi (Copy of the input video)
-    # │   ├── video_only.avi (Output video without audio)
-    # │   └── video_out.avi  (Output video with audio)
-    # ├── pycrop (The detected face videos and audios)
-    # │   ├── 000000.avi
-    # │   ├── 000000.wav
-    # │   ├── 000001.avi
-    # │   ├── 000001.wav
-    # │   └── ...
-    # ├── pyframes (All the video frames in this video)
-    # │   ├── 000001.jpg
-    # │   ├── 000002.jpg
-    # │   └── ...
-    # └── pywork
-    #     ├── faces.pckl (face detection result)
-    #     ├── scene.pckl (scene detection result)
-    #     ├── scores.pckl (ASD result)
-    #     └── tracks.pckl (face tracking result)
-    # ```
 
-    # # Initialization
-    # args.pyaviPath = os.path.join(args.savePath, 'pyavi')
-    # args.pyframesPath = os.path.join(args.savePath, 'pyframes')
-    # args.pyworkPath = os.path.join(args.savePath, 'pywork')
-    # args.pycropPath = os.path.join(args.savePath, 'pycrop')
-    # if os.path.exists(args.savePath):
-    # 	rmtree(args.savePath)
-    # os.makedirs(args.pyaviPath, exist_ok = True) # The path for the input video, input audio, output video
-    # os.makedirs(args.pyframesPath, exist_ok = True) # Save all the video frames
-    # os.makedirs(args.pyworkPath, exist_ok = True) # Save the results in this process by the pckl method
-    # os.makedirs(args.pycropPath, exist_ok = True) # Save the detected face clips (audio+video) in this process
+    args = parse_args()
+    level = logging.DEBUG if args.debug else logging.INFO
+    logging.basicConfig(format="%(asctime)s %(levelname)s:%(message)s", datefmt="%Y-%m-%d %H:%M:%S", level=level)
 
-    # # Extract video
-    # args.videoFilePath = os.path.join(args.pyaviPath, 'video.avi')
-    # # If duration did not set, extract the whole video, otherwise extract the video from 'args.start' to 'args.start + args.duration'
-    # if args.duration == 0:
-    # 	command = ("ffmpeg -y -i %s -qscale:v 2 -threads %d -async 1 -r 25 %s -loglevel panic" % \
-    # 		(args.videoPath, args.nDataLoaderThread, args.videoFilePath))
-    # else:
-    # 	command = ("ffmpeg -y -i %s -qscale:v 2 -threads %d -ss %.3f -to %.3f -async 1 -r 25 %s -loglevel panic" % \
-    # 		(args.videoPath, args.nDataLoaderThread, args.start, args.start + args.duration, args.videoFilePath))
-    # subprocess.call(command, shell=True, stdout=None)
-    # sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S") + " Extract the video and save in %s \r\n" %(args.videoFilePath))
+    args.pretrainModel = "Light-ASD/weight/finetuning_TalkSet.model" if args.model == "talkset" else "Light-ASD/weight/pretrain_AVA_CVPR.model"
 
-    # # Extract audio
-    # args.audioFilePath = os.path.join(args.pyaviPath, 'audio.wav')
-    # command = ("ffmpeg -y -i %s -qscale:a 0 -ac 1 -vn -threads %d -ar 16000 %s -loglevel panic" % \
-    # 	(args.videoFilePath, args.nDataLoaderThread, args.audioFilePath))
-    # subprocess.call(command, shell=True, stdout=None)
-    # sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S") + " Extract the audio and save in %s \r\n" %(args.audioFilePath))
+    videos = args.videos
+    for vi, video_path in enumerate(videos):
+        logging.info(f"Processing video [{vi+1}/{len(videos)}]: {video_path}")
 
-    # # Extract the video frames
-    # command = ("ffmpeg -y -i %s -qscale:v 2 -threads %d -f image2 %s -loglevel panic" % \
-    # 	(args.videoFilePath, args.nDataLoaderThread, os.path.join(args.pyframesPath, '%06d.jpg')))
-    # subprocess.call(command, shell=True, stdout=None)
-    # sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S") + " Extract the frames and save in %s \r\n" %(args.pyframesPath))
+        vidname = os.path.splitext(os.path.basename(video_path))[0]
+        args.videoFilePath = video_path
+        args.output_dir = os.path.join(args.pkl_dir, vidname)
+        args.audioFilePath = os.path.join(args.output_dir, 'audio.wav')
+        args.pycropPath = os.path.join(args.output_dir, 'facecrops')
 
-    # # Scene detection for the video frames
-    # scene = scene_detect(args)
-    # sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S") + " Scene detection and save in %s \r\n" %(args.pyworkPath))
+        # get frames from video
+        vd, frame_width, frame_height, fps = read_video_and_get_info(video_path, args)
+        args.fps = fps
+        logging.info(f"Video info: {len(vd)} frames, {fps} FPS, {frame_width} x {frame_height}")
 
-    # # Face detection for the video frames
-    # faces = inference_video(args)
-    # sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S") + " Face detection and save in %s \r\n" %(args.pyworkPath))
+        vidTracks = pickle.load(open(os.path.join(args.output_dir, 'tracks.pkl'), 'rb'))
 
-    # TODO: load shots from pkl
-    shots = []
+        # Active Speaker Detection
+        savePath = os.path.join(args.output_dir, "scores.pkl")
+        files = glob.glob("%s/*.avi" % args.pycropPath)
+        files.sort()
+        scores = evaluate_network(files, args, int(fps))
 
-    # TODO: load faces from pkl
-    # NOTE: Computation with high FPS (e.g., 25) necessary
-    # NOTE: only consider faces with specific size (i.e., actors)
-    faces = []
-
-    # Face tracking
-    # NOTE: We should use the face tracks as input for other plugins (face clustering, emotions)
-    # NOTE: add face racks, clustering based on face tracks, emotions for face tracks to TIB-AV-A
-    # TODO: Replace with a SotA technique for MOT
-    # (https://github.com/PaddlePaddle/PaddleDetection/blob/release/2.7/README_en.md)
-    allTracks, vidTracks = [], []
-    for shot in shots:
-        if (
-            shot[1].frame_num - shot[0].frame_num >= args.minTrack
-        ):  # Discard the shot frames less than minTrack frames
-            allTracks.extend(
-                track_shot(args, faces[shot[0].frame_num : shot[1].frame_num])
-            )  # 'frames' to present this tracks' timestep, 'bbox' presents the location of the faces
-    sys.stderr.write(
-        time.strftime("%Y-%m-%d %H:%M:%S")
-        + " Face track and detected %d tracks \r\n" % len(allTracks)
-    )
-
-    # NOTE: RUN from here should be okay
-
-    # Face clips cropping
-    for ii, track in tqdm.tqdm(enumerate(allTracks), total=len(allTracks)):
-        vidTracks.append(
-            crop_video(args, track, os.path.join(args.pycropPath, "%05d" % ii))
+        with open(savePath, "wb") as fil:
+            pickle.dump(scores, fil)
+        logging.info(
+            time.strftime("%Y-%m-%d %H:%M:%S")
+            + " Scores extracted and saved in %s \r\n" % savePath
         )
-    savePath = os.path.join(args.pyworkPath, "tracks.pckl")
-    with open(savePath, "wb") as fil:
-        pickle.dump(vidTracks, fil)
-    sys.stderr.write(
-        time.strftime("%Y-%m-%d %H:%M:%S")
-        + " Face Crop and saved in %s tracks \r\n" % args.pycropPath
-    )
-    fil = open(savePath, "rb")
-    vidTracks = pickle.load(fil)
 
-    # Active Speaker Detection
-    files = glob.glob("%s/*.avi" % args.pycropPath)
-    files.sort()
-    scores = evaluate_network(files, args)
-    savePath = os.path.join(args.pyworkPath, "scores.pckl")
-    with open(savePath, "wb") as fil:
-        pickle.dump(scores, fil)
-    sys.stderr.write(
-        time.strftime("%Y-%m-%d %H:%M:%S")
-        + " Scores extracted and saved in %s \r\n" % args.pyworkPath
-    )
+        # Combine tracks and scores
+        combined_results = combine_tracks_and_scores(vidTracks, scores)
 
-    # Visualization, save the result as the new video
-    visualization(vidTracks, scores, args)
+        # Save combined results
+        output_path = os.path.join(args.output_dir, 'asd_light-asd.pkl')
+        with open(output_path, 'wb') as f:
+            pickle.dump({"tracks": combined_results, "args": args}, f)
+        logging.info(f"ASD results saved to {output_path}")
 
+        # Visualization, save the result as the new video
+        if args.visualize:
+            visualization(vidTracks, scores, args, vd, int(fps))
+        
+        print()
+        
 
 if __name__ == "__main__":
     main()

@@ -45,7 +45,7 @@ def parse_args():
         "--max_dimension",
         type=int,
         required=False,
-        default=980,
+        default=1280,
         help="max dimension of the video frames",
     )
     args = parser.parse_args()
