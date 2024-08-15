@@ -1,18 +1,16 @@
 import argparse
-import os.path as osp
 import os
 import pickle
 import sys
-import cv2
 import numpy as np
 from tqdm import tqdm
 import logging
+from video_decoder import VideoDecoder
 
 sys.path.append("3DGazeNet/")
 from models import GazeModel
 from handler import *
 
-from decord import VideoReader, cpu
 
 def headgaze_pkl(headgazes: list, args) -> dict:
     """Converts outputs from 3DGazeNet for gaze estimation to a pkl"""
@@ -52,26 +50,6 @@ def parse_args():
     return args
 
 
-def read_video_and_get_info(video_path, args):
-    cap = cv2.VideoCapture(video_path)
-    original_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    original_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    cap.release()
-
-    ## Make longer side of the frame equal to max_dimension  if it is greater than max_dimension
-    if original_width > args.max_dimension:
-        new_width = args.max_dimension
-        new_height = int(original_height * new_width / original_width)
-    else:
-        new_width = original_width
-        new_height = original_height
-
-    vr = VideoReader(video_path, num_threads=12, ctx=cpu(0), width=new_width, height=new_height)
-    fps = vr.get_avg_fps()
-    
-    return vr, new_width, new_height, fps
-
-
 def main():
     # load arguments
     args = parse_args()
@@ -92,7 +70,7 @@ def main():
 
     videos = args.videos
     for vi, video_path in enumerate(videos):
-        logging.info(f"Processing video [{vi+1}/{len(videos)}]: {video_path}")
+        logging.info(f"\tProcessing video [{vi+1}/{len(videos)}]: {video_path}")
 
         # setup output dir
         vidname = os.path.splitext(os.path.basename(video_path))[0]
@@ -109,16 +87,13 @@ def main():
             face_content = pickle.load(pklfile)
 
         # get frames from video
-        vd, new_width, new_height, fps = read_video_and_get_info(video_path, args)
-        args.fps = fps
-        logging.info(f"Video info: {len(vd)} frames, {fps} FPS, {new_width} x {new_height}")
+        vd = VideoDecoder(video_path, max_dimension=args.max_dimension, fps=face_content["args"]["fps"])
+        logging.info(f"\tVideo info: {vd._frames} frames, Original FPS: {vd._real_fps}, New FPS: {vd._fps}, Size: {vd._new_size[0]} x {vd._new_size[1]}")
 
         headgazes = []
-        for fid, frame in enumerate(tqdm(vd, desc="Processing frames")):
-            # image = frame["frame"]
-            # frame_index = frame["index"]
-            image = frame.asnumpy()
-            frame_index = fid
+        for sample in tqdm(vd, desc="Processing frames"):
+            image = sample["frame"]
+            frame_index = sample["index"]
             
             # Filter faces for the current frame
             frame_faces = []
@@ -163,8 +138,7 @@ def main():
             output_dict = headgaze_pkl(headgazes, args)
             pickle.dump(output_dict, f)
 
-        logging.info(f"Output written to: {output_path}")
-
+        logging.info(f"\tHeadgaze output written to: {output_path}")
         print()
 
     return 0

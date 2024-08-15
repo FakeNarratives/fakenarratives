@@ -1,8 +1,8 @@
 import sys, time, os, tqdm, torch, argparse, glob, subprocess, warnings, cv2, pickle, numpy, math, python_speech_features, logging
 
-from decord import VideoReader, cpu
 from scipy.io import wavfile
 import numpy as np
+from video_utils import read_video_and_get_info
 
 sys.path.append("Light-ASD")
 from ASD import ASD
@@ -16,27 +16,6 @@ def extract_MFCC(file, outPath):
     mfcc = python_speech_features.mfcc(audio, sr)  # (N_frames, 13)   [1s = 100 frames]
     featuresPath = os.path.join(outPath, file.split("/")[-1].replace(".wav", ".npy"))
     numpy.save(featuresPath, mfcc)
-
-
-def read_video_and_get_info(video_path, args):
-    cap = cv2.VideoCapture(video_path)
-    original_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    original_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    cap.release()
-
-    ## Longer side of the frame equal to max_dimension if it is greater than max_dimension
-    if original_width > args.max_dimension:
-        new_width = args.max_dimension
-        new_height = int(original_height * new_width / original_width)
-    else:
-        new_width = original_width
-        new_height = original_height
-
-    vr = VideoReader(video_path, num_threads=12, ctx=cpu(0), width=new_width, height=new_height)
-    fps = vr.get_avg_fps()
-    
-    return vr, new_width, new_height, fps
-
 
 
 def evaluate_network(files, args, fps):
@@ -310,7 +289,7 @@ def main():
 
     videos = args.videos
     for vi, video_path in enumerate(videos):
-        logging.info(f"Processing video [{vi+1}/{len(videos)}]: {video_path}")
+        logging.info(f"\tProcessing video [{vi+1}/{len(videos)}]: {video_path}")
 
         vidname = os.path.splitext(os.path.basename(video_path))[0]
         args.videoFilePath = video_path
@@ -318,10 +297,18 @@ def main():
         args.audioFilePath = os.path.join(args.output_dir, 'audio.wav')
         args.pycropPath = os.path.join(args.output_dir, 'facecrops')
 
+        face_detection_path = os.path.join(args.output_dir, "face_detection_insightface.pkl")
+
+        if not os.path.isfile(face_detection_path):
+            logging.error(f"\tMissing face detection file in {face_detection_path}")
+            continue
+
+        with open(face_detection_path, "rb") as pklfile:
+            face_content = pickle.load(pklfile)
+
         # get frames from video
-        vd, frame_width, frame_height, fps = read_video_and_get_info(video_path, args)
-        args.fps = fps
-        logging.info(f"Video info: {len(vd)} frames, {fps} FPS, {frame_width} x {frame_height}")
+        vd, frame_width, frame_height, fps = read_video_and_get_info(video_path, args, face_content["args"]["fps"])
+        logging.info(f"\tVideo info: {len(vd)} frames, {fps} FPS, {frame_width} x {frame_height}")
 
         vidTracks = pickle.load(open(os.path.join(args.output_dir, 'tracks.pkl'), 'rb'))
 
@@ -333,10 +320,7 @@ def main():
 
         with open(savePath, "wb") as fil:
             pickle.dump(scores, fil)
-        logging.info(
-            time.strftime("%Y-%m-%d %H:%M:%S")
-            + " Scores extracted and saved in %s \r\n" % savePath
-        )
+        logging.info("\t"+time.strftime("%Y-%m-%d %H:%M:%S") + " Scores extracted and saved in %s \r" % savePath)
 
         # Combine tracks and scores
         combined_results = combine_tracks_and_scores(vidTracks, scores)
@@ -345,7 +329,7 @@ def main():
         output_path = os.path.join(args.output_dir, 'asd_light-asd.pkl')
         with open(output_path, 'wb') as f:
             pickle.dump({"tracks": combined_results, "args": args}, f)
-        logging.info(f"ASD results saved to {output_path}")
+        logging.info(f"\tASD results saved to {output_path}")
 
         # Visualization, save the result as the new video
         if args.visualize:
