@@ -3,9 +3,12 @@ import pickle
 from tqdm import tqdm
 import numpy as np
 from transnetv2 import TransNetV2
-import cv2
 import argparse
-import re
+import logging
+import sys
+import time
+sys.path.append(".")
+from video_utils import read_video_and_get_info
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Performs shot detection in a video using TransNetV2.")
@@ -15,6 +18,15 @@ def parse_args():
     parser.add_argument(
         "--pkl_dir", type=str, required=True, help="path to the output folder"
     )
+    parser.add_argument(
+        "--max_dimension",
+        type=int,
+        required=False,
+        default=48,
+        help="max dimension of the video frames",
+    )
+    parser.add_argument("--fps", type=int, default=25, help="frames per second")
+    parser.add_argument("--debug", action="store_true", help="debug output")
     args = parser.parse_args()
     return args
 
@@ -23,7 +35,7 @@ def get_model():
     print("\nTransNetV2 Model Loaded\n")
     return model
 
-def process_video(video_path, model):
+def process_video(video_path, model, args):
     """
     Use TransNetV2 model to perform shot detection on the video.
 
@@ -43,21 +55,22 @@ def process_video(video_path, model):
         "output_data": {"shots": []}
     }
 
-    # Read video and get metadata
-    cap = cv2.VideoCapture(video_path)
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    # get frames from video
+    vd, frame_width, frame_height, fps = read_video_and_get_info(video_path, args, args.fps)
+    logging.info(f"\tVideo info: {len(vd)} frames, {fps} FPS, Size: {frame_width} x {frame_height}")
 
-    # Predict shots
-    _, single_frame_predictions, _ = model.predict_video(video_path)
+    all_frames = np.array([vd[i] for i in range(len(vd))])
+    print(f"\tAll Frames: {all_frames.shape}")
+
+    single_frame_predictions, _ = model.predict_frames(all_frames)
 
     # Process predictions
     shots = model.predictions_to_scenes(single_frame_predictions)
 
     for shot in shots:
         start_frame, end_frame = shot
-        start_time = start_frame / fps
-        end_time = end_frame / fps
+        start_time = start_frame / args.fps
+        end_time = end_frame / args.fps
 
         shot_dict["output_data"]["shots"].append({
             "start_frame": int(start_frame),
@@ -71,11 +84,24 @@ def process_video(video_path, model):
 def main():
     args = parse_args()
 
+    # define logging level and format
+    level = logging.INFO
+    if args.debug:
+        level = logging.DEBUG
+
+    logging.basicConfig(
+        format="%(asctime)s %(levelname)s:%(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        level=level,
+    )
+
     model = get_model()
 
     videos = args.videos
     for vi, video_path in enumerate(videos):
-        print(f"Processing video [{vi+1}/{len(videos)}]: {video_path}")
+        start = time.time()
+
+        logging.info(f"\tProcessing video [{vi+1}/{len(videos)}]: {video_path}")
 
         vidname = os.path.splitext(os.path.basename(video_path))[0]
         output_dir = os.path.join(args.pkl_dir, vidname)
@@ -85,14 +111,16 @@ def main():
 
         output_file_path = os.path.join(output_dir, "transnet_shotdetection.pkl")
 
-        shot_dict = process_video(video_path, model)
+        shot_dict = process_video(video_path, model, args)
 
         with open(output_file_path, "wb") as output_file:
             pickle.dump(shot_dict, output_file)
 
-        print("Output saved at:", output_file_path)
+        logging.info(f"\tShot Prediction output saved at: {output_file_path}")
 
-        print("%%\n")
+        logging.info(f"\tTime taken: {time.time() - start:.2f} seconds")
+
+        print()
 
 if __name__ == "__main__":
     main()
