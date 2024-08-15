@@ -75,11 +75,18 @@ class VideoDecoder:
         self._ref_id = ref_id
 
         self._meta = parse_meta_av(path)
-
         self._size = self._meta.get("size")
-
         self._real_fps = self._meta.get("fps")
         self._duration = self._meta.get("duration")
+
+        if self._max_dimension is not None:
+            res = max(self._size[1], self._size[0])
+            scale = min(self._max_dimension / res, 1)
+            self._new_size = (round(self._size[0] * scale), round(self._size[1] * scale))
+        else:
+            self._new_size = self._size
+
+        self._frames = int(self._duration * self._fps if self._fps is not None else self._real_fps)
 
         self._kwargs = kwargs
 
