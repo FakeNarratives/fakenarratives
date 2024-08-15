@@ -75,9 +75,11 @@ def combine_face_analysis(features_dir):
     save_pickle({"faces": combined_faces, "args": face_detection['args']}, 
                 os.path.join(features_dir, "face_analysis.pkl"))
 
-    logger.info(f"Combined face analysis saved to {os.path.join(features_dir, 'face_analysis.pkl')}")
-    logger.info(f"Total faces: {len(combined_faces)}")
-    logger.info(f"Speaking faces: {sum(1 for face in combined_faces if face['speaking'])}")
+    logger.info(f"\tCombined face analysis saved to {os.path.join(features_dir, 'face_analysis.pkl')}")
+    logger.info(f"\tTotal faces: {len(combined_faces)}")
+    logger.info(f"\tSpeaking faces: {sum(1 for face in combined_faces if face['speaking'])}")
+
+    print()
 
 
 def main():
@@ -88,7 +90,7 @@ def main():
 
     videos = args.videos
     for vi, video_path in enumerate(videos):
-        logging.info(f"Processing video [{vi+1}/{len(videos)}]: {video_path}")
+        logging.info(f"\tProcessing video [{vi+1}/{len(videos)}]: {video_path}")
         vidname = os.path.splitext(os.path.basename(video_path))[0]
         input_dir = os.path.join(args.pkl_dir, vidname)
         

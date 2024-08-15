@@ -7,8 +7,7 @@ from sklearn.cluster import AgglomerativeClustering
 from sklearn.preprocessing import normalize
 from sklearn.metrics import silhouette_score
 from collections import defaultdict
-from decord import VideoReader, cpu
-import cv2
+from video_utils import read_video_and_get_info
 from sklearn.cluster import DBSCAN
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
@@ -32,12 +31,6 @@ def parse_args():
     )
     return parser.parse_args()
 
-
-def load_data(face_tracking_path):
-    """Load face tracking data"""
-    with open(face_tracking_path, "rb") as f:
-        face_tracking = pickle.load(f)
-    return face_tracking
 
 
 def process_tracks(face_tracking):
@@ -113,26 +106,6 @@ def extract_face_image(bbox, frame):
     return cv2.resize(face_img, (224, 224))
 
 
-def read_video_and_get_info(video_path, args):
-    cap = cv2.VideoCapture(video_path)
-    original_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    original_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    cap.release()
-
-    ## Make longer side of the frame equal to max_dimension  if it is greater than max_dimension
-    if original_width > args.max_dimension:
-        new_width = args.max_dimension
-        new_height = int(original_height * new_width / original_width)
-    else:
-        new_width = original_width
-        new_height = original_height
-
-    vr = VideoReader(video_path, num_threads=12, ctx=cpu(0), width=new_width, height=new_height)
-    fps = vr.get_avg_fps()
-    
-    return vr, new_width, new_height, fps
-
-
 def main():
     args = parse_args()
     
@@ -142,18 +115,22 @@ def main():
 
     videos = args.videos
     for vi, video_path in enumerate(videos):
-        logging.info(f"Processing video [{vi+1}/{len(videos)}]: {video_path}")
+        logging.info(f"\tProcessing video [{vi+1}/{len(videos)}]: {video_path}")
         vidname = os.path.splitext(os.path.basename(video_path))[0]
         output_dir = os.path.join(args.pkl_dir, vidname)
 
         face_tracking_path = os.path.join(output_dir, "face_tracking.pkl")
+        face_detection_path = os.path.join(output_dir, "face_detection_insightface.pkl")
 
-        if not os.path.isfile(face_tracking_path):
-            logger.error(f"Missing required file: {face_tracking_path}")
+        if not os.path.isfile(face_detection_path) or not os.path.isfile(face_tracking_path):
+            logging.error(f"\tMissing face tracking or detection file in {output_dir}")
             continue
 
-        # Load data
-        face_tracking = load_data(face_tracking_path)
+        with open(face_detection_path, "rb") as pklfile:
+            face_content = pickle.load(pklfile)
+
+        with open(face_tracking_path, "rb") as pklfile:
+            face_tracking = pickle.load(pklfile)
 
         # Process tracks to get embeddings
         track_embeddings = process_tracks(face_tracking)
@@ -162,18 +139,18 @@ def main():
         embeddings = list(track_embeddings.values())
 
         embeddings = np.array(normalize(embeddings))
-        logger.debug(f"Perform clustering ... shape {embeddings.shape}")
+        logger.debug(f"\tPerform clustering ... shape {embeddings.shape}")
 
         # Perform clustering
         clusters = improved_clustering(embeddings, eps=args.eps, metric=args.metric)
         unique_clusters = np.unique(clusters)
         num_clusters = len(unique_clusters)
-        logger.info(f"Number of clusters: {num_clusters}")
+        logger.info(f"\tNumber of clusters: {num_clusters}")
 
         # Visualize clusters if requested
         if args.visualize:
-            vr, frame_width, frame_height, fps = read_video_and_get_info(video_path, args)
-            logging.info(f"Video info: {len(vr)} frames, {fps} FPS, {frame_width} x {frame_height}")
+            vr, frame_width, frame_height, fps = read_video_and_get_info(video_path, args, face_content["args"]["fps"])
+            logging.info(f"\tVideo info: {len(vr)} frames, {fps} FPS, {frame_width} x {frame_height}")
             vis_output_dir = os.path.join(output_dir, "cluster_visualizations")
             os.makedirs(vis_output_dir, exist_ok=True)
             visualize_clusters(face_tracking, clusters, unique_clusters, vis_output_dir, vr)
@@ -195,7 +172,7 @@ def main():
             output_dict = {"y": clustering_results, "args": vars(args)}
             pickle.dump(output_dict, f)
         
-        logger.info(f"Output written to: {output_path}")
+        logger.info(f"\tOutput written to: {output_path}")
         print()
 
     return 0

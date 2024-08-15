@@ -11,7 +11,8 @@ from collections import defaultdict
 from tqdm import tqdm
 from scipy import signal
 import subprocess
-from decord import VideoReader, cpu
+from video_utils import read_video_and_get_info
+
 
 def tracking_pkl(tracks: list, args) -> dict:
     """Converts tracking results to a pkl format"""
@@ -170,26 +171,6 @@ def crop_video(args, track, vr, fps, cropFile, audioFilePath):
     return {'track': track, 'proc_track': dets, 'video_file': cropFile + '.avi', 'audio_file': subaudioFilePath}
 
 
-def read_video_and_get_info(video_path, args):
-    cap = cv2.VideoCapture(video_path)
-    original_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    original_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    cap.release()
-
-    ## Make longer side of the frame equal to max_dimension  if it is greater than max_dimension
-    if original_width > args.max_dimension:
-        new_width = args.max_dimension
-        new_height = int(original_height * new_width / original_width)
-    else:
-        new_width = original_width
-        new_height = original_height
-
-    vr = VideoReader(video_path, num_threads=12, ctx=cpu(0), width=new_width, height=new_height)
-    fps = vr.get_avg_fps()
-    
-    return vr, new_width, new_height, fps
-
-
 def parse_args():
     parser = argparse.ArgumentParser(description="")
     parser.add_argument("--videos", nargs="+", type=str, required=True, help="path to the video files")
@@ -215,7 +196,7 @@ def main():
 
     videos = args.videos
     for vi, video_path in enumerate(videos):
-        logging.info(f"Processing video [{vi+1}/{len(videos)}]: {video_path}")
+        logging.info(f"\tProcessing video [{vi+1}/{len(videos)}]: {video_path}")
         vidname = os.path.splitext(os.path.basename(video_path))[0]
         output_dir = os.path.join(args.pkl_dir, vidname)
         pycropPath = os.path.join(output_dir, 'facecrops')
@@ -223,25 +204,24 @@ def main():
 
         audioFilePath = os.path.join(output_dir, 'audio.wav')
         if not os.path.exists(audioFilePath):
-            logging.error(f"Error: Audio file {audioFilePath} does not exist.")
+            logging.error(f"\tError: Audio file {audioFilePath} does not exist.")
             continue
-
-        # get frames from video
-        vd, frame_width, frame_height, fps = read_video_and_get_info(video_path, args)
-        args.fps = fps
-        logging.info(f"Video info: {len(vd)} frames, {fps} FPS, {frame_width} x {frame_height}")
 
         face_detection_path = os.path.join(output_dir, "face_detection_insightface.pkl")
         shot_detection_path = os.path.join(output_dir, "transnet_shotdetection.pkl")
 
         if not os.path.isfile(face_detection_path) or not os.path.isfile(shot_detection_path):
-            logging.error(f"Missing shot or face detection file in {output_dir}")
+            logging.error(f"\tMissing shot or face detection file in {output_dir}")
             continue
 
         with open(face_detection_path, "rb") as pklfile:
             face_content = pickle.load(pklfile)
         with open(shot_detection_path, "rb") as pklfile:
             shot_content = pickle.load(pklfile)
+
+        # get frames from video
+        vd, frame_width, frame_height, fps = read_video_and_get_info(video_path, args, face_content["args"]["fps"])
+        logging.info(f"\tVideo info: {len(vd)} frames, {fps} FPS, {frame_width} x {frame_height}")
 
         faces_by_frame = defaultdict(list)
         for face in face_content["y"]:
@@ -265,7 +245,7 @@ def main():
         for shot in shot_content["output_data"]["shots"]:
             if shot["end_frame"] - shot["start_frame"] >= args.minTrack:
                 allTracks.extend(track_shot(args, faces_list[shot["start_frame"]:shot["end_frame"]]))
-        logging.info(f"Detected {len(allTracks)} tracks")
+        logging.info(f"\tDetected {len(allTracks)} tracks")
 
         vidTracks = []
         for ii, track in tqdm(enumerate(allTracks), total=len(allTracks)):
@@ -274,13 +254,13 @@ def main():
         tracks_path = os.path.join(output_dir, 'tracks.pkl')
         with open(tracks_path, 'wb') as fil:
             pickle.dump(vidTracks, fil)
-        logging.info(f"Face Crop and saved in {pycropPath} tracks")
+        logging.info(f"\tFace Crop and saved in {pycropPath} tracks")
 
         face_tracking_data = {"tracks": allTracks, "args": vars(args)}
         tracking_output_path = os.path.join(output_dir, 'face_tracking.pkl')
         with open(tracking_output_path, 'wb') as f:
             pickle.dump(face_tracking_data, f)
-        logging.info(f"Face tracking results saved to {tracking_output_path}")
+        logging.info(f"\tFace tracking results saved to {tracking_output_path}")
 
         print()
 

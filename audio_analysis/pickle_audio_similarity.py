@@ -60,14 +60,21 @@ def get_shot_time(index, shots):
 
 
 def get_waveform(audio_clip):
-    audio_array = torch.tensor(audio_clip.to_soundarray()).to(torch.float32).permute(1, 0) ## n_channels, n_samples
+    if audio_clip.duration == 0.0:
+        audio_array = torch.zeros(1, 16000).to(torch.float32)
+    else:
+        audio_array = torch.tensor(audio_clip.to_soundarray()).to(torch.float32).permute(1, 0) ## n_channels, n_samples
     
     if audio_array.shape[0] > 1:  # if stereo
         audio_array = audio_array.mean(dim=0).unsqueeze(0)
     
-    ## Make sure the audio clip is at-least 1 second long
+    ## Audio clip is at-least 1 second long
     if audio_array.shape[1] < 16000:
         audio_array = F.pad(audio_array, (0, 16000 - audio_array.shape[1]), "constant", 0)
+    
+    ## Audio clip is max 100 seconds long to avoid memory issues
+    if audio_array.shape[1] > 1600000:
+        audio_array = audio_array[:, :1600000]
         
     return audio_array
 
@@ -132,13 +139,13 @@ def process_video(video_path, output_path, model_type, model, processor, device=
     # Load the audio
     audio = AudioFileClip(video_path+".mp4", fps=16000)
 
-    for i, ref_shot in enumerate(tqdm(shot_dict["output_data"]["shots"])):
+    for i, ref_shot in enumerate(tqdm(shot_dict["output_data"]["shots"])):  
         ## For each shot and reference shot - have one video level similarity score
         similarities = {"shot": ref_shot, "prev_1": 0, "prev_2": 0, "next_1": 0, "next_2": 0}
 
         ## Compute reference shot feats
         sr_time, er_time = ref_shot["start"], ref_shot["end"]
-
+        
         ## Extract audio for the reference shot
         audio_clip = audio.subclip(sr_time, er_time)
         audio_array = get_waveform(audio_clip)

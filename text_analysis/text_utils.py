@@ -61,7 +61,8 @@ def get_response(url, params):
         return {}
 
 
-def select_best_binding(entity, bindings, event_list):
+
+def select_best_binding2(entity, bindings, org_list, event_list):
     if entity["type"] == "PER":
         for b in bindings:
             if ("instance" in b and "value" in b["instance"] and b["instance"]["value"].endswith("/Q5")):
@@ -124,7 +125,73 @@ def select_best_binding(entity, bindings, event_list):
         return None, entity
 
 
-def fix_entity_types(all_linked_entities, event_list):
+
+def select_best_binding(entity, bindings, org_list, event_list):
+    entity_id = entity["wd_id"].split("/")[-1] if entity["wd_id"].startswith("http") else entity["wd_id"]
+
+    def check_instance(binding, check_list=None, check_suffix=None):
+        if "instance" in binding and "value" in binding["instance"]:
+            instance_id = binding["instance"]["value"].split("/")[-1]
+            if check_list and (instance_id in check_list or entity_id in check_list):
+                return True
+            if check_suffix and instance_id.endswith(check_suffix):
+                return True
+        return False
+
+    def has_notable_properties(bindings):
+        notable_properties = [
+            "P106",  # occupation
+            "P27",   # country of citizenship
+            "P69",   # educated at
+            "P166",  # award received
+            "P800",  # notable work
+            "P1412", # languages spoken, written or signed
+            "P19",   # place of birth
+            "P570",  # date of death
+            "P735",  # given name
+            "P734"   # family name
+        ]
+        
+        for b in bindings:
+            for prop, value in b.items():
+                if any(notable_prop in str(value) for notable_prop in notable_properties):
+                    return True
+        return False
+
+    for b in bindings:
+        # Check for EVENT first
+        if entity_id in event_list or check_instance(b, check_list=event_list):
+            entity["type"] = "EVENT"
+            return b, entity
+
+        # Check for ORG
+        if check_instance(b, check_list=org_list):
+            entity["type"] = "ORG"
+            return b, entity
+
+        # Check for PER/EPER
+        if check_instance(b, check_suffix="/Q5"):
+            if has_notable_properties(bindings):
+                entity["type"] = "EPER"
+            else:
+                entity["type"] = "LPER"
+            return b, entity
+
+        # Check for LOC
+        if "coordinate" in b and "value" in b["coordinate"]:
+            entity["type"] = "LOC"
+            return b, entity
+
+    # If no matching binding found, keep the original type or default to MISC
+    if entity["type"] == "PER":
+        entity["type"] = "LPER"
+    elif entity["type"] not in ["ORG", "LOC", "EVENT", "EPER", "LPER"]:
+        entity["type"] = "MISC"
+
+    return None, entity
+
+
+def fix_entity_types(all_linked_entities, org_list, event_list):
     entity_info = {}
 
     for linked_entity in all_linked_entities:
@@ -134,7 +201,7 @@ def fix_entity_types(all_linked_entities, event_list):
         if wd_id not in entity_info:
             entity_info[wd_id] = get_entity_response(wikidata_id=wd_id)
 
-        binding, entity = select_best_binding(linked_entity, entity_info[wd_id]["bindings"], event_list)
+        binding, entity = select_best_binding(linked_entity, entity_info[wd_id]["bindings"], org_list, event_list)
         # print("After select_best_binding call:", binding, entity)
 
         # information = ["wikipedia_url", "entityDescription", "wdimage"]
@@ -264,64 +331,6 @@ def link_annotations(spacy_annotations, wikifier_annotations):
     return linked_entities
 
 
-
-# def get_wikifier_annotations(proc_text, language="de", wikifier_key="dqmaycxjptujqkdwsjojeblwjdiovu"):
-#     threshold = 1.0
-#     endpoint = 'http://www.wikifier.org/annotate-article'
-#     language = language
-#     wikiDataClasses = 'false'
-#     wikiDataClassIds = 'true'
-#     includeCosines = 'false'
-
-#     ## Chunk text into 25000 characters (Wikifier limit)
-#     n_chars = 0
-#     chunks = []     
-#     text = ""
-#     for sent in proc_text.sentences:
-#         if n_chars + len(sent.text) < 24999:
-#             text += sent.text + " "
-#             n_chars = len(text)
-#         else:
-#             chunks.append(text)
-#             text = sent.text
-#             n_chars = len(sent.text)
-
-#     if text:
-#         chunks.append(text)
-
-#     ## Chunking End
-
-#     total_len = 0
-#     all_annotations = []
-#     for text_chunk in chunks:
-#         data = urllib.parse.urlencode([("text", text_chunk.strip()), ("lang", language), ("userKey", wikifier_key),
-#                                     ("pageRankSqThreshold", "%g" % threshold), ("applyPageRankSqThreshold", "true"),
-#                                     ("nTopDfValuesToIgnore", "200"), ("nWordsToIgnoreFromList", "200"),
-#                                     ("wikiDataClasses", wikiDataClasses), ("wikiDataClassIds", wikiDataClassIds),
-#                                     ("support", "true"), ("ranges", "false"), ("includeCosines", includeCosines),
-#                                     ("maxMentionEntropy", "3")])
-
-#         req = urllib.request.Request(endpoint, data=data.encode("utf8"), method="POST")
-#         with urllib.request.urlopen(req, timeout=60) as f:
-#             response = f.read()
-#             response = json.loads(response.decode("utf8"))
-#             if 'annotations' in response:
-#                 for annot in response["annotations"]:
-#                     for occu in annot["support"]:
-#                         occu["chFrom"] += total_len
-#                         occu["chTo"] += total_len
-#                     all_annotations.append(annot)
-#             else:
-#                 print(f'No valid response: {response}')
-
-#         total_len += len(text_chunk)
-
-#         if len(chunks) > 1:
-#             time.sleep(1)
-
-#     return all_annotations
-
-
 def get_wikifier_annotations(proc_text, language="de", wikifier_key="dqmaycxjptujqkdwsjojeblwjdiovu"):
     threshold = 1.0
     endpoint = 'http://www.wikifier.org/annotate-article'
@@ -402,41 +411,3 @@ def get_speaker_turns(speaker_segments, gap=0.01):
                 speaker_turns.append(segment.copy())
     
     return speaker_turns
-
-
-def add_transcript_boundaries(asr_dict):    ## Segment boundaries are needed to match stanza NERs with Wikifier annotations
-    ## Load ASR transcript and add start/end characters of segments
-    end_char = 0
-    cnt_i = 0
-    cnt_j = 0
-    for segment in asr_dict["output_data"]["segments"]:
-        if segment["text"] != "": ## Ignore empty segments
-            end_char += len(segment["text"])
-            for match in re.finditer(re.escape(segment["text"]), asr_dict["output_data"]["text"]):
-                if match.end() == end_char or match.end() == end_char-1:
-                    segment["start_char"] = match.start()
-                    segment["end_char"] = match.end()-1
-                    cnt_j += 1
-        
-            cnt_i += 1
-
-    assert(cnt_i==cnt_j)
-
-    ## Load ASR transcript and add start/end characters of segments
-    end_char = 0
-    cnt_i = 0
-    cnt_j = 0
-    for segment in asr_dict["output_data"]["speaker_segments"]:
-        if segment["text"] != "": ## Ignore empty segments
-            end_char += len(segment["text"])
-            for match in re.finditer(re.escape(segment["text"]), asr_dict["output_data"]["text"]):
-                if match.end() == end_char or match.end() == end_char-1:
-                    segment["start_char"] = match.start()
-                    segment["end_char"] = match.end()-1
-                    cnt_j += 1
-        
-            cnt_i += 1
-
-    assert(cnt_i==cnt_j)
-
-    return asr_dict

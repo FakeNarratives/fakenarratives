@@ -1,10 +1,9 @@
 import argparse
-import os.path as osp
 import os
 import pickle
 import logging
 import sys
-from decord import VideoReader, cpu
+from video_decoder import VideoDecoder
 
 # 3rd party dependencies
 import gdown
@@ -13,9 +12,7 @@ import cv2
 from tqdm import tqdm
 
 # project dependencies
-from deepface.commons import package_utils, folder_utils
-from deepface.models.Demography import Demography
-from deepface.commons.logger import Logger
+from deepface.commons import package_utils
 # -------------------------------------------
 # pylint: disable=line-too-long
 # -------------------------------------------
@@ -131,7 +128,7 @@ def parse_args():
     parser.add_argument(
         "--ckpt_path", type=str, default="pretrained_models/facial_expression_model_weights.h5", help="path to checkpoint file",
     )
-    parser.add_argument("--batch_size", type=int, default=256, help="batch size")
+    parser.add_argument("--batch_size", type=int, default=1024, help="batch size")
     parser.add_argument("--cpu", action="store_true", help="process on cpu")
     parser.add_argument("--debug", action="store_true", help="debug output")
     parser.add_argument(
@@ -143,26 +140,6 @@ def parse_args():
     )
     args = parser.parse_args()
     return args
-
-
-def read_video_and_get_info(video_path, args):
-    cap = cv2.VideoCapture(video_path)
-    original_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    original_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    cap.release()
-
-    ## Make longer side of the frame equal to max_dimension  if it is greater than max_dimension
-    if original_width > args.max_dimension:
-        new_width = args.max_dimension
-        new_height = int(original_height * new_width / original_width)
-    else:
-        new_width = original_width
-        new_height = original_height
-
-    vr = VideoReader(video_path, num_threads=12, ctx=cpu(0), width=new_width, height=new_height)
-    fps = vr.get_avg_fps()
-    
-    return vr, new_width, new_height, fps
 
 
 def main():
@@ -184,36 +161,33 @@ def main():
     model = load_model(args.ckpt_path)
     emotion_labels = ['angry', 'disgust', 'fear', 'happy', 'sad', 'surprise', 'neutral']
 
-    batch_size = args.batch_size  # Adjust this based on your GPU memory
+    batch_size = args.batch_size
 
     videos = args.videos
     for vi, video_path in enumerate(videos):
-        logging.info(f"Processing video [{vi+1}/{len(videos)}]: {video_path}")
+        logging.info(f"\tProcessing video [{vi+1}/{len(videos)}]: {video_path}")
         vidname = os.path.splitext(os.path.basename(video_path))[0]
         output_dir = os.path.join(args.pkl_dir, vidname)
         face_detection_path = os.path.join(output_dir, "face_detection_insightface.pkl")
 
         if not os.path.isfile(face_detection_path):
-            logging.error(f"Missing file: {face_detection_path}")
+            logging.error(f"\tMissing file: {face_detection_path}")
             continue
 
         with open(face_detection_path, "rb") as pklfile:
             face_content = pickle.load(pklfile)
 
-        # vd = VideoDecoder(path=video_path, max_dimension=args.max_dimension, fps=face_content["args"]["fps"])
-        vd, new_width, new_height, fps = read_video_and_get_info(video_path, args)
-        args.fps = fps
-        logging.info(f"Video info: {len(vd)} frames, {fps} FPS, {new_width} x {new_height}")
+        # get frames from video
+        vd = VideoDecoder(video_path, max_dimension=args.max_dimension, fps=face_content["args"]["fps"])
+        logging.info(f"\tVideo info: {vd._frames} frames, Original FPS: {vd._real_fps}, New FPS: {vd._fps}, Size: {vd._new_size[0]} x {vd._new_size[1]}")
         
         emotions = []
         face_batch = []
         face_info_batch = []
 
-        for fid, frame in enumerate(tqdm(vd, desc="Processing frames")):
-            # image = frame["frame"]
-            # frame_index = frame["index"]
-            image = frame.asnumpy()
-            frame_index = fid
+        for sample in tqdm(vd, desc="Processing frames"):
+            image = sample["frame"]
+            frame_index = sample["index"]
             
             # Filter faces for the current frame
             frame_faces = []
@@ -240,7 +214,7 @@ def main():
 
                 if len(face_batch) == batch_size:
                     preprocessed_faces = preprocess_batch(face_batch)
-                    emotion_predictions = model.predict(preprocessed_faces)
+                    emotion_predictions = model.predict(preprocessed_faces, verbose=0)
                     
                     for face_info, prediction in zip(face_info_batch, emotion_predictions):
                         emotions.append({
@@ -256,7 +230,7 @@ def main():
         # Process any remaining faces
         if face_batch:
             preprocessed_faces = preprocess_batch(face_batch)
-            emotion_predictions = model.predict(preprocessed_faces)
+            emotion_predictions = model.predict(preprocessed_faces, verbose=0)
             
             for face_info, prediction in zip(face_info_batch, emotion_predictions):
                 emotions.append({
@@ -272,7 +246,7 @@ def main():
             output_dict = emotion_pkl(emotions, args)
             pickle.dump(output_dict, f)
 
-        logging.info(f"Output written to: {output_path}")
+        logging.info(f"\tFace emotions output written to: {output_path}")
         print()
 
     return 0
