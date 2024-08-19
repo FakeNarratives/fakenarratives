@@ -5,7 +5,10 @@ import sys
 import numpy as np
 from tqdm import tqdm
 import logging
-from video_decoder import VideoDecoder
+import torch
+from video_utils import read_video_and_get_info
+
+os.environ["DECORD_EOF_RETRY_MAX"] = "10240"
 
 sys.path.append("3DGazeNet/")
 from models import GazeModel
@@ -87,14 +90,13 @@ def main():
             face_content = pickle.load(pklfile)
 
         # get frames from video
-        vd = VideoDecoder(video_path, max_dimension=args.max_dimension, fps=face_content["args"]["fps"])
-        logging.info(f"\tVideo info: {vd._frames} frames, Original FPS: {vd._real_fps}, New FPS: {vd._fps}, Size: {vd._new_size[0]} x {vd._new_size[1]}")
+        vd, frame_width, frame_height, fps, real_fps = read_video_and_get_info(video_path, args, face_content["args"]["fps"])
+        logging.info(f"\tVideo info: {len(vd)} frames, New FPS {fps}, Original FPS {real_fps}, Size: {frame_width} x {frame_height}")
+        assert frame_width == face_content["args"]["frame_width"]
+        assert frame_height == face_content["args"]["frame_height"]
 
         headgazes = []
-        for sample in tqdm(vd, desc="Processing frames"):
-            image = sample["frame"]
-            frame_index = sample["index"]
-            
+        for frame_index, image in enumerate(tqdm(vd, desc="Processing frames")):
             # Filter faces for the current frame
             frame_faces = []
             for face in face_content["y"]:
@@ -103,8 +105,6 @@ def main():
             
             if not frame_faces:
                 continue
-
-            logging.debug(f"{vidname}: Processing frame {frame_index}")
 
             # Rescale normalized bounding boxes and keypoints to the original image size
             for face in frame_faces:

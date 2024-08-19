@@ -56,11 +56,11 @@ def process_video(video_path, model, args):
     }
 
     # get frames from video
-    vd, frame_width, frame_height, fps = read_video_and_get_info(video_path, args, args.fps)
-    logging.info(f"\tVideo info: {len(vd)} frames, {fps} FPS, Size: {frame_width} x {frame_height}")
+    vd, frame_width, frame_height, fps, real_fps = read_video_and_get_info(video_path, args, args.fps)
+    logging.info(f"\tVideo info: {len(vd)} frames, New FPS {fps}, Original FPS {real_fps}, Size: {frame_width} x {frame_height}")
 
     all_frames = np.array([vd[i] for i in range(len(vd))])
-    print(f"\tAll Frames: {all_frames.shape}")
+    logging.info(f"\tAll Frames: {all_frames.shape}")
 
     single_frame_predictions, _ = model.predict_frames(all_frames)
 
@@ -121,6 +121,8 @@ def main():
         logging.info(f"\tTime taken: {time.time() - start:.2f} seconds")
 
         print()
+
+        break
 
 if __name__ == "__main__":
     main()

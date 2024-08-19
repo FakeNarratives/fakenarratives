@@ -2,6 +2,7 @@ import argparse
 import logging
 import numpy as np
 import os
+import cv2
 import pickle
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.preprocessing import normalize
@@ -70,7 +71,7 @@ def visualize_clusters(face_tracking, clusters, unique_clusters, output_dir, vr)
     for track, cluster in zip(face_tracking['tracks'], clusters):
         if track['frames']:
             mid_frame = track['frames'][len(track['frames'])//2]
-            frame_image = vr[mid_frame['frame_number']].asnumpy()
+            frame_image = vr[mid_frame['frame_number']]
             face_img = extract_face_image(mid_frame['bbox'], frame_image)
             cluster_faces[cluster].append(face_img)
 
@@ -109,7 +110,6 @@ def extract_face_image(bbox, frame):
 def main():
     args = parse_args()
     
-    args = parse_args()
     level = logging.DEBUG if args.debug else logging.INFO
     logging.basicConfig(format="%(asctime)s %(levelname)s:%(message)s", datefmt="%Y-%m-%d %H:%M:%S", level=level)
 
@@ -149,8 +149,12 @@ def main():
 
         # Visualize clusters if requested
         if args.visualize:
-            vr, frame_width, frame_height, fps = read_video_and_get_info(video_path, args, face_content["args"]["fps"])
-            logging.info(f"\tVideo info: {len(vr)} frames, {fps} FPS, {frame_width} x {frame_height}")
+            # get frames from video
+            vr, frame_width, frame_height, fps, real_fps = read_video_and_get_info(video_path, args, face_content["args"]["fps"])
+            logging.info(f"\tVideo info: {len(vr)} frames, New FPS {fps}, Original FPS {real_fps}, Size: {frame_width} x {frame_height}")
+            assert frame_width == face_content["args"]["frame_width"]
+            assert frame_height == face_content["args"]["frame_height"]
+
             vis_output_dir = os.path.join(output_dir, "cluster_visualizations")
             os.makedirs(vis_output_dir, exist_ok=True)
             visualize_clusters(face_tracking, clusters, unique_clusters, vis_output_dir, vr)

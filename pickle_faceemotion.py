@@ -3,7 +3,7 @@ import os
 import pickle
 import logging
 import sys
-from video_decoder import VideoDecoder
+from video_utils import read_video_and_get_info
 
 # 3rd party dependencies
 import gdown
@@ -178,17 +178,16 @@ def main():
             face_content = pickle.load(pklfile)
 
         # get frames from video
-        vd = VideoDecoder(video_path, max_dimension=args.max_dimension, fps=face_content["args"]["fps"])
-        logging.info(f"\tVideo info: {vd._frames} frames, Original FPS: {vd._real_fps}, New FPS: {vd._fps}, Size: {vd._new_size[0]} x {vd._new_size[1]}")
+        vd, frame_width, frame_height, fps, real_fps = read_video_and_get_info(video_path, args, face_content["args"]["fps"])
+        logging.info(f"\tVideo info: {len(vd)} frames, New FPS {fps}, Original FPS {real_fps}, Size: {frame_width} x {frame_height}")
+        assert frame_width == face_content["args"]["frame_width"]
+        assert frame_height == face_content["args"]["frame_height"]
         
         emotions = []
         face_batch = []
         face_info_batch = []
 
-        for sample in tqdm(vd, desc="Processing frames"):
-            image = sample["frame"]
-            frame_index = sample["index"]
-            
+        for frame_index, image in enumerate(tqdm(vd, desc="Processing frames")):
             # Filter faces for the current frame
             frame_faces = []
             for face in face_content["y"]:

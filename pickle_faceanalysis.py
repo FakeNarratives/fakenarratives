@@ -28,6 +28,7 @@ def combine_face_analysis(features_dir):
     face_tracking = load_pickle(os.path.join(features_dir, "face_tracking.pkl"))
     face_clustering = load_pickle(os.path.join(features_dir, "face_clustering.pkl"))
     headgaze = load_pickle(os.path.join(features_dir, "headgaze_3DGazeNet.pkl"))
+    headpose = load_pickle(os.path.join(features_dir, "headpose_6DRepNet.pkl"))
     asd_results = load_pickle(os.path.join(features_dir, "asd_light-asd.pkl"))
     emotions = load_pickle(os.path.join(features_dir, "face_emotions_deepface.pkl"))
 
@@ -40,8 +41,18 @@ def combine_face_analysis(features_dir):
 
     clustering_map = {item['face_id']: item['cluster_id'] for item in face_clustering['y']}
     headgaze_map = {item['face_id']: item['headgaze'] for item in headgaze['y']}
+    headpose_map = {item['face_id']: item['headpose'] for item in headpose['y']}
     asd_map = {track['track_id']: track for track in asd_results['tracks']}
     emotions_map = {item['face_id']: item['emotions'] for item in emotions['y']}
+
+    face_cnt_threshold = 0
+    for face in face_detection['y']:
+        if face['det_score'] >= 0.6 and face["bbox"]["h"] > 0.05:
+            face_cnt_threshold += 1
+
+    assert face_cnt_threshold == len(headgaze_map), "Face count mismatch"
+    assert face_cnt_threshold == len(headpose_map), "Face count mismatch"
+    assert face_cnt_threshold == len(emotions_map), "Face count mismatch"
 
     combined_faces = []
 
@@ -54,6 +65,7 @@ def combine_face_analysis(features_dir):
         combined_face = {
             "face_id": face_id,
             "time": face['time'],
+            "delta_time": face['delta_time'],
             "frame": face['frame'],
             "bbox": face['bbox'],
             "kpss": face['kps'],
@@ -61,6 +73,7 @@ def combine_face_analysis(features_dir):
             "track_id": track_id,
             "cluster_id": clustering_map.get(face_id),
             "gaze": headgaze_map.get(face_id, {}),
+            "pose": headpose_map.get(face_id, {}),
             "speaking": asd_info.get('is_speaking', False),
             "speaking_ratio": asd_info.get('speaking_ratio', 0),
             "speaking_frames": asd_info.get('speaking_frames', 0),

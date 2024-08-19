@@ -167,7 +167,7 @@ def visualization(tracks, scores, args, vr, fps):
                         "y": track["proc_track"]["y"][fidx],
                     }
                 )
-    firstImage = vr[0].asnumpy()
+    firstImage = vr[0]
     fw = firstImage.shape[1]
     fh = firstImage.shape[0]
     vOut = cv2.VideoWriter(
@@ -178,7 +178,7 @@ def visualization(tracks, scores, args, vr, fps):
     )
     colorDict = {0: 0, 1: 255}
     for fidx, image in tqdm.tqdm(enumerate(vr), total=len(vr)):
-        image = image.asnumpy()
+        image = image
         for face in faces[fidx]:
             clr = colorDict[int((face["score"] >= 0))]
             txt = round(face["score"], 1)
@@ -297,6 +297,7 @@ def main():
         args.audioFilePath = os.path.join(args.output_dir, 'audio.wav')
         args.pycropPath = os.path.join(args.output_dir, 'facecrops')
 
+
         face_detection_path = os.path.join(args.output_dir, "face_detection_insightface.pkl")
 
         if not os.path.isfile(face_detection_path):
@@ -307,8 +308,10 @@ def main():
             face_content = pickle.load(pklfile)
 
         # get frames from video
-        vd, frame_width, frame_height, fps = read_video_and_get_info(video_path, args, face_content["args"]["fps"])
-        logging.info(f"\tVideo info: {len(vd)} frames, {fps} FPS, {frame_width} x {frame_height}")
+        vd, frame_width, frame_height, fps, real_fps = read_video_and_get_info(video_path, args, face_content["args"]["fps"])
+        logging.info(f"\tVideo info: {len(vd)} frames, New FPS {fps}, Original FPS {real_fps}, Size: {frame_width} x {frame_height}")
+        assert frame_width == face_content["args"]["frame_width"]
+        assert frame_height == face_content["args"]["frame_height"]
 
         vidTracks = pickle.load(open(os.path.join(args.output_dir, 'tracks.pkl'), 'rb'))
 

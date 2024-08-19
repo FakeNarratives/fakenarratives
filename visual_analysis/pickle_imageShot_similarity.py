@@ -1,6 +1,8 @@
 import os
+import sys
 import torch
 import pickle
+import logging
 import numpy as np
 from PIL import Image
 from torch import nn
@@ -12,14 +14,23 @@ from torchvision import models
 from transformers import AutoImageProcessor, ConvNextV2Model
 from torchvision import transforms as trn
 from tqdm import tqdm
+sys.path.append(".")
+from video_utils import read_video_and_get_info
+from visual_utils import set_seeds
 import argparse
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Generates shot similarity between two neighboring shots in a video.")
-    parser.add_argument("-f", "--file", type=str, required=True, help="Text file containing paths to videos as <media>/<video_name>")
-    parser.add_argument("-i", "--inp_dir", type=str, default="/nfs/data/fakenarratives/202306_corpus/videos", help="Base directory for input videos")
-    parser.add_argument("-o", "--out_dir", type=str, default="/nfs/data/fakenarratives/202306_corpus/results_pkl", help="Base directory for output results")
+    parser.add_argument("--videos", nargs="+", type=str, required=True, help="path to the video files")
+    parser.add_argument("--pkl_dir", type=str, required=True, help="path to the output folder")
     parser.add_argument("-m", "--model", type=str, default="siglip", choices=["siglip", "convnextv2", "places"], help="Model type to use")
+    parser.add_argument(
+        "--max_dimension",
+        type=int,
+        required=False,
+        default=960,
+        help="max dimension of the video frames",
+    )
     args = parser.parse_args()
     return args
 
@@ -50,22 +61,14 @@ def get_model(device, model_type):
     return model, processor
 
 
-def read_video_paths(file_path, base_input_dir, base_output_dir):
-    with open(file_path, 'r') as f:
-        video_paths = f.read().splitlines()
-    return [os.path.join(base_input_dir, vp) for vp in video_paths], [os.path.join(base_output_dir, vp) for vp in video_paths]
-
-
-def get_shot_time(index, shots):
+def get_shot_frames(index, shots):
     if 0 <= index < len(shots):
-        return shots[index]["start"], shots[index]["end"]
+        return shots[index]["start_frame"], shots[index]["end_frame"]
     return None, None
 
 
-def extract_frames(vr, start_time, end_time, fps, subsample_rate=2):
+def extract_frames(vr, start_frame, end_frame, fps, subsample_rate=2):
     step_size = max(1, int(fps // subsample_rate))
-    start_frame = int(start_time * fps)
-    end_frame = int(end_time * fps)
     frames = vr.get_batch(range(start_frame, end_frame + 1))
     frames = frames[::step_size]
     ## Max frames 64 (To avoid GPU OOM Error)
@@ -81,7 +84,7 @@ def process_frames(frames, model_type, processor):
     elif model_type == "convnextv2":
         inputs = processor(list(frames), return_tensors="pt")
     elif model_type == "places":
-        tensors = [processor(Image.fromarray(frame.numpy())) for frame in frames]
+        tensors = [processor(Image.fromarray(frame)) for frame in frames]
         inputs = torch.stack(tensors)
     return inputs
 
@@ -103,18 +106,18 @@ def compute_similarity(ref_feats, query_inputs, model, model_type):
     return [res.mean().item(), res.median().item(), res.max().item()]
 
 
-def process_video(video_path, output_path, model, processor, device="cuda", model_type="siglip"):
+def process_video(video_path, shot_dict, model, processor, args, device="cuda"):
     """
     Take a image model and process the video to get shot similarity between two neibhboring shots from the reference shot in a video.
     Reference shot: i, Neighboring shots: i-2, i+1, i+1, i+2
 
     Args:
         video_path (str): path to video
-        output_path (str): path to load shot output
+        shot_dict (dict): dictionary containing shot information
         model (AutoModel): SigLIP model
         processor (AutoProcessor): SigLIP processor
+        args (Namespace): arguments the script has been executed with
         device (str, optional): device to run inference on. Defaults to "cuda".
-        model_type (str, optional): model type. Defaults to "siglip".
 
     Returns:
         video_feat_dict (dict): dictionary containing shot similarity between two neibhboring shots from the reference shot in a video.
@@ -140,6 +143,7 @@ def process_video(video_path, output_path, model, processor, device="cuda", mode
     """
     
     video_feat_dict = {"github_repo": "", "commit_id": "", "parameters": "default", "video_file": video_path, "output_data": []}
+    model_type = args.model
     
     if model_type == "siglip":
         video_feat_dict["github_repo"] = "https://huggingface.co/google/siglip-large-patch16-384"
@@ -151,27 +155,24 @@ def process_video(video_path, output_path, model, processor, device="cuda", mode
         video_feat_dict["github_repo"] = "https://github.com/CSAILVision/places365"
         video_feat_dict["commit_id"] = "06218620d593de09ac4f9f39b72ea0d175990a24"
 
-    shot_dict = pickle.load(open(os.path.join(output_path, "transnet_shotdetection.pkl"), "rb"))
-    print("Number of shots: ", len(shot_dict["output_data"]["shots"]))
-
-    vr = VideoReader(video_path + ".mp4", num_threads=12, ctx=cpu(0), width=480, height=270)
-    fps = vr.get_avg_fps()
+    # Load video
+    vr, frame_width, frame_height, fps, real_fps = read_video_and_get_info(video_path, args, 25)
+    logging.info(f"\tVideo info: {len(vr)} frames, New FPS {fps}, Original FPS {real_fps}, Size: {frame_width} x {frame_height}")
 
     for i, ref_shot in enumerate(tqdm(shot_dict["output_data"]["shots"])):
         similarities = {"shot": ref_shot, "prev_1": [0, 0, 0], "prev_2": [0, 0, 0], "next_1": [0, 0, 0], "next_2": [0, 0, 0]}
 
-        sr_time, er_time = ref_shot["start"], ref_shot["end"]
-        ref_frames = extract_frames(vr, sr_time, er_time, fps, subsample_rate=2)
+        ref_frames = extract_frames(vr, ref_shot["start_frame"], ref_shot["end_frame"], fps, subsample_rate=2)
         ref_inputs = process_frames(ref_frames, model_type, processor).to(device)
         with torch.no_grad():
             ref_feats = get_features(ref_inputs, model_type, model)
             ref_feats = ref_feats / ref_feats.norm(dim=1)[:, None]
 
-        shot_times = [get_shot_time(i + offset, shot_dict["output_data"]["shots"]) for offset in [-2, -1, 1, 2]]
+        shot_frames = [get_shot_frames(i + offset, shot_dict["output_data"]["shots"]) for offset in [-2, -1, 1, 2]]
 
-        for j, (start_time, end_time) in enumerate(shot_times):
-            if start_time is not None and end_time is not None:
-                query_frames = extract_frames(vr, start_time, end_time, fps, subsample_rate=2)
+        for j, (start_frame, end_frame) in enumerate(shot_frames):
+            if start_frame is not None and end_frame is not None:
+                query_frames = extract_frames(vr, start_frame, end_frame, fps, subsample_rate=2)
                 query_inputs = process_frames(query_frames, model_type, processor).to(device)
                 similarity_key = ["prev_2", "prev_1", "next_1", "next_2"][j]
                 similarities[similarity_key] = compute_similarity(ref_feats, query_inputs, model, model_type)
@@ -180,30 +181,39 @@ def process_video(video_path, output_path, model, processor, device="cuda", mode
 
     return video_feat_dict
 
+
 def main():
     args = parse_args()
 
+    set_seeds(42)
+
+    logging.basicConfig(format="%(asctime)s %(levelname)s:%(message)s", datefmt="%Y-%m-%d %H:%M:%S", level=logging.INFO)
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    decord.bridge.set_bridge('torch')
 
     model, processor = get_model(device, args.model)
 
-    input_paths, output_paths = read_video_paths(args.file, args.inp_dir, args.out_dir)
+    videos = args.videos
+    for vi, video_path in enumerate(videos):
+        logging.info(f"\tProcessing video [{vi+1}/{len(videos)}]: {video_path}")
+        vidname = os.path.splitext(os.path.basename(video_path))[0]
+        output_dir = os.path.join(args.pkl_dir, vidname)
 
-    for i, input_path in enumerate(input_paths):
-        print(f"Processing Video {i+1}/{len(input_paths)}: {input_path}")
+        shot_detection_path = os.path.join(output_dir, "transnet_shotdetection.pkl")
 
-        out_loc = output_paths[i]
+        if not os.path.isfile(shot_detection_path):
+            logging.error(f"\tMissing shot detection file in {shot_detection_path}")
+            continue
 
-        if not os.path.exists(out_loc):
-            os.makedirs(out_loc)
+        with open(shot_detection_path, "rb") as pklfile:
+            shot_content = pickle.load(pklfile)
 
-        output_file_name = f"{args.model}_shot_similarity.pkl"
-        if not os.path.exists(os.path.join(out_loc, output_file_name)):
-            video_feat_dict = process_video(input_path, out_loc, model, processor, device, args.model)
+        logging.info(f"\tNumber of shots: {len(shot_content['output_data']['shots'])}")
 
-            with open(os.path.join(out_loc, output_file_name), "wb") as output_file:
-                pickle.dump(video_feat_dict, output_file)
+        video_feat_dict = process_video(video_path, shot_content, model, processor, args, device)
+
+        with open(os.path.join(output_dir, f"{args.model}_shot_similarity.pkl"), "wb") as output_file:
+            pickle.dump(video_feat_dict, output_file)
 
         print("%%\n")
 

@@ -2,13 +2,15 @@ import argparse
 import logging
 from pathlib import Path
 import pickle
+import os
 from tqdm import tqdm
 import sys
-import uuid
 import torch
+import uuid
+import time
 import insightface
 from insightface.app import FaceAnalysis
-from video_decoder import VideoDecoder
+from video_utils import read_video_and_get_info
 
 
 assert insightface.__version__ >= "0.3"
@@ -60,12 +62,12 @@ def faceanalysis_pkl(faces: list, args: dict) -> dict:
     }
 
 
-def get_faces(model, vd) -> list:
+def get_faces(model, vd, args) -> list:
     """predict all faces in a video"""
     faces = []
-    for sample in tqdm(vd, desc="Processing frames"):
-        time = sample["time"]
-        image = sample["frame"]
+    for fid, frame in enumerate(tqdm(vd, desc="Processing frames")):
+        time = fid/args.fps
+        image = frame
         logging.debug(time)
 
         for face in model.get(image):
@@ -94,7 +96,8 @@ def get_faces(model, vd) -> list:
                     ],
                     "det_score": float(face["det_score"]),
                     "time": time,
-                    "frame": sample["index"],
+                    "delta_time": 1 / args.fps,
+                    "frame": fid,
                     "embedding": face["embedding"].tolist(),
                 }
             )
@@ -124,15 +127,18 @@ def main() -> int:
     # loop trough input videos
     videos = args.videos
     for vi, video_path in enumerate(videos):
+        start = time.time()
         logging.info(f"\tProcessing video [{vi+1}/{len(videos)}]: {video_path}")
-        video_path = Path(video_path)
-        videoname = video_path.stem
+        videoname = os.path.splitext(os.path.basename(video_path))[0]
 
         # get frames from video
-        vd = VideoDecoder(video_path, max_dimension=args.max_dimension, fps=args.fps)
-        logging.info(f"\tVideo info: {vd._frames} frames, Original FPS: {vd._real_fps}, New FPS: {vd._fps}, Size: {vd._new_size[0]} x {vd._new_size[1]}")
+        vd, frame_width, frame_height, fps, real_fps = read_video_and_get_info(video_path, args, args.fps)
+        logging.info(f"\tVideo info: {len(vd)} frames, New FPS {fps}, Original FPS {real_fps}, Size: {frame_width} x {frame_height}")
 
-        faces = get_faces(model, vd)
+        args.frame_width = frame_width
+        args.frame_height = frame_height
+
+        faces = get_faces(model, vd, args)
 
         logging.info(f"\tDetected {len(faces)} faces in video")
 
@@ -144,7 +150,8 @@ def main() -> int:
             output_dict = faceanalysis_pkl(faces, args)
             pickle.dump(output_dict, f)
 
-        logging.info(f"\tFace detectionutput written to: {output_file}")
+        logging.info(f"\tFace detection output written to: {output_file}")
+        logging.info(f"\tTime taken: {time.time() - start:.2f} seconds")
         print()
 
     return 0

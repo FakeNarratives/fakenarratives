@@ -63,10 +63,8 @@ def track_shot(args, shotFaces):
                     enhanced_track['bbox'].append(face['bbox'])
                     enhanced_track['frames'].append({
                         'frame_number': face['frame'],
-                        'bbox': face['bbox'],
-                        'det_score': face['conf'],
-                        'embedding': face['embedding'],
-                        'face_id': face['id']  # Use the original face ID
+                        'face_id': face['id'],
+                        'embedding': face['embedding']
                     })
                 elif face['frame'] - track[-1]['frame'] <= args.numFailedDet:
                     iou = bb_intersection_over_union(face['bbox'], track[-1]['bbox'])
@@ -77,10 +75,8 @@ def track_shot(args, shotFaces):
                         enhanced_track['bbox'].append(face['bbox'])
                         enhanced_track['frames'].append({
                             'frame_number': face['frame'],
-                            'bbox': face['bbox'],
-                            'det_score': face['conf'],
-                            'embedding': face['embedding'],
-                            'face_id': face['id']  # Use the original face ID
+                            'face_id': face['id'],
+                            'embedding': face['embedding']
                         })
                         continue
                 else:
@@ -123,7 +119,7 @@ def crop_video(args, track, vr, fps, cropFile, audioFilePath):
     frame_nums = np.array(track['frame'])
     
     for fidx, frame_num in enumerate(frame_nums):
-        image = cv2.cvtColor(vr[frame_num].asnumpy(), cv2.COLOR_RGB2BGR)
+        image = cv2.cvtColor(vr[frame_num], cv2.COLOR_RGB2BGR)
         
         bs = dets['s'][fidx]
         my = dets['y'][fidx]
@@ -220,8 +216,10 @@ def main():
             shot_content = pickle.load(pklfile)
 
         # get frames from video
-        vd, frame_width, frame_height, fps = read_video_and_get_info(video_path, args, face_content["args"]["fps"])
-        logging.info(f"\tVideo info: {len(vd)} frames, {fps} FPS, {frame_width} x {frame_height}")
+        vd, frame_width, frame_height, fps, real_fps = read_video_and_get_info(video_path, args, face_content["args"]["fps"])
+        logging.info(f"\tVideo info: {len(vd)} frames, New FPS {fps}, Original FPS {real_fps}, Size: {frame_width} x {frame_height}")
+        assert frame_width == face_content["args"]["frame_width"]
+        assert frame_height == face_content["args"]["frame_height"]
 
         faces_by_frame = defaultdict(list)
         for face in face_content["y"]:

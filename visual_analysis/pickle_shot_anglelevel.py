@@ -1,20 +1,30 @@
 import os
-os.environ['DECORD_EOF_RETRY_MAX'] = '20480'
+import sys
 import pickle
 import argparse
-import time
+import logging
+from tqdm import tqdm
 from visual_utils import *
-import decord
-from decord import VideoReader, cpu
 from torchvision.transforms import v2
 from transformers import AutoModelForImageClassification, AutoImageProcessor
+sys.path.append(".")
+from video_utils import read_video_and_get_info
+from visual_utils import set_seeds
+
+os.environ['DECORD_EOF_RETRY_MAX'] = '20480'
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Predict camera angle or level for frames in each shot using a cinescale trained model")
-    parser.add_argument("-f", "--file", type=str, required=True, help="Text file containing paths to videos as <media>/<video_name>")
     parser.add_argument("-t", "--task", type=str, default="angle", help="Perform camera angle or level classification")
-    parser.add_argument("-i", "--inp_dir", type=str, default="/nfs/data/fakenarratives/202306_corpus/videos", help="Base directory for input videos")
-    parser.add_argument("-o", "--out_dir", type=str, default="/nfs/data/fakenarratives/202306_corpus/results_pkl", help="Base directory for output results")
+    parser.add_argument("--videos", nargs="+", type=str, required=True, help="path to the video files")
+    parser.add_argument("--pkl_dir", type=str, required=True, help="path to the output folder")
+    parser.add_argument(
+        "--max_dimension",
+        type=int,
+        required=False,
+        default=960,
+        help="max dimension of the video frames",
+    )
     args = parser.parse_args()
     return args
 
@@ -31,21 +41,14 @@ def get_model(task, device):
     return model
 
 
-def read_video_paths(file_path, base_input_dir, base_output_dir):
-    with open(file_path, 'r') as f:# print(image_features.shape, text_features.shape)
-        video_paths = f.read().splitlines()
-    return [os.path.join(base_input_dir, vp) for vp in video_paths], [os.path.join(base_output_dir, vp) for vp in video_paths]
 
-
-def get_subclip_indices(start_time, end_time, fps, total_frames):
-    start_index = int(round(start_time * fps))
-    end_index = int(round(end_time * fps))
+def get_subclip_indices(start_index, end_index, fps, total_frames):
     ## Select frames at 2 fps
     return [i for i in range(start_index, min(end_index + 1, total_frames), int(fps/2))]
     # return [i for i in range(start_index, min(end_index + 1, total_frames))]
 
 
-def process_video(video_path, output_path, model, transform, device="cuda"):
+def process_video(video_path, shot_dict, model, transform, args, device="cuda"):
     """
     Take shots from the video and predicts camera angle or level for each frame in the shot using a cinescale trained model.
 
@@ -83,24 +86,19 @@ def process_video(video_path, output_path, model, transform, device="cuda"):
                         "output_data": []
                         }
 
-
-    shot_dict = pickle.load(open(os.path.join(output_path, "transnet_shotdetection.pkl"), "rb"))
-    print("Number of shots: ", len(shot_dict["output_data"]["shots"]))
-
     # Load video
-    vr = VideoReader(video_path+".mp4", num_threads=4, ctx=cpu(0), width=480, height=270)
-    fps = vr.get_avg_fps()
+    vr, frame_width, frame_height, fps, real_fps = read_video_and_get_info(video_path, args, 25)
+    logging.info(f"\tVideo info: {len(vr)} frames, New FPS {fps}, Original FPS {real_fps}, Size: {frame_width} x {frame_height}")
     total_frames = len(vr)
 
-    for i, ref_shot in enumerate(shot_dict["output_data"]["shots"]):
+    for i, ref_shot in enumerate(tqdm(shot_dict["output_data"]["shots"])):
         # Each reference shot has a start time and end time
         ## Need to get the frames for the reference shot
         ## Get frames at 2 fps
-        sr_time, er_time = ref_shot["start"], ref_shot["end"]
-        frame_indices = get_subclip_indices(sr_time, er_time, fps, total_frames)
+        frame_indices = get_subclip_indices(ref_shot["start_frame"], ref_shot["end_frame"], fps, total_frames)
         
         ## Change N, H, W, C -> N, C, H, W
-        frames = vr.get_batch(frame_indices).permute(0,3,1,2)
+        frames = torch.tensor(np.array(vr.get_batch(frame_indices))).permute(0,3,1,2)
 
         ## Predict for each frame
         inputs = transform(frames).to(device)
@@ -128,13 +126,11 @@ def main():
 
     set_seeds(42)
 
+    logging.basicConfig(format="%(asctime)s %(levelname)s:%(message)s", datefmt="%Y-%m-%d %H:%M:%S", level=logging.INFO)
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    decord.bridge.set_bridge('torch')
 
     model = get_model(args.task, device)
-
-    ## File has lines with video names such as "Tagesschau/TV-20220101-2019-5100.webl.h264"
-    input_paths, output_paths = read_video_paths(args.file, args.inp_dir, args.out_dir)
 
     ## Transforms
     norm_transform = v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
@@ -149,24 +145,27 @@ def main():
                                         norm_transform])
         
 
-    for i, input_path in enumerate(input_paths):
-        print(f"Processing Video {i+1}/{len(input_paths)}: {input_path}")
+    videos = args.videos
+    for vi, video_path in enumerate(videos):
+        logging.info(f"\tProcessing video [{vi+1}/{len(videos)}]: {video_path}")
+        vidname = os.path.splitext(os.path.basename(video_path))[0]
+        output_dir = os.path.join(args.pkl_dir, vidname)
 
-        out_loc = output_paths[i]
+        shot_detection_path = os.path.join(output_dir, "transnet_shotdetection.pkl")
 
-        if not os.path.exists(out_loc):
-            os.makedirs(out_loc)
+        if not os.path.isfile(shot_detection_path):
+            logging.error(f"\tMissing shot detection file in {shot_detection_path}")
+            continue
 
-        if not os.path.exists(os.path.join(out_loc, "videoshot_%s.pkl"%(args.task))):
-            
-            st_time = time.time()
+        with open(shot_detection_path, "rb") as pklfile:
+            shot_content = pickle.load(pklfile)
 
-            video_feat_dict = process_video(input_path, out_loc, model, test_transform, device)
+        logging.info(f"\tNumber of shots: {len(shot_content['output_data']['shots'])}")
 
-            with open(os.path.join(out_loc, "videoshot_%s.pkl"%(args.task)), "wb") as output_file:
-                pickle.dump(video_feat_dict, output_file)
+        video_feat_dict = process_video(video_path, shot_content, model, test_transform, args, device)
 
-            print("Time taken: ", time.time()-st_time)
+        with open(os.path.join(output_dir, "videoshot_%s.pkl"%(args.task)), "wb") as output_file:
+            pickle.dump(video_feat_dict, output_file)
 
         print("%%\n")
 
