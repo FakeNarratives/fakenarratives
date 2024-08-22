@@ -28,7 +28,7 @@ def parse_args():
         "--max_dimension",
         type=int,
         required=False,
-        default=960,
+        default=640,
         help="max dimension of the video frames",
     )
     args = parser.parse_args()
@@ -37,27 +37,32 @@ def parse_args():
 
 def get_model(device, model_type):
     if model_type == "siglip":
-        model = AutoModel.from_pretrained("google/siglip-large-patch16-384")
+        model = AutoModel.from_pretrained("google/siglip-large-patch16-384", 
+                                          attn_implementation="flash_attention_2",
+                                          torch_dtype=torch.float16,
+                                          device_map=device)
         processor = AutoProcessor.from_pretrained("google/siglip-large-patch16-384")
     elif model_type == "convnextv2":
         model = ConvNextV2Model.from_pretrained("facebook/convnextv2-large-22k-384")
         processor = AutoImageProcessor.from_pretrained("facebook/convnextv2-large-22k-384")
+        model.to(device)
     elif model_type == "places":
         model = models.resnet50(num_classes=365)
         checkpoint = torch.load("places365/resnet50_places365.pth.tar", map_location=lambda storage, loc: storage)
         state_dict = {str.replace(k, 'module.', ''): v for k, v in checkpoint['state_dict'].items()}
         model.load_state_dict(state_dict)
         processor = trn.Compose([
+            trn.ToPILImage(),
             trn.Resize((440, 440)),
             trn.CenterCrop(384),
             trn.ToTensor(),
             trn.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         ])
         model = nn.Sequential(*list(model.children())[:-1])
+        model.to(device)
 
     model.eval()
-    model.to(device)
-
+    
     return model, processor
 
 
@@ -78,14 +83,19 @@ def extract_frames(vr, start_frame, end_frame, fps, subsample_rate=2):
     return frames
 
 
-def process_frames(frames, model_type, processor):
+def process_frames(frames, model_type, processor, device):
     if model_type == "siglip":
+        frames = np.array(frames)
         inputs = processor(images=frames, return_tensors="pt")
+        inputs = inputs.to(torch.float16).to(device)
     elif model_type == "convnextv2":
-        inputs = processor(list(frames), return_tensors="pt")
+        frames = np.array(frames)
+        inputs = processor(frames, return_tensors="pt")
+        inputs = inputs.to(device)
     elif model_type == "places":
-        tensors = [processor(Image.fromarray(frame)) for frame in frames]
+        tensors = [processor(frame) for frame in frames]
         inputs = torch.stack(tensors)
+        inputs = inputs.to(device)
     return inputs
 
 
@@ -163,7 +173,7 @@ def process_video(video_path, shot_dict, model, processor, args, device="cuda"):
         similarities = {"shot": ref_shot, "prev_1": [0, 0, 0], "prev_2": [0, 0, 0], "next_1": [0, 0, 0], "next_2": [0, 0, 0]}
 
         ref_frames = extract_frames(vr, ref_shot["start_frame"], ref_shot["end_frame"], fps, subsample_rate=2)
-        ref_inputs = process_frames(ref_frames, model_type, processor).to(device)
+        ref_inputs = process_frames(ref_frames, model_type, processor, device)
         with torch.no_grad():
             ref_feats = get_features(ref_inputs, model_type, model)
             ref_feats = ref_feats / ref_feats.norm(dim=1)[:, None]
@@ -173,7 +183,7 @@ def process_video(video_path, shot_dict, model, processor, args, device="cuda"):
         for j, (start_frame, end_frame) in enumerate(shot_frames):
             if start_frame is not None and end_frame is not None:
                 query_frames = extract_frames(vr, start_frame, end_frame, fps, subsample_rate=2)
-                query_inputs = process_frames(query_frames, model_type, processor).to(device)
+                query_inputs = process_frames(query_frames, model_type, processor, device)
                 similarity_key = ["prev_2", "prev_1", "next_1", "next_2"][j]
                 similarities[similarity_key] = compute_similarity(ref_feats, query_inputs, model, model_type)
 
