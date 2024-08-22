@@ -5,26 +5,18 @@ from moviepy.editor import VideoFileClip
 import torch
 import argparse
 import sys
+import logging
 import whisperx
+from audio_utils import *
 import yaml
 import re
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Runs WhisperX on news videos for automatic speech recognition and speaker diarization")
-    parser.add_argument("-f", "--file", type=str, required=True, help="Text file containing paths to videos as <media>/<video_name>")
-    parser.add_argument("-i", "--inp_dir", type=str, default="/nfs/data/fakenarratives/202306_corpus/videos", help="Base directory for input videos")
-    parser.add_argument("-o", "--out_dir", type=str, default="/nfs/data/fakenarratives/202306_corpus/results_pkl", help="Base directory for output results")
-    parser.add_argument("-r", "--rewrite", action="store_true", help="Rewrite existing files")
+    parser.add_argument("--videos", nargs="+", type=str, required=True, help="path to the video files")
+    parser.add_argument("--pkl_dir", type=str, required=True, help="path to the output folder")
     args = parser.parse_args()
     return args
-
-def read_video_paths(file_path, base_input_dir, base_output_dir):
-    ## Input base dir and output base dir are appended with video name such as "Tagesschau/TV-20220101-2019-5100.webl.h264"
-    with open(file_path, 'r') as f:
-        video_paths = f.read().splitlines()
-    return [os.path.join(base_input_dir, vp) for vp in video_paths], \
-        [os.path.join(base_output_dir, re.sub(r'\.([^.]+)$', '', vp)) for vp in video_paths]
-
 
 def get_model(device, config):
     model = whisperx.load_model("large-v3", device=device, compute_type="float16", language="de")
@@ -111,6 +103,10 @@ def transcribe_video(script_dir, video_path, model, diarize_model,
 def main():
     args = parse_args()
 
+    set_seeds(42)
+
+    logging.basicConfig(format="%(asctime)s %(levelname)s:%(message)s", datefmt="%Y-%m-%d %H:%M:%S", level=logging.INFO)
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -119,34 +115,25 @@ def main():
     with open(os.path.join(script_dir, "config.yml"), 'r') as file:
         config = yaml.safe_load(file)
 
-    ## File has lines with video names such as "Tagesschau/TV-20220101-2019-5100.webl.h264"
-    input_paths, output_paths = read_video_paths(args.file, args.inp_dir, args.out_dir)
-
     model, diarize_model, alignment_model, metadata = get_model(device, config)
 
     if not os.path.exists(os.path.join(script_dir, "temp/")):
         os.makedirs(os.path.join(script_dir, "temp/"))
 
-    for i, input_path in enumerate(input_paths):
-        print(f"Processing Video [{i+1}/{len(input_paths)}]\t{input_path}")
+    videos = args.videos
+    for vi, video_path in enumerate(videos):
+        logging.info(f"\tProcessing video [{vi+1}/{len(videos)}]: {video_path}")
+        vidname = os.path.splitext(os.path.basename(video_path))[0]
+        output_dir = os.path.join(args.pkl_dir, vidname)
 
-        out_loc = output_paths[i]
-
-        if not args.rewrite:
-            print("Already processed. Skipping...")
-            continue
-
-        if not os.path.exists(out_loc):
-            os.makedirs(out_loc)
-
-        video_feat_dict = transcribe_video(script_dir, input_path, model, diarize_model, 
+        video_feat_dict = transcribe_video(script_dir, video_path, model, diarize_model, 
                                             alignment_model, metadata, device, config)
 
-        print("Saving to", os.path.join(out_loc, "asr_whisperx.pkl"))
-        with open(os.path.join(out_loc, "asr_whisperx.pkl"), "wb") as f:
+        logging.info(f"\tSaving to {os.path.join(output_dir, 'asr_whisperx.pkl')}")
+        with open(os.path.join(output_dir, "asr_whisperx.pkl"), "wb") as f:
             pickle.dump(video_feat_dict, f)
 
-        print()
+        print("\n")
 
 
 if __name__ == "__main__":

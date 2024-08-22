@@ -2,6 +2,7 @@ import os
 import sys
 import pickle
 import json
+import logging
 import argparse
 import tempfile
 import torchaudio
@@ -13,19 +14,10 @@ from BEATs import BEATs, BEATsConfig
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Runs audio classification on shot segments")
-    parser.add_argument("-f", "--file", type=str, required=True, help="Text file containing paths to videos as <media>/<video_name>")
-    parser.add_argument("-i", "--inp_dir", type=str, default="/nfs/data/fakenarratives/202306_corpus/videos", help="Base directory for input videos")
-    parser.add_argument("-o", "--out_dir", type=str, default="/nfs/data/fakenarratives/202306_corpus/results_pkl", help="Base directory for output results")
-    parser.add_argument("-r", "--rewrite", action="store_true", help="Rewrite existing files")
+    parser.add_argument("--videos", nargs="+", type=str, required=True, help="path to the video files")
+    parser.add_argument("--pkl_dir", type=str, required=True, help="path to the output folder")
     args = parser.parse_args()
     return args
-
-
-def read_video_paths(file_path, base_input_dir, base_output_dir):
-    ## Input base dir and output base dir are appended with video name such as "Tagesschau/TV-20220101-2019-5100.webl.h264"
-    with open(file_path, 'r') as f:
-        video_paths = f.read().splitlines()
-    return [os.path.join(base_input_dir, vp) for vp in video_paths], [os.path.join(base_output_dir, vp) for vp in video_paths]
 
 
 def get_models(device, script_dir):
@@ -74,7 +66,7 @@ def aggregate_probs(top3_label_probs):
 
 
 
-def classify_shot_segments(script_dir, video_path, video, shots, 
+def classify_shot_segments(script_dir, video_path, video, shot_dict, 
                            beats_model, label_map, device):
     """
     Takes shot segments and perform audio classification into 527 AudioSet Classes
@@ -110,7 +102,7 @@ def classify_shot_segments(script_dir, video_path, video, shots,
     required_sr = 16000
 
     shot_predictions = []
-    for shot in shots:
+    for shot in shot_dict["shots"]:
         start_time, end_time = shot["start"], shot["end"]
         if end_time <= start_time:
             
@@ -233,14 +225,13 @@ def classify_speaker_segments(script_dir, video_path, video, speaker_segments,
 def main():
     args = parse_args()
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
     set_seeds(42)
 
-    script_dir = os.path.dirname(os.path.abspath(__file__))
+    logging.basicConfig(format="%(asctime)s %(levelname)s:%(message)s", datefmt="%Y-%m-%d %H:%M:%S", level=logging.INFO)
 
-    ## File has lines with video names such as "Tagesschau/TV-20220101-2019-5100.webl.h264"
-    input_paths, output_paths = read_video_paths(args.file, args.inp_dir, args.out_dir)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    script_dir = os.path.dirname(os.path.abspath(__file__))
 
     ## Model trained with audio sampled at 16kHz
     beats_model, label_map = get_models(device, script_dir)
@@ -248,55 +239,55 @@ def main():
     if not os.path.exists(os.path.join(script_dir, "temp/")):
         os.makedirs(os.path.join(script_dir, "temp/"))
 
-    for i, input_path in enumerate(input_paths):
-        print(f"Processing Video [{i+1}/{len(input_paths)}]\t{input_path}")
+    videos = args.videos
+    for vi, video_path in enumerate(videos):
+        logging.info(f"\tProcessing video [{vi+1}/{len(videos)}]: {video_path}")
+        vidname = os.path.splitext(os.path.basename(video_path))[0]
+        output_dir = os.path.join(args.pkl_dir, vidname)
 
-        out_loc = output_paths[i]
+        shot_detection_path = os.path.join(output_dir, "transnet_shotdetection.pkl")
+        whisperx_spk_segments_path = os.path.join(output_dir, "asr_whisperx.pkl")
 
-        if not os.path.exists(out_loc):
-            os.makedirs(out_loc)
-
-        if not args.rewrite:
-            print("Already processed. Skipping...")
+        if not os.path.isfile(shot_detection_path):
+            logging.error(f"\tMissing shot detection file in {shot_detection_path}")
             continue
 
-        shot_segments = pickle.load(open(os.path.join(out_loc, "transnet_shotdetection.pkl"), "rb"))["output_data"]["shots"]
-        whisper_spk_segments = pickle.load(open(os.path.join(out_loc, "asr_whisper.pkl"), "rb"))["output_data"]["speaker_segments"]
-        whisperx_spk_segments = pickle.load(open(os.path.join(out_loc, "asr_whisperx.pkl"), "rb"))["output_data"]["speaker_segments"]
+        with open(shot_detection_path, "rb") as pklfile:
+            shot_content = pickle.load(pklfile)["output_data"]
 
-        video = VideoFileClip(input_path+".mp4")
+        if not os.path.isfile(whisperx_spk_segments_path):
+            logging.error(f"\tMissing speaker segments file in {whisperx_spk_segments_path}")
+            continue
+        
+        with open(whisperx_spk_segments_path, "rb") as pklfile:
+            whisperx_spk_segments = pickle.load(pklfile)["output_data"]["speaker_segments"]
 
-        video_feat_dict = classify_shot_segments(script_dir, input_path, video, shot_segments, 
+        logging.info(f"\tNumber of shots: {len(shot_content['shots'])}")
+        logging.info(f"\tNumber of speaker segments: {len(whisperx_spk_segments)}")
+
+        video = VideoFileClip(video_path)
+
+        video_feat_dict = classify_shot_segments(script_dir, video_path, video, shot_content, 
                                                     beats_model, label_map, device)
         
-        print("Number of features:", len(video_feat_dict["output_data"]), ", Number of shot segments:", len(shot_segments))
-        assert len(video_feat_dict["output_data"]) == len(shot_segments)
+        logging.info(f"\tNumber of features: {len(video_feat_dict['output_data'])}, Number of shot segments: {len(shot_content['shots'])}")
+        assert len(video_feat_dict["output_data"]) == len(shot_content["shots"])
         
-        video_feat_dict2, speaker_segments2 = classify_speaker_segments(script_dir, input_path, video, whisper_spk_segments, 
-                                                    beats_model, label_map, device)
+        # video_feat_dict3, speaker_segments3 = classify_speaker_segments(script_dir, video_path, video, whisperx_spk_segments,
+        #                                             beats_model, label_map, device)
         
-        print("Number of features:", len(video_feat_dict2["output_data"]), ", Number of speaker turns:", len(speaker_segments2))
-        assert len(video_feat_dict2["output_data"]) == len(speaker_segments2)
-        
-        video_feat_dict3, speaker_segments3 = classify_speaker_segments(script_dir, input_path, video, whisperx_spk_segments,
-                                                    beats_model, label_map, device)
-        
-        print("Number of features:", len(video_feat_dict3["output_data"]), ", Number of speaker turns:", len(speaker_segments3))
-        assert len(video_feat_dict3["output_data"]) == len(speaker_segments3)
+        # print("Number of features:", len(video_feat_dict3["output_data"]), ", Number of speaker turns:", len(speaker_segments3))
+        # assert len(video_feat_dict3["output_data"]) == len(speaker_segments3)
 
-        print("Saving to", os.path.join(out_loc, "shot_audioClf.pkl"))
-        with open(os.path.join(out_loc, "shot_audioClf.pkl"), "wb") as f:
+        logging.info(f"\tSaving output to {os.path.join(output_dir, 'shot_audioClf.pkl')}")
+        with open(os.path.join(output_dir, "shot_audioClf.pkl"), "wb") as f:
             pickle.dump(video_feat_dict, f)
-
-        print("Saving to", os.path.join(out_loc, "whisperspeaker_audioClf.pkl"))
-        with open(os.path.join(out_loc, "whisperspeaker_audioClf.pkl"), "wb") as f:
-            pickle.dump(video_feat_dict2, f)
         
-        print("Saving to", os.path.join(out_loc, "whisperxspeaker_audioClf.pkl"))
-        with open(os.path.join(out_loc, "whisperxspeaker_audioClf.pkl"), "wb") as f:
-            pickle.dump(video_feat_dict3, f)
+        # print("Saving to", os.path.join(output_dir, "whisperxspeaker_audioClf.pkl"))
+        # with open(os.path.join(output_dir, "whisperxspeaker_audioClf.pkl"), "wb") as f:
+        #     pickle.dump(video_feat_dict3, f)
 
-        print()
+        print("\n")
 
 
 if __name__ == "__main__":
