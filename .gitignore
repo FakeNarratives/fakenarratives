@@ -3,7 +3,9 @@ temp/
 slurm/
 slurm*.out
 .vscode
-*.yml
+config.yml
+*.pt
+*.pth
 !graph_visualization/config.yml
 debug_results.py
 

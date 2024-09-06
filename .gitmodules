@@ -4,15 +4,9 @@
 [submodule "mmocr"]
 	path = mmocr
 	url = git@github.com:FakeNarratives/mmocr.git
-[submodule "audio_analysis/whisper"]
-	path = audio_analysis/whisper
-	url = git@github.com:openai/whisper.git
 [submodule "semantic_geo_partitioning"]
 	path = semantic_geo_partitioning
 	url = git@github.com:FakeNarratives/semantic_geo_partitioning.git
-[submodule "audio_analysis/pyannote-whisper"]
-	path = audio_analysis/pyannote-whisper
-	url = git@github.com:gullalc/pyannote-whisper.git
 [submodule "unilm"]
 	path = unilm
 	url = git@github.com:microsoft/unilm.git
