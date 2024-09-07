@@ -19,3 +19,12 @@
 [submodule "ByteTrack"]
 	path = ByteTrack
 	url = git@github.com:FakeNarratives/ByteTrack.git
+[submodule "TransNetV2"]
+	path = TransNetV2
+	url = https://github.com/soCzech/TransNetV2.git
+[submodule "deepface"]
+	path = deepface
+	url = https://github.com/serengil/deepface.git
+[submodule "mmdetection"]
+	path = mmdetection
+	url = https://github.com/open-mmlab/mmdetection.git
