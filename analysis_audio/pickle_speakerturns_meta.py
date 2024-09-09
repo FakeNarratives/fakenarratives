@@ -172,7 +172,7 @@ def process_video(video_path: Path, output_dir: Path, threshold: float) -> bool:
         logging.error(f"Error processing video {video_path}: {str(e)}")
         return False
 
-def process_videos(videos: List[str], pkl_dir: str, threshold: float) -> Tuple[int, int, List[str]]:
+def process_videos(videos: List[str], pkl_dir: str, threshold: float, rewrite: bool) -> Tuple[int, int, List[str]]:
     successful = 0
     failed = 0
     failed_videos = []
@@ -188,7 +188,7 @@ def process_videos(videos: List[str], pkl_dir: str, threshold: float) -> Tuple[i
         output_dir = Path(pkl_dir) / video_path.stem
         output_file = output_dir / "speaker_turns_meta.pkl"
         
-        if output_file.exists():
+        if output_file.exists() and not rewrite:
             logging.info(f"Output file already exists for {video_path}. Skipping.")
             successful += 1
             continue
@@ -210,7 +210,7 @@ def main():
     
     set_seeds(42)
 
-    successful, failed, failed_videos = process_videos(args.videos, args.pkl_dir, args.threshold)
+    successful, failed, failed_videos = process_videos(args.videos, args.pkl_dir, args.threshold, args.rewrite)
 
     # Log summary
     total = successful + failed
