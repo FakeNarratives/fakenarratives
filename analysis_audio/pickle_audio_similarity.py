@@ -1,0 +1,262 @@
+import os
+import sys
+import torch
+import pickle
+import logging
+import librosa
+import argparse
+import numpy as np
+from tqdm import tqdm
+from pathlib import Path
+import torch.nn.functional as F
+from typing import Dict, List, Tuple, Any
+from sklearn.metrics.pairwise import cosine_similarity
+from transformers import WhisperProcessor, WhisperModel
+from transformers import Wav2Vec2Model, Wav2Vec2FeatureExtractor
+sys.path.append("unilm/beats/")
+from BEATs import BEATs, BEATsConfig
+sys.path.append(".")
+from project_utils import set_seeds, setup_logging
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Generates audio similarity between two neighboring shots in a video.")
+    parser.add_argument(
+        "-v",
+        "--videos",
+        nargs="+",
+        type=str,
+        required=True,
+        help="Path to input videos"
+    )
+    parser.add_argument(
+        "-o",
+        "--pkl_dir",
+        type=str,
+        required=True,
+        help="Path to pkl directory"
+    )
+    parser.add_argument(
+        "-m",
+        "--model",
+        type=str,
+        default="wav2vec2",
+        choices=["wav2vec2", "beats", "whisper"],
+        help="Model to use for audio feature extraction"
+    )
+    parser.add_argument(
+        "-r",
+        "--rewrite",
+        action="store_true",
+        help="Rewrite existing files"
+    )
+    return parser.parse_args()
+
+def get_model(model_type: str, device: str) -> Tuple[Any, Any]:
+    if model_type == "wav2vec2":
+        model = Wav2Vec2Model.from_pretrained("facebook/wav2vec2-large-xlsr-53")
+        processor = Wav2Vec2FeatureExtractor.from_pretrained("facebook/wav2vec2-large-xlsr-53")
+    elif model_type == "beats":
+        checkpoint = torch.load("analysis_audio/pretrained_utils/BEATs_iter3_plus_AS2M.pt")
+        cfg = BEATsConfig(checkpoint['cfg'])
+        model = BEATs(cfg)
+        model.load_state_dict(checkpoint['model'])
+        processor = None
+    elif model_type == "whisper":
+        processor = WhisperProcessor.from_pretrained("openai/whisper-large-v3")
+        model = WhisperModel.from_pretrained("openai/whisper-large-v3")
+
+    logging.info(f"Model Loaded: {model_type}")
+    model.to(device)
+    model.eval()
+    return model, processor
+
+def get_shot_time(index: int, shots: List[Dict[str, float]]) -> Tuple[float, float]:
+    if 0 <= index < len(shots):
+        return shots[index]["start"], shots[index]["end"]
+    return None, None
+
+def get_waveform(audio_path: str, start_time: float, end_time: float) -> torch.Tensor:    
+    audio_array, _ = librosa.load(audio_path, sr=16000, offset=start_time, duration=end_time-start_time)
+    audio_array = torch.tensor(audio_array).unsqueeze(0).to(torch.float32)
+    
+    if audio_array.shape[1] < 16000:
+        audio_array = F.pad(audio_array, (0, 16000 - audio_array.shape[1]), "constant", 0)
+    
+    if audio_array.shape[1] > 1600000:  # 100 seconds max
+        audio_array = audio_array[:, :1600000]
+        
+    return audio_array
+
+@torch.no_grad()
+def get_features(model_type: str, model: Any, processor: Any, audio_array: torch.Tensor, device: str) -> np.ndarray:
+    if model_type == "beats":
+        audio_array = audio_array.to(device)
+        padding_mask = torch.zeros(1, audio_array.shape[1]).bool().to(device)
+        return model.extract_features(audio_array, padding_mask=padding_mask)[0].mean(1).cpu().numpy()
+    elif model_type == "whisper":
+        input_features = processor(audio_array.squeeze(0), sampling_rate=16000, return_tensors="pt").input_features
+        decoder_input_ids = torch.tensor([[1, 1]]) * model.config.decoder_start_token_id
+        outputs = model(input_features.to(device), decoder_input_ids=decoder_input_ids.to(device))
+        return outputs.encoder_last_hidden_state.mean(1).cpu().numpy()
+    elif model_type == "wav2vec2":
+        input_values = processor(audio_array.squeeze(0), sampling_rate=16000, return_tensors="pt").input_values.to(device)
+        return model(input_values).extract_features.mean(1).cpu().numpy()
+
+def process_video(video_path: Path, output_dir: Path, shot_dict: Dict[str, List[Dict[str, float]]], 
+                  model_type: str, model: Any, processor: Any, device: str) -> Dict[str, Any]:
+    """
+    Computes audio shot similarity between two neighboring shots from the reference shot in a video.
+
+    Args:
+        video_path (Path): Path to the video file
+        output_dir (Path): Path to the output directory
+        shot_dict (Dict[str, List[Dict[str, float]]]): Dictionary containing shot information
+        model_type (str): Type of model used for feature extraction
+        model (Any): The loaded model for feature extraction
+        processor (Any): The loaded processor for the model
+        device (str): The device to run computations on
+
+    Returns:
+        Dict[str, Any]: Dictionary containing audio shot similarity information
+        {
+            "github_repo": str,
+            "commit_id": str,
+            "parameters": "default",
+            "video_file": str,
+            "output_data": List[Dict[str, Any]]
+        }
+        Where each item in output_data is:
+        {
+            "shot": Dict[str, float],
+            "prev_1": float,
+            "prev_2": float,
+            "next_1": float,
+            "next_2": float
+        }
+    """
+    video_feat_dict = {
+        "github_repo": "",
+        "commit_id": "",
+        "parameters": "default",
+        "video_file": str(video_path),
+        "output_data": []
+    }
+    
+    if model_type == "wav2vec2":
+        video_feat_dict["github_repo"] = "https://huggingface.co/facebook/wav2vec2-large-xlsr-53"
+        video_feat_dict["commit_id"] = "c3f9d884181a224a6ac87bf8885c84d1cff3384f"
+    elif model_type == "beats":
+        video_feat_dict["github_repo"] = "https://github.com/microsoft/unilm/tree/master/beats"
+        video_feat_dict["commit_id"] = "732d834db70ee0fc3886b4bcbcfb4ce7fb829be2"
+    elif model_type == "whisper":
+        video_feat_dict["github_repo"] = "https://github.com/openai/whisper"
+        video_feat_dict["commit_id"] = "ba3f3cd54b0e5b8ce1ab3de13e32122d0d5f98ab"
+
+    audio_path = output_dir / "audio.wav"
+
+    for i, ref_shot in enumerate(tqdm(shot_dict["shots"])):  
+        similarities = {"shot": ref_shot, "prev_1": 0, "prev_2": 0, "next_1": 0, "next_2": 0}
+
+        sr_time, er_time = ref_shot["start"], ref_shot["end"]
+        audio_array = get_waveform(str(audio_path), sr_time, er_time)
+        ref_feat = get_features(model_type, model, processor, audio_array, device)
+
+        shot_times = [get_shot_time(i + offset, shot_dict["shots"]) for offset in [-2, -1, 1, 2]]
+
+        for j, (start_time, end_time) in enumerate(shot_times):
+            if start_time is not None and end_time is not None:
+                query_array = get_waveform(str(audio_path), start_time, end_time)
+                query_feat = get_features(model_type, model, processor, query_array, device)
+                similarity_key = ["prev_2", "prev_1", "next_1", "next_2"][j]
+                similarities[similarity_key] = cosine_similarity(ref_feat, query_feat)[0][0]
+
+        video_feat_dict["output_data"].append(similarities)
+
+    return video_feat_dict
+
+def process_videos(videos: List[str], pkl_dir: str, model_type: str, model: Any, processor: Any, device: str, rewrite: bool) -> Tuple[int, int, List[str]]:
+    successful = 0
+    failed = 0
+    failed_videos = []
+
+    for vi, video in enumerate(videos):
+        video_path = Path(video)
+        if not video_path.exists():
+            logging.warning(f"Video file not found: {video_path}")
+            failed += 1
+            failed_videos.append(str(video_path))
+            continue
+        
+        output_dir = Path(pkl_dir) / video_path.stem
+        shot_detection_path = output_dir / "transnet_shotdetection.pkl"
+        
+        if not shot_detection_path.is_file():
+            logging.error(f"Missing shot detection file in {shot_detection_path}")
+            failed += 1
+            failed_videos.append(str(video_path))
+            continue
+
+        sim_output_path = output_dir / f"{model_type}_audio_shot_similarity.pkl"
+        if sim_output_path.exists() and not rewrite:
+            logging.info(f"Output file already exists for {video_path}. Skipping.")
+            successful += 1
+            continue
+
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        try:
+            logging.info(f"Processing video [{vi+1}/{len(videos)}]: {video_path}")
+            with open(shot_detection_path, "rb") as pklfile:
+                shot_content = pickle.load(pklfile)["output_data"]
+            
+            video_feat_dict = process_video(video_path, output_dir, shot_content, 
+                                            model_type, model, processor, device)
+
+            with open(sim_output_path, "wb") as output_file:
+                pickle.dump(video_feat_dict, output_file)
+
+            logging.info(f"Saved similarities to [{vi+1}/{len(videos)}]: {sim_output_path}")
+            
+            successful += 1
+        except Exception as e:
+            logging.error(f"Error processing video [{vi+1}/{len(videos)}]: {video_path}: {str(e)}")
+            failed += 1
+            failed_videos.append(str(video_path))
+
+    return successful, failed, failed_videos
+
+def main():
+    script_path = Path(__file__).resolve()
+    log_file = setup_logging("audio_shot_similarity")
+    
+    args = parse_args()
+    
+    logging.info(f"Log file will be saved at: {log_file}")
+    
+    set_seeds(42)
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model, processor = get_model(args.model, device)
+
+    successful, failed, failed_videos = process_videos(args.videos, args.pkl_dir, args.model, model, processor, device, args.rewrite)
+
+    # Log summary
+    total = successful + failed
+    logging.info(f"Audio shot similarity processing complete. Total: {total}, Successful: {successful}, Failed: {failed}")
+    
+    if failed > 0:
+        logging.info("Failed videos:")
+        for video in failed_videos:
+            logging.info(f"  - {video}")
+    
+    # Print summary to console
+    print(f"\nAudio shot similarity processing summary:")
+    print(f"Total videos processed: {total}")
+    print(f"Successful: {successful}")
+    print(f"Failed: {failed}")
+    print(f"\nLog file saved at: {log_file}")
+    if failed > 0:
+        print(f"Check the log file for details on failed videos.")
+
+if __name__ == "__main__":
+    main()

@@ -41,11 +41,9 @@ def extract_audio(video_path: Path, output_path: Path, rewrite: bool) -> bool:
     
     try:
         subprocess.run(command, check=True, capture_output=True, text=True)
-        logging.info(f"Extracted audio from {video_path} to {output_path}")
         return True
     except subprocess.CalledProcessError as e:
         logging.error(f"Failed to extract audio from {video_path}: {e}")
-        logging.error(f"ffmpeg stderr: {e.stderr}")
         return False
 
 def process_videos(videos: List[str], pkl_dir: str, rewrite: bool) -> Tuple[int, int, List[str]]:
@@ -53,16 +51,18 @@ def process_videos(videos: List[str], pkl_dir: str, rewrite: bool) -> Tuple[int,
     failed = 0
     failed_videos = []
 
-    for video in videos:
+    for vi, video in enumerate(videos):
         video_path = Path(video)
         if not video_path.exists():
-            logging.warning(f"Video file not found: {video_path}")
+            logging.warning(f"Video file not found: [{vi+1}/{len(videos)}]: {video_path}")
             failed += 1
             failed_videos.append(str(video_path))
             continue
         
+        logging.info(f"Processing video [{vi+1}/{len(videos)}]: {video_path}")
         output_path = Path(pkl_dir) / video_path.stem / "audio.wav"
         if extract_audio(video_path, output_path, rewrite):
+            logging.info(f"Saved audio to [{vi+1}/{len(videos)}]: {output_path}")
             successful += 1
         else:
             failed += 1
