@@ -1,0 +1,4 @@
+"Single","Is there a single person shown in the image? Please answer with yes or no!"
+"Pair","Are there exactly two persons shown in the image? Please answer with yes or no!"
+"Group","Is there are group of persons that seem to know each other in the image? Please answer with yes or no!"
+"Crowd","Does this photo depict a large crowd of people? Please answer with yes or no!"

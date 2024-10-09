@@ -1,0 +1,16 @@
+RF, Situations, SEG: Average Accuracy: 0.8675, Average F1-macro: 0.7523 <----
+RF, Stituations, SW: Average Accuracy: 0.8406, Average F1-macro: 0.7613 <----
+GB, Situations, SEG: Average Accuracy: 0.8627, Average F1-macro: 0.6956   
+GB, Situations, SW: Average Accuracy: 0.8456, Average F1-macro: 0.7284   
+
+RF, Speaker Roles-0, SEG: Average Accuracy: 0.8100, Average F1-macro: 0.8100
+RF, Speaker Roles-0, SW: Average Accuracy: 0.7971, Average F1-macro: 0.7976
+GB, Speaker Roles-0, SEG: Average Accuracy: 0.8201, Average F1-macro: 0.8208   <----
+GB, Speaker Roles-0, SW: Average Accuracy: 0.8256, Average F1-macro: 0.8262   <----
+
+RF, Speaker Roles-1, SEG: Average Accuracy: 0.7296, Average F1-macro: 0.5711
+RF, Speaker Roles-1, SW: Average Accuracy: 0.7352, Average F1-macro: 0.5818
+GB, Speaker Roles-1, SEG: Average Accuracy: 0.7601, Average F1-macro: 0.5835   <----
+GB, Speaker Roles-1, SW: Average Accuracy: 0.7472, Average F1-macro: 0.5724   <----
+XGB, Speaker Roles-1, SEG: Average Accuracy: 0.7389, Average F1-macro: 0.6196
+XGB, Speaker Roles-1, SW: Average Accuracy: 0.7454, Average F1-macro: 0.6076
