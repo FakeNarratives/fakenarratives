@@ -23,11 +23,12 @@ def parse_args():
         "-o",
         "--pkl_dir", type=str, required=True, help="Path to pkl directory"
     )
+    parser.add_argument("--workers", type=int, default=4, help="number of workers")
     parser.add_argument("-r", "--rewrite", action="store_true", help="Rewrite existing files")
     return parser.parse_args()
 
-def extract_audio(video_path: Path, output_path: Path, rewrite: bool) -> bool:
-    if output_path.exists() and not rewrite:
+def extract_audio(video_path: Path, output_path: Path, args: argparse.Namespace) -> bool:
+    if output_path.exists() and not args.rewrite:
         logging.info(f"Audio file already exists for {video_path}. Skipping.")
         return True
 
@@ -35,7 +36,7 @@ def extract_audio(video_path: Path, output_path: Path, rewrite: bool) -> bool:
     
     command = [
         "ffmpeg", "-y", "-i", str(video_path), "-qscale:a", "0", 
-        "-ac", "1", "-vn", "-threads", "4", "-ar", "16000", 
+        "-ac", "1", "-vn", "-threads", str(args.workers), "-ar", "16000", 
         str(output_path), "-loglevel", "panic"
     ]
     
@@ -46,10 +47,13 @@ def extract_audio(video_path: Path, output_path: Path, rewrite: bool) -> bool:
         logging.error(f"Failed to extract audio from {video_path}: {e}")
         return False
 
-def process_videos(videos: List[str], pkl_dir: str, rewrite: bool) -> Tuple[int, int, List[str]]:
+def process_videos(args: argparse.Namespace) -> Tuple[int, int, List[str]]:
     successful = 0
     failed = 0
     failed_videos = []
+
+    videos = args.videos
+    pkl_dir = args.pkl_dir
 
     for vi, video in enumerate(videos):
         video_path = Path(video)
@@ -61,7 +65,7 @@ def process_videos(videos: List[str], pkl_dir: str, rewrite: bool) -> Tuple[int,
         
         logging.info(f"Processing video [{vi+1}/{len(videos)}]: {video_path}")
         output_path = Path(pkl_dir) / video_path.stem / "audio.wav"
-        if extract_audio(video_path, output_path, rewrite):
+        if extract_audio(video_path, output_path, args):
             logging.info(f"Saved audio to [{vi+1}/{len(videos)}]: {output_path}")
             successful += 1
         else:
@@ -78,7 +82,7 @@ def main():
     
     logging.info(f"Log file will be saved at: {log_file}")
     
-    successful, failed, failed_videos = process_videos(args.videos, args.pkl_dir, args.rewrite)
+    successful, failed, failed_videos = process_videos(args)
 
     # Log summary
     total = successful + failed

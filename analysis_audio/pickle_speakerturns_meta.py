@@ -180,7 +180,6 @@ def process_videos(videos: List[str], pkl_dir: str, threshold: float, rewrite: b
     for vi, video in enumerate(videos):
         video_path = Path(video)
         if not video_path.exists():
-            logging.warning(f"Video file not found: {video_path}")
             failed += 1
             failed_videos.append(str(video_path))
             continue
