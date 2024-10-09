@@ -10,6 +10,9 @@ config.yml
 debug_results.py
 analysis_multimodal/srr_nsr_news_videos
 *_old.py
+analysis_visual/vlm_evaluation
+analysis_face/face_analysis.json
+analysis_multimodal/srr_nsr/config.yaml
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
