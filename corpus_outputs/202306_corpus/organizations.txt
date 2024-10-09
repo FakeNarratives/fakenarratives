@@ -1,111 +1,504 @@
-Q49727	Das Erste
-Q1764511	Group of Seven
-Q49768	Social Democratic Party of Germany
-Q13124	Free Democratic Party (Germany)
-Q49766	Alliance 90/The Greens
-Q49762	Christian Democratic Union of Germany
-Q6721203	Alternative for Germany
-Q15849468	Stromio
-Q95	Google
-Q49764	The Left (Germany)
-Q16922766	Genting Hong Kong
-Q1190323	Genting Group
-Q154797	Bundestag
-Q7184	North Atlantic Treaty Organization
-Q48989	ZDF
-Q42418	Taliban
-Q658270	KfW
-Q9322	Deutsche Bahn
-Q81230	Siemens
-Q40970	International Olympic Committee
-Q137317	Funke Mediengruppe
-Q1672300	Ipsos
-Q1087107	Christophorus Gemeinschaft katholischer Studierender und Akademiker
-Q130871	Berlin International Film Festival
-Q26794403	MV Werften
-Q264938	Tagesschau24
-Q56025	Federal Constitutional Court
-Q1065	United Nations
-Q132551	United Nations High Commissioner for Refugees
-Q56010	Bundeswehr
-Q154191	German Football Association
-Q58707	Aeroflot
-Q9531	BBC
-Q40469	Associated Press
-Q27530	Daimler AG
-Q26678	BMW
-Q138133	RWE
-Q161544	Rheinmetall AG
-Q157645	Deutsche Post
-Q178790	Trade union
-Q2283	Microsoft
-Q3884	Amazon (company)
-Q4264	Mercosur
-Q174240	Transparency International
-Q28913869	Northvolt
-Q7809	UNESCO
-Q66	Boeing
-Q9325	Lufthansa
-Q643578	Fraport
-Q9396	Deutsche Telekom
-Q156591	Yad Vashem
-Q1205636	German Research Institute for Public Administration
-Q7817	World Health Organization
-Q47750	Lega Nord
-Q81299	Organization for Security and Co-operation in Europe
-Q2360189	Standing Committee on Vaccination
-Q20181258	Correctiv
-Q105584	Rotten Tomatoes
-Q156203	Bild
-Q312	Apple Inc.
-Q689141	Spotify
-Q315292	Union of Persecutees of the Nazi Regime
-Q29325	National Socialist Underground
-Q2429253	Islamic State of Iraq and the Levant
-Q1202053	Vonovia
-Q1006502	Bundespressekonferenz
-Q13129	Pirate Party Germany
-Q153770	Deutsche Welle
-Q170418	World Economic Forum
-Q5003490	BuzzFeed
-Q171240	London Stock Exchange
-Q169889	American Broadcasting Company
-Q314073	Ifo Institute for Economic Research
-Q22868	RT (TV network)
-Q102673	Gazprom
-Q164746	The Wall Street Journal
-Q1141123	Rosneft
-Q30256699	BioNTech
-Q206921	Pfizer
-Q221645	Stockholm University
-Q691563	Nord Stream AG
-Q826700	International Energy Agency
-Q157064	Puma (brand)
-Q1457674	Beitragsservice von ARD, ZDF und Deutschlandradio
-Q8908	Council of Europe
-Q152220	Kurdistan Workers' Party
-Q163560	Axel Springer SE
-Q7320	Nazi Party
-Q13164	Moscow State University
-Q471190	Amigo Spiele
-Q30589582	World Government Summit
-Q168717	ProSieben
-Q152554	Party of Democratic Socialism
-Q1140407	Stockholm International Peace Research Institute
-Q253414	FIFA
-Q35572	UEFA
-Q1518827	European Court of Justice
-Q204344	World Food Programme
-Q41550	OECD
-Q22938621	Bellingcat
-Q151139	Frankfurt Stock Exchange
-Q67	Airbus
-Q702415	Federal Fiscal Court
-Q38799	Hamas
-Q319769	Webasto
-Q5183828	Wolfspeed
-Q489815	DHL
-Q2120364	Radio France
-Q51951232	Forbidden Stories
-Q10230	Bharatiya Janata Party
-Q152051	Bayer
+NATO	Q7184
+Nord Stream	Q154125
+Bild	Q156203
+United Nations	Q1065
+Omicron	Q14408
+Twitter	Q918
+Pediatrics	Q123028
+Free Democratic Party	Q13124
+Free Democratic Party (Germany)	Q13124
+Bundestag	Q154797
+Life (magazine)	Q463198
+Katyusha Continental Team	Q1591201
+Imperial Russian Army	Q1078222
+image	Q478798
+Rapid transit	Q5503
+Bundeswehr	Q56010
+Breaking news	Q1304122
+Stockholm International Peace Research Institute	Q1140407
+Helsinki Accords	Q318161
+Helsinki	Q1757
+John J. Pershing	Q272383
+Democratic Party (United States)	Q29552
+Federal Office for the Protection of the Constitution	Q310522
+Bundestag election	Q1007356
+SARS-CoV-2	Q82069695
+1. FC Union Berlin	Q141971
+CDU/CSU Bundestag fraction	Q1023134
+Christian Social Union of Bavaria	Q49763
+Christian Democratic Union	Q49762
+Council	Q4358176
+Alternative for Germany	Q6721203
+President of the Bundestag	Q56024
+UEFA Champions League	Q18756
+Television	Q289
+rapid transit	Q5503
+unk	unk
+International Red Cross and Red Crescent Movement	Q7178
+Wagner	Q2539239
+FIFA	Q253414
+UEFA	Q35572
+International Olympic Committee	Q40970
+Gazprom	Q102673
+Rosneft	Q1141123
+Patrizia AG	Q2058186
+Jorgos	Q123820130
+Agence France-Presse	Q40464
+Gunfire	Q1505681
+Berliner Zeitung	Q10185
+World Health Organization	Q7817
+Neue Zürcher Zeitung	Q658945
+Bayerischer Rundfunk	Q278637
+German Research Institute for Public Administration	Q1205636
+Kompakt	Q564432
+Christian Democratic Union of Germany	Q49762
+Westfälischen Wilhelms-Universität Münster Institut für Experimentelle Pathologie	Q101391594
+Bund-Länder-Kommission für Bildungsplanung und Forschungsförderung	Q1004945
+ARD (broadcaster)	Q49653
+Social Democratic Party of Germany	Q49768
+Hamburg Parliament	Q636377
+Facebook	Q355
+The Left (Germany)	Q49764
+Spartacus League	Q156607
+The Australian	Q1478700
+Lega Nord	Q47750
+United Nations Security Council	Q37470
+Spotify	Q689141
+Mossad	Q34216
+United States Air Force	Q11223
+Dentons	Q13633888
+Antifa (Germany)	Q96019189
+1%	Q2806546
+Märkische Oderzeitung	Q1957445
+In Extremo	Q326034
+National Rally	Q205150
+Marine Le Pen	Q12927
+Reconquête	Q109932430
+athletics at the 1996 Summer Olympics – men's 100 metres	Q26860
+The Times	Q50008
+Nordkurier	Q19842504
+Federal Convention (Germany)	Q168343
+Soran Emirate	Q1557298
+Allies	Q3612401
+Values Union	Q31837984
+World Economic Forum	Q170418
+Fridays for Future	Q60674974
+Alliance 90/The Greens	Q49766
+Das Erste	Q49727
+European Central Bank	Q8901
+Instagram	Q209330
+Coronavirus disease 2019	Q84263196
+rock and roll	Q7749
+Federal Statistical Office of Germany	Q764739
+Federal Ministry of Health (Germany)	Q491566
+Free German Youth	Q76845
+Socialist Unity Party of Germany	Q49750
+Communist Party of the Soviet Union	Q79854
+Haim (band)	Q868810
+EasyJet	Q191551
+Ryanair	Q170614
+BuzzFeed	Q5003490
+Georgische Legion (1941–45)	Q5048004
+Wagner Group	Q36597284
+United States Army	Q9212
+Liquefied natural gas	Q358333
+London Stock Exchange	Q171240
+Association of German Chambers of Industry and Commerce	Q317528
+Der Tagesspiegel	Q10189
+Mitteldeutscher Rundfunk	Q158948
+Landtag of the Free State of Saxony	Q884824
+Leipziger Volkszeitung	Q283347
+Austrian People's Party	Q186867
+Amis people	Q205006
+Islamic State of Iraq and the Levant	Q2429253
+Funke Mediengruppe	Q137317
+United States Armed Forces	Q11211
+Flag of the United States	Q42537
+OPEC	Q7795
+Vonovia	Q1202053
+European Green Deal	Q79198143
+Tagesschau (German TV series)	Q703907
+Süddeutsche Zeitung	Q158870
+National Association of Statutory Health Insurance Physicians	Q1735243
+Frankfurter Allgemeine Zeitung	Q10184
+Pfizer	Q206921
+Paul Ehrlich Institute	Q1476836
+YouTube	Q866
+X	Q918
+New York Post	Q211374
+Fox News	Q186068
+Buruma	Q65819223
+Federal Criminal Police Office (Germany)	Q56030
+RT (TV network)	Q22868
+List of spacecraft called Sputnik	Q170413
+Dividend stripping	Q5284043
+Warsaw Pact	Q41644
+International Weightlifting Federation	Q913687
+Embassy	Q3917681
+Neue Osnabrücker Zeitung	Q1258974
+Sea-Watch	Q20850693
+Deutsche Welle	Q153770
+treaty	Q131569
+Landtag of North Rhine-Westphalia	Q571436
+University of Alaska system	Q2002043
+German reunification	Q56039
+Penguin Books	Q1336200
+Environmental Action Germany	Q1204319
+BMW	Q26678
+Mercedes-Benz	Q36008
+Rammstein	Q25177
+mujahid	Q42759
+Amigo Spiele	Q471190
+Party of Democratic Socialism	Q152554
+Left-wing politics	Q164597
+Nazi Party	Q7320
+Antarctic Treaty System	Q182814
+Toronto Sun	Q2301245
+Union of Persecutees of the Nazi Regime	Q315292
+Landtag of Hesse	Q510511
+European Parliament	Q8889
+La Repubblica	Q85329
+Stuttgart 21	Q700996
+Deutsche Bahn	Q9322
+Syrian Arab News Agency	Q63392
+Junge Welt	Q162563
+Pegida	Q18609063
+TikTok	Q48938223
+Handelsblatt	Q819697
+Tagesspiegel	Q10189
+Bundespressekonferenz	Q1006502
+Pirate Party Germany	Q13129
+House of Windsor	Q81589
+Battenberg family	Q115479
+Shift JIS	Q286345
+.nato	Q753137
+Microsoft	Q2283
+Ferratum Group	Q11859513
+2005 German federal election	Q165999
+ProSieben	Q168717
+Red Line (Dubai Metro)	Q1369034
+Grand Alliance (World War II)	Q5594228
+Miss Namibia	Q1063979
+Supernatural (American TV series)	Q130585
+National Council (Austria)	Q871363
+AStA	Q2648959
+Thuringii	Q160892
+Google Search	Q9366
+Apple Inc.	Q312
+Aeroflot	Q58707
+company	Q783794
+Tonka	Q1645436
+Tinder (app)	Q15078152
+USS Redfish (SS-395)	Q3544229
+Die Tageszeitung	Q161423
+World Bank	Q7164
+Sputnik (news agency)	Q18572033
+German language	Q188
+Central Intelligence Agency	Q37230
+The Wall Street Journal	Q164746
+American Broadcasting Company	Q169889
+International Criminal Court	Q47488
+The New York Times	Q9684
+KGB	Q80919
+Federal Security Service	Q58792
+Dtv Verlagsgesellschaft	Q1205382
+Council of Europe	Q8908
+Kurdistan Workers' Party	Q152220
+Axel Springer SE	Q163560
+Politico	Q3109740
+Leopard	Q34706
+Wehrmacht	Q128781
+Puma (IFV)	Q819119
+Federal Bureau of Investigation	Q8333
+Deutsche Gesellschaft für Internationale Zusammenarbeit	Q462763
+Leinefelde	Q580115
+Romani people	Q8060
+Radio Bremen	Q694837
+Ahnenerbe	Q160394
+Schutzstaffel	Q44687
+Nord Stream AG	Q691563
+The Washington Post	Q166032
+Siegfried & Roy	Q60806
+LGBT	Q17884
+Organization for Security and Co-operation in Europe	Q81299
+Annalena Baerbock	Q564328
+Charité	Q162684
+Peter Thiel	Q705525
+Edward Elgar	Q179631
+Standing Committee on Vaccination	Q2360189
+Stuttgarter Zeitung	Q319663
+Google	Q95
+Correctiv	Q20181258
+Hezbollah	Q41053
+Märkische Allgemeine	Q1957433
+Multiculturalism	Q190656
+Moscow State University	Q13164
+Express (Cologne newspaper)	Q1384783
+New York Yankees	Q213417
+Applause	Q814696
+Amiga	Q100047
+Christian-Social People's Party (Liechtenstein)	Q15980936
+Freedom Party of Austria	Q131692
+Political party	Q7278
+International Energy Agency	Q826700
+Survey methodology	Q814232
+Hotel	Q27686
+Estrella Morente	Q293773
+BluOr Bank	Q18121568
+Cougar	Q35255
+Beitragsservice von ARD, ZDF und Deutschlandradio	Q1457674
+Askari	Q643745
+Fabian Society	Q192186
+PEGIDA	Q18609063
+Austrian Freedom Party	Q131692
+Protestantism	Q23540
+Johannesstift Diakonie	Q2059770
+INSA (Germany)	Q28195985
+Patriotism	Q6241
+French Communist Party	Q192821
+Friedrich-Ebert-Krankenhaus	Q1457719
+Daimler AG	Q27530
+Lufthansa	Q9325
+Fraport	Q643578
+Deutsche Telekom	Q9396
+Ver.di	Q547951
+German Ski Association	Q317800
+European Commission	Q8880
+Obi (store)	Q300518
+2004 Ukrainian presidential election	Q568458
+Bundesliga	Q82595
+Borussia Dortmund	Q41420
+TSG 1899 Hoffenheim	Q22707
+RB Leipzig	Q702455
+Eintracht Frankfurt	Q38245
+Hertha BSC	Q102720
+Hoffenheim	Q707011
+Ski-WM	Q2292110
+RWE	Q138133
+No One (Alicia Keys song)	Q2287387
+Rheinmetall	Q161544
+Rheinmetall AG	Q161544
+Knorr-Bremse	Q256290
+Yeti Airlines	Q1480118
+Associated Press	Q40469
+International trade	Q178803
+Logistics	Q177777
+Bergstadt-Gymnasium Lüdenscheid	Q111370789
+Eurozone	Q8268
+German Football Association	Q154191
+German Bundeswehr Association	Q1204688
+Abrams	Q7155884
+Norddeutscher Rundfunk	Q201275
+National health insurance	Q1519138
+Northvolt	Q28913869
+Wolfspeed	Q5183828
+ZF Friedrichshafen	Q136119
+Federal Network Agency	Q269138
+Galeria Kaufhof	Q322598
+Galeria Karstadt Kaufhof	Q80220059
+covered passageway	Q1320830
+F.C. Hansa Rostock	Q142005
+Boeing	Q66
+Boeing 747	Q179
+Pan Am	Q8681
+Group of Seven	Q1764511
+G7	Q1764511
+African Americans	Q49085
+The Golden Girls	Q912467
+United Nations High Commissioner for Refugees	Q132551
+Nadja (band)	Q625917
+Tagesschau24	Q264938
+Society for Worldwide Interbank Financial Telecommunication	Q257597
+Desiderius-Erasmus-Stiftung	Q47580245
+President of Germany	Q25223
+National board of the CDU	Q599935
+Bundesagentur für Arbeit	Q1478016
+Confederation of German Employers' Associations	Q897107
+German Trade Union Confederation	Q586581
+European Court of Human Rights	Q122880
+German Handball Association	Q451091
+Taliban	Q42418
+Ipsos	Q1672300
+Fólkvangr	Q1435524
+VfB Stuttgart	Q4512
+FC Augsburg	Q15755
+Bogatay	Q36969869
+Winter Olympic Games	Q82414
+Olympic champion	Q4333889
+Mercosur	Q4264
+Transparency International	Q174240
+WeChat	Q283233
+Economics	Q8134
+TGW Logistics Group	Q119810
+Art gallery	Q1007870
+School strike for climate	Q60674974
+Lloyd Werft	Q870276
+Genting Hong Kong	Q16922766
+World Squash Federation	Q2299530
+American Dream	Q214100
+German Civil Service Federation	Q566983
+Novak Djokovic	Q5812
+Deutsche Presse-Agentur	Q312653
+Deutsche Post	Q157645
+Trade union	Q178790
+mail	Q49845
+SV Werder Bremen	Q51976
+Hanseatic League	Q42908
+KfW	Q658270
+Siemens	Q81230
+Zwittermicin A-resistance protein BT9727_2822	Q23521235
+Olympic Village	Q866623
+Urinary bladder	Q9382
+Telegram (software)	Q15616276
+Christian Social Union in Bavaria	Q49763
+Consumer protection	Q664183
+Stromio	Q15849468
+Federal Cartel Office	Q450394
+Alphabet	Q9779
+BBC	Q9531
+CNN	Q48340
+ARD-Auslandsstudio	Q1828874
+Origanum	Q205265
+SC Freiburg	Q106394
+Alpine skiing	Q186222
+Ørsted	Q1241260
+Élysée Treaty	Q274811
+United States National Security Council	Q851756
+Amazon (company)	Q3884
+men's U21 association football	Q44417630
+The Byrds	Q211526
+Bing Crosby	Q72984
+Maxar Technologies	Q48791239
+Roman Catholic Diocese of Essen	Q702291
+Hollywood	Q34006
+Hatari (band)	Q61716128
+Südwestrundfunk	Q700133
+'Columbia' Winning the Cup	Q17478754
+Novavax	Q17072200
+Dessau	Q487070
+Yad Vashem	Q156591
+Deutsche Interdisziplinäre Vereinigung für Intensiv- und Notfallmedizin	Q1203157
+FC Bayern Munich	Q15789
+1. FC Köln	Q104770
+Union Army	Q1752901
+Tausug	Q34142
+German Swimming Federation	Q1205300
+Berlin Police	Q328480
+Corriere della Sera	Q309135
+MV Werften	Q26794403
+S-Bahn	Q95723
+Olympic Games	Q5389
+Los Angeles Rams	Q337377
+Super Bowl	Q32096
+Cincinnati Bengals	Q223511
+German Red Cross	Q694104
+Biathlon World Championships 2017	Q855849
+Christophorus Gemeinschaft katholischer Studierender und Akademiker	Q1087107
+TNF superfamily member 11	Q418934
+Emmanuel Macron	Q3052772
+Federal Reserve	Q53536
+The Olympic-Winning Lady	Q95984061
+Webasto	Q319769
+Telecommuting	Q1135326
+Gondola	Q182916
+2017 German federal election	Q15062956
+National Health Service	Q918396
+German Association of Judges	Q880067
+Heute Journal	Q885345
+RST	Q448769
+German Council on Foreign Relations	Q879172
+The Birds (band)	Q3097825
+Pina Bausch	Q155538
+Coffeehouse	Q30022
+National Security Agency	Q121194
+Șor Party	Q3624010
+Knesset	Q133396
+Oper Frankfurt	Q568931
+1. FC Nürnberg	Q15786
+1. FC Heidenheim	Q162251
+Deutscher Wetterdienst	Q325859
+Jair Bolsonaro	Q10304982
+Hospital	Q16917
+Greenpeace	Q81307
+Elizabeth II	Q9682
+Double-entry bookkeeping	Q192803
+colonnade	Q657100
+Bellingcat	Q22938621
+BioNTech	Q30256699
+Frankfurt Stock Exchange	Q151139
+Airbus	Q67
+UEFA Europa League	Q18760
+Rangers F.C.	Q19597
+Borussia Neunkirchen	Q819382
+Radio France	Q2120364
+Le Monde	Q12461
+The Guardian	Q11148
+Hoffmann-La Roche	Q212646
+Giuseppe Verdi	Q7317
+Lufthansa Italia	Q688359
+Afet ve Acil Durum Yönetimi Başkanlığı	Q5281346
+Swiss People's Party	Q385258
+DHL	Q489815
+Neve (titular see)	Q1727440
+Far-right politics	Q204481
+Hamas	Q38799
+Israel Defense Forces	Q58967
+Propaganda in the Russian Federation	Q20092524
+Mikoyan MiG-29	Q130681
+Red Army	Q251395
+Krischer	Q36927207
+CDU/CSU	Q708725
+European Court of Justice	Q1518827
+Association of Tennis Professionals	Q744089
+Davis Cup	Q132377
+Rodel-Weltcup	Q105525891
+German Olympic Sports Confederation	Q323728
+Zeb.rolfes.schierenbeck.associates	Q113507
+Conference of Ministers-President	Q1937121
+Bharatiya Janata Party	Q10230
+United Nations Human Rights Council	Q205650
+Former U.S. President Gerald Ford dies, aged 93	Q17595927
+Houthi	Q112660832
+Bayer 04 Leverkusen	Q104761
+Ministry of home affairs	Q6589202
+Fire department	Q6498663
+Zentralverband des Deutschen Baugewerbes	Q190850
+snow volleyball	Q15728017
+Reichsbank	Q560183
+Nazism	Q7310
+OECD	Q41550
+heute-journal	Q885345
+Nova Scotia	Q1952
+Wind power	Q43302
+Academy Awards	Q19020
+Cabinet of Germany	Q313827
+International Security Assistance Force	Q155654
+Federal Ministry of Defence (Germany)	Q493353
+Bloomberg News	Q14270642
+Journal Update	Q91209022
+Bundesamt für Auswärtige Angelegenheiten	Q96336957
+Federal Fiscal Court	Q702415
+Neobroker	Q113882619
+2007 World Men's Handball Championship	Q155610
+Inside (video game)	Q22019785
+ZDFmediathek	Q136006
+IBSF World Championships 2016	Q19275551
+Visions	Q900956
+Classical music	Q9730
+Missionszentrale der Franziskaner	Q1939131
+Evin Prison	Q387503
+ambassador of the United States of America	Q15726790
+Industry	Q8148
+Rheinische Post	Q33094
+Episcopal conference	Q637017
+Landtag of Rhineland-Palatinate	Q314690
+Federal Office for Migration and Refugees	Q1005470
+leopard	Q34706
+Verband der Automobilindustrie	Q563359
+Franz Liszt	Q41309
+Die Welt	Q29872
+Golden Globe Awards	Q1011547
+Oberheim Electronics	Q2009864
+Ministry of Emergency Situations (Russia)	Q2624171
+World Food Programme	Q204344
+Realo	Q49344167

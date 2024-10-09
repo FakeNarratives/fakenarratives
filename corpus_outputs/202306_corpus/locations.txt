@@ -1,625 +1,975 @@
-Q183	Germany
-Q142	France
-Q213	Czech Republic
-Q36	Poland
-Q40	Austria
-Q32	Luxembourg
-Q573106	Deutschlandsberg
-Q82425	Brandenburg Gate
-Q64	Berlin
-Q625743	Linden
-Q1202	Saxony
-Q3952	Plauen
-Q1055	Hamburg
-Q365	Cologne
-Q584	Rhine
-Q2999	Würzburg
-Q41300511	Brücke
-Q980	Bavaria
-Q1286	Alps
-Q317768	Schloss Elmau
-Q145	United Kingdom
-Q38	Italy
-Q30	United States
-Q16	Canada
-Q17	Japan
-Q18477036	Deutschen
-Q15	Africa
-Q60	New York City
-Q258	South Africa
-Q5468	Durban
-Q12512	St. Peter's Basilica
-Q83425	St. Peter's Square
-Q127043	Garmisch-Partenkirchen
-Q266230	Oberstdorf
-Q215	Slovenia
-Q189	Iceland
-Q10559	Lower Bavaria
-Q1726	Munich
-Q212	Ukraine
-Q159	Russia
-Q46	Europe
-Q97	Atlantic Ocean
-Q35525	White House
-Q828	Americas
-Q61	Washington, D.C.
-Q34266	Russian Empire
-Q232	Kazakhstan
-Q35493	Almaty
-Q27275	Central Asia
-Q15180	Soviet Union
-Q79	Egypt
-Q117	Ghana
-Q20	Norway
-Q254165	Bischofshofen
-Q1735	Innsbruck
-Q663546	Upper Rhine
-Q7030	Wismar
-Q2861	Rostock
-Q4065	Stralsund
-Q2706	Bremerhaven
-Q8646	Hong Kong
-Q1196	Mecklenburg-Vorpommern
-Q1788222	Stříbrná
-Q1028	Morocco
-Q8614	Westphalia
-Q2066	Essen
-Q71	Geneva
-Q239	City of Brussels
-Q8901	European Central Bank
-Q403	Serbia
-Q408	Australia
-Q36687	Victoria (Australia)
-Q3141	Melbourne
-Q3711	Belgrade
-Q25263	Azores
-Q4210	Thuringian Forest
-Q4198	Ore Mountains
-Q7943	Upper Lusatia
-Q1693	North Sea
-Q152243	Rhineland
-Q1223	Washington (state)
-Q649	Moscow
-Q133274	Moscow Kremlin
-Q1718	Düsseldorf
-Q2833	Freiburg im Breisgau
-Q445502	Old City of Freiburg
-Q62026856	Hoffenheimer Klinge (3 Teilgebiete)
-Q1022	Stuttgart
-Q3014	Wolfsburg
-Q1720	Mainz
-Q2103	Bochum
-Q2758	Mönchengladbach
-Q2938	Leverkusen
-Q1295	Dortmund
-Q2749	Augsburg
-Q2112	Bielefeld
-Q1794	Frankfurt
-Q39	Switzerland
-Q3574911	Zauchensee
-Q545	Baltic Sea
-Q169276	Allgäu
-Q219133	Roman Catholic Archdiocese of Munich and Freising
-Q220	Rome
-Q27468	Eastern Europe
-Q1899	Kiev
-Q4918	Mediterranean Sea
-Q1741	Vienna
-Q34006	Hollywood
-Q99	California
-Q1297	Chicago
-Q8678	Rio de Janeiro
-Q43467	Mainland Southeast Asia
-Q214	Slovakia
-Q29	Spain
-Q1780	Bratislava
-Q165269	East Frisia
-Q14914	Coesfeld
-Q1829	Kaliningrad
-Q15878	Normandy
-Q192687	Downing Street
-Q84	London
-Q43	Turkey
-Q41	Greece
-Q3640	Ankara
-Q406	Istanbul
-Q1524	Athens
-Q889	Afghanistan
-Q1454	North Carolina
-Q16957	East Germany
-Q1208	Brandenburg
-Q24879	Bremen
-Q3038	Heligoland
-Q3107	Sylt
-Q175551	Altonaer Fischmarkt
-Q1644	Elbe
-Q544439	Beelitz
-Q1194	Schleswig-Holstein
-Q21010	Nordstrand
-Q35	Denmark
-Q34	Sweden
-Q191	Estonia
-Q458	European Union
-Q45	Portugal
-Q223079	Quirinal Palace
-Q801	Israel
-Q878	United Arab Emirates
-Q1519	Abu Dhabi
-Q1930	Ottawa
-Q163584	Derry
-Q201689	La Palma
-Q1143757	Cumbre Vieja
-Q1490	Tokyo
-Q1200	Rhineland-Palatinate
-Q22937	Kusel
-Q28	Hungary
-Q7835	Crimea
-Q1205	Thuringia
-Q1198	North Rhine-Westphalia
-Q956	Beijing
-Q29520	China (region)
-Q4204	Black Forest
-Q41876	Reims
-Q648	Lille
-Q163795	Valenciennes
-Q2814	Halle (Saale)
-Q794	Iran
-Q3616	Tehran
-Q151993	Ruhr
-Q2871	Hagen
-Q11812551	Swabia
-Q2079	Leipzig
-Q148	China
-Q55	Netherlands
-Q21195	Scandinavia
-Q1670	Main
-Q1667	Moselle
-Q1218	Jerusalem
-Q156591	Yad Vashem
-Q810	Jordan
-Q36678	West Bank
-Q158119	Ramallah
-Q211	Latvia
-Q37	Lithuania
-Q184	Belarus
-Q805727	Baltics
-Q1770	Tallinn
-Q3075	Fürth
-Q171545	Belfort
-Q152252	Potsdamer Platz
-Q912	Mali
-Q732489	Mariyinsky Palace
-Q109057	Mecklenburg
-Q150108	Western Pomerania
-Q858	Syria
-Q490463	Baar-Ebenhausen
-Q65	Los Angeles
-Q43070	Donetsk
-Q134279	Luhansk
-Q2280	Minsk
-Q65429535	Berlins
-Q1040	Karlsruhe
-Q487070	Dessau
-Q513710	Röslau
-Q155578	Anhalt
-Q1733	Magdeburg
-Q580471	Siegerland
-Q2942	Solingen
-Q1715	Hanover
-Q218	Romania
-Q270	Warsaw
-Q1197	Lower Saxony
-Q3857	Wilhelmshaven
-Q1729	Erfurt
-Q1199	Hesse
-Q3963	Fulda
-Q156732	Kherson
-Q37133	Mariupol
-Q42308	Kharkiv
-Q580	Łódź
-Q36036	Lviv
-Q1097	Berlin Hauptbahnhof
-Q3646	Krasnodar
-Q3562943	Volnovakha
-Q98	Pacific Ocean
-Q865	Taiwan
-Q153987	University of Freiburg
-Q159589	Swabian Jura
-Q27769	East Frisian Islands
-Q6487	Antalya
-Q156713	Zhytomyr
-Q621	Versailles, Yvelines
-Q21868896	Larzenbach
-Q4071168	Neukölln
-Q202730	Copacabana, Rio de Janeiro
-Q11259	Times Square
-Q224	Croatia
-Q1969730	Schengen Area
-Q423	North Korea
-Q884	South Korea
-Q155	Brazil
-Q40040	Amazonas
-Q11763108	Lubno
-Q57948	Aue
-Q7318	Nazi Germany
-Q1421347	North Frisia
-Q3879	Neumünster
-Q30266781	Sociedade de Anestesiologia do Rio Grande do Sul
-Q572571	Chiemgau Alps
-Q3237	Rügen
-Q23768	Las Vegas
-Q90	Paris
-Q12892	Antwerp
-Q31	Belgium
-Q18	South America
-Q733	Paraguay
-Q736	Ecuador
-Q12585	Latin America
-Q1555938	Antarctic
-Q41228	Southern Hemisphere
-Q169492	Neukölln (locality)
-Q1670480	Lützerath
-Q48256	Dnipro
-Q706857	Bakhmut
-Q33935	Tel Aviv
-Q414	Argentina
-Q588	Katowice
-Q262	Algeria
-Q837	Nepal
-Q6640	Pokhara
-Q5451	Himalayas
-Q152356	Eifel
-Q21	England
-Q516635	Brunsbüttel
-Q846	Qatar
-Q419	Peru
-Q2868	Lima
-Q311234	Hunsrück
-Q707004	Palatinate Forest
-Q1653	Danube
-Q33	Finland
-Q13164	Moscow State University
-Q767071	Soledad
-Q1707	Kiel
-Q501661	Schleswig
-Q61996835	Holsteins
-Q1045	Somalia
-Q664	New Zealand
-Q23482	Marseille
-Q974	Democratic Republic of the Congo
-Q1201	Saarland
-Q160235	Reichwalde
-Q3852	Worms, Germany
-Q6829	Speyer
-Q5083	Seattle
-Q1456	South Carolina
-Q970081	Groß-Rohrheim
-Q1781884	Konrad-Adenauer-Haus
-Q298	Chile
-Q2887	Santiago
-Q2176	Araucanía Region
-Q4207	Bavarian Forest
-Q51614	Anatolia
-Q134703	Kahramanmaraş
-Q41183	Aleppo
-Q3088996	Syria–Turkey border
-Q14827	Wunstorf
-Q38545	Adana
-Q219	Bulgaria
-Q155210	Rotes Rathaus
-Q489215	Oberhof, Germany
-Q4100	Baden-Baden
-Q10562	Upper Bavaria
-Q29031608	Hornow
-Q80561	Antakya
-Q833	Malaysia
-Q424	Cambodia
-Q11708	Southeast Asia
-Q48	Asia
-Q329609	Lichtenberg
-Q690971	Breisgau
-Q830816	Munster Training Area
-Q822	Lebanon
-Q382574	Grand Canal d'Alsace
-Q666960	Mainz Cathedral
-Q668	India
-Q987	New Delhi
-Q1033	Nigeria
-Q14950	Sinsheim
-Q753195	Planica
-Q489147	Schmalkalden
-Q985	Baden-Württemberg
-Q225	Bosnia and Herzegovina
-Q36074	Queensland
-Q3114	Canberra
-Q12193	Brest, France
-Q34972039	Kogneset
-Q1246	Kosovo
-Q14835	Bautzen
-Q717	Venezuela
-Q851	Saudi Arabia
-Q7204	Middle East
-Q805	Yemen
-Q1874	Odessa
-Q166	Black Sea
-Q1757	Helsinki
-Q2807	Madrid
-Q1731	Dresden
-Q2795	Chemnitz
-Q750	Bolivia
-Q9300	Bernau bei Berlin
-Q525555	Wandlitz
-Q1385516	Extremo
-Q111224	Holstein
-Q783	Honduras
-Q39420	Sochi
-Q4412	West Africa
-Q965	Burkina Faso
-Q738483	Wandlitzer See
-Q712	Fiji
-Q2550498	Washingtonstraße
-Q11299	Manhattan
-Q6837	Wittenberg
-Q2843	Lübeck
-Q3046	Pforzheim
-Q81722	Kamenz
-Q3703	Bamako
-Q36704	Yugoslavia
-Q524856	Central Germany
-Q1721	Wiesbaden
-Q2471	Sanaa
-Q7878	Ilm-Kreis
-Q8775	Riesa
-Q581994	Nauen
-Q37985	Carinthia
-Q43210	Burgenland
-Q34713	Salzburg
-Q41967	Upper Austria
-Q796	Iraq
-Q131127	Banja Luka
-Q188736	Bosnia
-Q189863	Herzegovina
-Q3806	Tübingen
-Q2090	Nuremberg
-Q72	Zürich
-Q2361244	Krymsky Bridge
-Q18097	Korea
-Q7022	Fellbach
-Q869	Thailand
-Q785026	Rigaer Straße
-Q1439	Texas
-Q222	Albania
-Q35000	Sea of Azov
-Q16746854	Luhansk People's Republic
-Q605714	Donbas
-Q6299758	Kaimana Airport
-Q7313	Yuan dynasty
-Q23522	Balkans
-Q6514	Dardanelles
-Q35958	Bosporus
-Q1016	Libya
-Q3908	Galicia (Spain)
-Q21344859	Shopino
-Q36600	The Hague
-Q3179132	Ciopeia
-Q6406	Bad Schandau
-Q4077	Görlitz
-Q14819	Freiberg
-Q157200	Zittau
-Q81717	Bischofswerda
-Q1085	Prague
-Q7067	Bietigheim-Bissingen
-Q6949	Stade
-Q5477	Caucasus Mountains
-Q217	Moldova
-Q1004328	Pabradė
-Q216	Vilnius
-Q4186	Harz
-Q227	Azerbaijan
-Q399	Armenia
-Q44302	Nagorno-Karabakh
-Q504642	Angel of Peace
-Q646334	Lubyanka Building
-Q33349	Melitopol
-Q702521	Marzahn
-Q1573242	Hamburgsund
-Q2904	Herne, North Rhine-Westphalia
-Q27	Republic of Ireland
-Q1761	Dublin
-Q484799	Marbella
-Q230	Georgia (country)
-Q33946	Czechoslovakia
-Q5401	Eurasia
-Q16008	Schwedt
-Q308928	Kreuzberg
-Q188915	National Library of Israel
-Q153136	Habsburg Monarchy
-Q42182	Buckingham Palace
-Q6986	Gotha
-Q505191	Leuna
-Q2378692	Sächsische Zeitung
-Q253119	Traunstein
-Q2966	Heidelberg
-Q159626	Württemberg
-Q17252	Tibet
-Q278044	Vienna University of Economics and Business
-Q158083	Spandau
-Q580115	Leinefelde
-Q5869	Lhasa (prefecture-level city)
-Q2844	Brasília
-Q812	Florida
-Q170418	World Economic Forum
-Q804	Panama
-Q34675	Persian Gulf
-Q7350	Panama Canal
-Q5684	Babylon
-Q622569	Lauterbach
-Q1778360	Lake Untersee
-Q503711	Nordenham
-Q1792	Gdańsk
-Q161348	Ramstein Air Base
-Q668341	Magdeburg Cathedral
-Q456397	Sonnenallee (Berlin)
-Q766	Jamaica
-Q1747689	Ancient Rome
-Q27407	East Africa
-Q6602	Strasbourg
-Q1754	Stockholm
-Q316893	Friedrichstraße
-Q914	Volgograd
-Q6343	Carthage
-Q28513	Austria-Hungary
-Q252595	Grafenwöhr
-Q524364	Hohenfels, Bavaria
-Q42497	Lower Austria
-Q52631	Ibiza
-Q3125978	Bali
-Q252	Indonesia
-Q2973	Darmstadt
-Q82858	Sigmaringen
-Q72977	Zirndorf
-Q907112	Transnistria
-Q1282	Lazio
-Q1210	Lombardy
-Q881	Vietnam
-Q268492	Nymphenburg Palace Park
-Q569680	Butzbach
-Q7070	Eisenach
-Q41263270	Orbansaal
-Q1030	Namibia
-Q612	Dubai
-Q728213	Hotel Bayerischer Hof, Munich
-Q797	Alaska
-Q674455	Grafenwörth
-Q561084	Königsplatz, Munich
-Q5472	Hindu Kush
-Q500153	Mark Municipality
-Q96	Mexico
-Q586	Bonn
-Q675187	Wedding
-Q1711	Potsdam
-Q6855	Lörrach
-Q151374	Berlin Olympic Stadium
-Q2765	Gelsenkirchen
-Q96148385	Kremina
-Q6583	Sahara
-Q152783	Alexanderplatz
-Q2742	Münster
-Q3214	Cottbus
-Q2119	Mannheim
-Q656	Saint Petersburg
-Q711	Mongolia
-Q788	Arctic Ocean
-Q4389435	Rakiv
-Q43287	German Empire
-Q1130	Iserlohn
-Q5465	Cape Town
-Q3130	Sydney
-Q10923	Winterberg
-Q61427	Donetsk-Krivoy Rog Soviet Republic
-Q25322	Arctic
-Q934	North Pole
-Q223	Greenland
-Q707278	Frankfurt Rhine-Main Metropolitan Region
-Q164561	Fichtelberg
-Q678	Tonga
-Q5838	Kabul
-Q73532	Ruhpolding
-Q708317	Vogtland
-Q7032	Filderstadt
-Q3783	Amazon River
-Q597	Lisbon
-Q736742	Wimbledon
-Q215419	Chernobyl Nuclear Power Plant
-Q170456	Pripyat
-Q692117	Palais Coburg
-Q402908	Ahr Valley
-Q7052	Landau
-Q153394	Ahr
-Q821089	Hellersdorf
-Q558569	Bad Bevensen
-Q1041	Senegal
-Q22	Scotland
-Q22880	Electoral Palatinate
-Q34640	English Channel
-Q46519	Southern Germany
-Q88384839	Seinepad
-Q25135	Wangerooge
-Q181809	Altenberge
-Q121378	Corfu
-Q4282119	Markivka
-Q174	São Paulo
-Q81882	Santos
-Q5428	Siberia
-Q10530	Berchtesgadener Land
-Q42053	Isfahan
-Q272093	Sanandaj
-Q152171	University of Bonn
-Q205775	Garzweiler surface mine
-Q32112592	Lutzerather Wald
-Q1124284	Hambach Forest
-Q68994	Adelboden
-Q475403	Bernese Oberland
-Q952929	Madonna di Campiglio
-Q115	Ethiopia
-Q200127	Tigray Region
-Q11959	Alicante
-Q103914897	Ocean Racer
-Q1449	Genoa
-Q782	Hawaii
-Q41304	Weimar Republic
-Q83404	Timișoara
-Q3931	Brandenburg an der Havel
-Q1682	Havel
-Q2916	Osnabrück
-Q68097	Davos
-Q3085	Reutlingen
-Q4194	Sauerland
-Q4219	Rothaar Mountains
-Q2107	Wuppertal
-Q374748	Jenin
-Q407199	Palestinian territories
-Q312478	Neuengamme concentration camp
-Q517353	Grevesmühlen
-Q1371	West Virginia
-Q242632	Augustdorf
-Q74057	Gauting
-Q836	Myanmar
-Q37995	Yangon
-Q185518	Mandalay
-Q16563	Memphis, Tennessee
-Q27231	East Asia
-Q707011	Hoffenheim
-Q3838	Kinshasa
-Q958	South Sudan
-Q12548	Holy Roman Empire
-Q21159	Husum
-Q3869	Marburg
-Q16085	Neuruppin
-Q928	Philippines
-Q843	Pakistan
-Q7044	Oberursel (Taunus)
-Q68986	St. Moritz
-Q572801	Mount Washington
-Q759	New Hampshire
-Q673223	Elbphilharmonie
-Q174341	İskenderun
-Q83274	Hatay Province
-Q302268	Afrin, Syria
-Q504657	Idlib
-Q126415	Kobani
-Q1154329	Lotto Thüringen Arena am Rennsteig
-Q1460	Sicily
-Q25	Wales
-Q114	Kenya
-Q914361	Méribel
-Q338635	Uckermark
-Q21197	Chișinău
-Q18808	Pyongyang
-Q47545	Norwegian Sea
-Q32530	Lusatia
-Q46613	Northern Germany
-Q1019120	Tajrish
-Q219060	State of Palestine
-Q3766	Damascus
-Q214178	Nablus
+Kharkiv	Q42308
+Ukraine	Q212
+Russia	Q159
+Kiev	Q1899
+Cologne	Q365
+Dortmund	Q1295
+Russians	Q49542
+Ukrainians	Q44806
+Euromaidan	Q15224558
+Eastern Ukraine	Q181386
+Nazi Germany	Q7318
+Germany	Q183
+Europe	Q46
+European Union	Q458
+Moscow	Q649
+Munich	Q1726
+Yugoslavia	Q36704
+United States	Q30
+German Empire	Q43287
+Moscow Kremlin	Q133274
+Minister of Foreign Affairs	Q1418873
+Essen	Q2066
+London	Q84
+Imperial College London	Q189022
+Delta State	Q503910
+Lauterbach	Q622569
+ZDF	Q48989
+unk	unk
+Deutschen	Q18477036
+Robert Koch Institute	Q679041
+United Kingdom	Q145
+South Africa	Q258
+United States of America	Q30
+Rakiv	Q4389435
+Berlin	Q64
+Marzahn	Q702521
+Syria	Q858
+Hamburg	Q1055
+Rakia	Q931946
+City of Brussels	Q239
+Kaliningrad	Q1829
+Poland	Q36
+Frankfurt	Q1794
+Oder	Q552
+Polish	Q809
+Arctic Ocean	Q788
+Kamchatka Peninsula	Q993
+Kazakhstan	Q232
+Mongolia	Q711
+Georgia (country)	Q230
+Norway	Q20
+East Germany	Q16957
+Saint Petersburg	Q656
+Beijing	Q956
+China (region)	Q29520
+Minsk	Q2280
+Belarus	Q184
+Soviet Union	Q15180
+Earth	Q2
+Italy	Q38
+North Korea	Q423
+Crimea	Q7835
+Rostock	Q2861
+SARS-CoV-2	Q82069695
+Alexanderplatz	Q152783
+Brandenburg Gate	Q82425
+Münster	Q2742
+Cottbus	Q3214
+Mannheim	Q2119
+Mecklenburg	Q109057
+Western Pomerania	Q150108
+Freiberg	Q14819
+Saxony	Q1202
+Landschaftsverband Rheinland	Q153468
+Westphalia	Q8614
+Weimar Republic	Q41304
+France	Q142
+Sahara	Q6583
+German Institute for Economic Research	Q155228
+Jasień	Q164241
+Jorgos	Q123820130
+Tummernicht	Q105543111
+Inkstick	Q11240146
+Chernobyl disaster	Q486
+Belarusian	Q9091
+Washington Metro	Q171221
+rapid transit	Q5503
+Rapid transit	Q5503
+Jerusalem	Q1218
+Israel	Q801
+Vladimir, Russia	Q2684
+Bern	Q70
+Aleppo	Q41183
+Americas	Q828
+William Tell	Q30908
+Leipzig	Q2079
+Auerbachs Keller	Q523117
+Bavaria	Q980
+Czech Republic	Q213
+Spain	Q29
+Celle	Q3933
+Lower Saxony	Q1197
+Donetsk	Q43070
+Portugal	Q45
+Grozny	Q5196
+Moldova	Q217
+Romania	Q218
+Hungary	Q28
+Slovakia	Q214
+Berlin Hauptbahnhof	Q1097
+Kyiv	Q1899
+Austria	Q40
+England	Q21
+Switzerland	Q39
+Sweden	Q34
+Magdeburg	Q1733
+Schmalkalden	Q489147
+Düsseldorf	Q1718
+.berlin	Q835471
+Vienna	Q1741
+Stuttgart	Q1022
+Baden-Württemberg	Q985
+Deutscher	Q21502270
+Thuringia	Q1205
+Petra	Q5788
+Martin	Q27001
+Federal Constitutional Court	Q56025
+Karlsruhe	Q1040
+Montgomery, Alabama	Q29364
+Warburg	Q968
+Belize	Q242
+Serbia and Montenegro	Q37024
+Serbia	Q403
+Australia	Q408
+Australian Open	Q60874
+Serbs	Q127885
+Melbourne	Q3141
+Belgrade	Q3711
+Bosnia and Herzegovina	Q225
+Australian Capital Territory	Q3258
+Serbian	Q9299
+Kosovo	Q1246
+Queensland	Q36074
+New South Wales	Q3224
+Canberra	Q3114
+Australians	Q1318423
+Australian National University	Q127990
+Brandenburg	Q1208
+Latin America	Q12585
+Wandlitz	Q525555
+Extremo	Q1385516
+Fiji	Q712
+Manhattan	Q11299
+Greenfield	Q1530924
+Geneva	Q71
+Mecklenburg-Vorpommern	Q1196
+Wittenberg	Q6837
+Lübeck	Q2843
+Pforzheim	Q3046
+Kamenz	Q81722
+Haaretz	Q216393
+Iran	Q794
+West Africa	Q4412
+Mali	Q912
+Bamako	Q3703
+Denmark	Q35
+Dresden	Q1731
+Bakhmut	Q706857
+Sloviansk	Q33581
+Lazio	Q1282
+Rome	Q220
+Lombardy	Q1210
+Allies	Q3612401
+Vietnam	Q881
+Iraq	Q796
+China	Q148
+People's Republic of China	Q148
+Washington (state)	Q1223
+Nord Stream	Q154125
+Hesse	Q1199
+Goddelau	Q1533662
+Giessen	Q3874
+Badenburg	Q61928230
+Butzbach	Q569680
+Zürich	Q72
+Eisenach	Q7070
+Sill (river)	Q682364
+Barnim	Q6115
+Bernau bei Berlin	Q9300
+Cemur	Q18450818
+Collat	Q1150234
+International Monetary Fund	Q7804
+Goethe University Frankfurt	Q50662
+Schleswig	Q501661
+Holstein	Q111224
+Honduras	Q783
+Luxembourg	Q32
+Sochi	Q39420
+Greifswald	Q4098
+Bautzen	Q14835
+Burkina Faso	Q965
+Tehran	Q3616
+Croatia	Q224
+Eastern Europe	Q27468
+Konrad-Adenauer-Haus	Q1781884
+New states of Germany	Q675430
+Davos	Q68097
+Tasnin	Q12202487
+Panama	Q804
+Persian Gulf	Q34675
+Panama Canal	Q7350
+Lützerathstraße	Q115952574
+Babylon	Q5684
+Finland	Q33
+California	Q99
+Heidelberg	Q2966
+Stockholm University	Q221645
+West Germany	Q713750
+Sea of Azov	Q35000
+Luhansk People's Republic	Q16746854
+Bulgaria	Q219
+Donbas	Q605714
+Africa	Q15
+Estonia	Q191
+Warsaw	Q270
+Taiwan	Q865
+Balkans	Q23522
+Sofia	Q472
+Turkey	Q43
+Dardanelles	Q6514
+Bosporus	Q35958
+Mediterranean Sea	Q4918
+Black Sea	Q166
+Baltic Sea	Q545
+East Prussia	Q103801
+Libya	Q1016
+Washington, D.C.	Q61
+Anhalt	Q155578
+Ilm-Kreis	Q7878
+Riesa	Q8775
+Nauen	Q581994
+Mainz	Q1720
+Bundesrat of Germany	Q146138
+Carinthia	Q37985
+Burgenland	Q43210
+Salzburg	Q34713
+Upper Austria	Q41967
+Banja Luka	Q131127
+Bosnia	Q188736
+Herzegovina	Q189863
+Sun	Q525
+Arabs	Q35323
+Greece	Q41
+Baden-Baden	Q4100
+Württemberg	Q159626
+English language	Q1860
+Turkish people	Q84072
+Assis	Q742227
+Malta	Q233
+Rundfunk Berlin-Brandenburg	Q19899
+Edéa	Q1002900
+Grünen	Q18020583
+Emilia-Romagna	Q1263
+Kherson	Q156732
+Kherson Oblast	Q163271
+Luhansk	Q134279
+Melitopol	Q33349
+Russia Germans	Q702193
+Ruhr University Bochum	Q309948
+Herne, North Rhine-Westphalia	Q2904
+Republic of Ireland	Q27
+Dublin	Q1761
+Marbella	Q484799
+French Riviera	Q182822
+Czechoslovakia	Q33946
+Nagorno-Karabakh	Q44302
+Mariupol	Q37133
+Charsonville	Q580108
+Paris	Q90
+Qatar	Q846
+Nancy, France	Q40898
+Dobri, Hungary	Q907303
+Thailand	Q869
+German language	Q188
+Rigaer Straße	Q785026
+Ankara	Q3640
+Texas	Q1439
+Texas revolución	Q638530
+ambassador of Mexico to Algeria	Q30158969
+Korea	Q18097
+Sandhaufen	Q2220730
+Donets Coal Basin	Q23907747
+Albanians	Q179248
+Chechens	Q31230
+Alsace	Q1142
+Bali	Q3125978
+Indonesia	Q252
+Afghanistan	Q889
+War in Donbass	Q16335075
+Darmstadt	Q2973
+Lübecke	Q105534898
+Sigmaringen	Q82858
+Palestinians	Q201190
+Neukölln	Q4071168
+Ghana	Q117
+Zirndorf	Q72977
+Budapest	Q1781
+Àger	Q372127
+Zelensky	Q1039511
+Transnistria	Q907112
+Bochum	Q2103
+Alaska	Q797
+Nuremberg	Q2090
+Federal Foreign Office	Q56034
+Prussia	Q38872
+Karl Stützel	Q1733130
+Königsplatz, Munich	Q561084
+Hindu Kush	Q5472
+Arda (Tolkien)	Q210877
+Sigismund Koelle	Q1824890
+Mark Municipality	Q500153
+Canada	Q16
+Pacific Ocean	Q98
+Ottawa	Q1930
+Wiesbaden	Q1721
+sociology	Q21201
+The Pentagon	Q11208
+Emari	Q31929413
+Belgium	Q31
+Lithuania	Q37
+Butler	Q1017948
+Saudi Arabia	Q851
+Yemen	Q805
+North Rhine-Westphalia	Q1198
+Schleswig-Holstein	Q1194
+Chemnitz	Q2795
+Upper Lusatia	Q7943
+Lusatia	Q32530
+Tübingen	Q3806
+Krymsky Bridge	Q2361244
+Sakharova	Q37755026
+West Berlin	Q56036
+University of Freiburg	Q153987
+Auschwitz concentration camp	Q7341
+Fellbach	Q7022
+Schwedt	Q16008
+Lambrecht, Rhineland-Palatinate	Q628198
+Neukölln (locality)	Q169492
+Kreuzberg	Q308928
+Hagen	Q2871
+National Library of Israel	Q188915
+Buckingham Palace	Q42182
+Gotha	Q6986
+Louis Mountbatten, 1st Earl Mountbatten of Burma	Q157068
+Germans	Q42884
+African Americans	Q49085
+Druzhba	Q385857
+Leuna	Q505191
+Dostyk	Q1251114
+Gdańsk	Q1792
+Anhaltinischer Saalstein	Q17122249
+Age of Enlightenment	Q12539
+Traunstein	Q253119
+Yugoslav Wars	Q242352
+Russian Empire	Q34266
+Habsburg Monarchy	Q153136
+Jordan River	Q40059
+Namibia	Q1030
+Summit, New Jersey	Q1000642
+Dubai	Q612
+Monaco	Q235
+United States Army Air Forces	Q741723
+German Democratic Republic	Q16957
+Annalena Baerbock	Q564328
+Hotel Bayerischer Hof, Munich	Q728213
+White House	Q35525
+History of the United States	Q131110
+Madrid	Q2807
+TU Wien	Q689400
+Palatinate (region)	Q326359
+Royal Air Force	Q165862
+Bolivia	Q750
+South America	Q18
+Hanover	Q1715
+Angel of Peace	Q504642
+Baltics	Q805727
+Central Asia	Q27275
+Caucasus Mountains	Q5477
+Pabradė	Q1004328
+Vilnius	Q216
+Azerbaijan	Q227
+Istanbul	Q406
+Kurds	Q12223
+Shirak Province	Q201063
+Antalya	Q6487
+Lubyanka Building	Q646334
+Kremlin	Q133274
+Eurasia	Q5401
+Der Spiegel	Q131478
+Solar Hijri calendar	Q950135
+Atlantic Ocean	Q97
+Japan	Q17
+Azov	Q102762
+Kinshaldy House And Farmsteading	Q17810115
+North America	Q49
+Bernard Epin	Q89358641
+Galicia (Spain)	Q3908
+Shopino	Q21344859
+The Hague	Q36600
+Baltic states	Q39731
+Zschopau	Q58006
+Ore Mountains	Q4198
+Bad Schandau	Q6406
+Elbe	Q1644
+Görlitz	Q4077
+Zittau	Q157200
+Bischofswerda	Q81717
+Ifo Institute for Economic Research	Q314073
+Venezuela	Q717
+Prague	Q1085
+Bietigheim-Bissingen	Q7067
+Farber	Q953064
+Stade	Q6949
+Russian language	Q7737
+Slavs	Q40477
+Pravda (Slovakia)	Q1853557
+Strasbourg	Q6602
+Stockholm	Q1754
+Friedrichstraße	Q316893
+ciao	Q831
+Carthage	Q6343
+India	Q668
+Volgograd	Q914
+Tibet	Q17252
+Brazil	Q155
+Hạ Long	Q36077
+Wernau	Q82346
+Max-Schmeling-Halle	Q705353
+Ancient Rome	Q1747689
+Spandau	Q158083
+Worbēsho Shēlah	Q21740337
+Hergatz	Q513492
+BRD (Germany)	Q796920
+Lhasa (prefecture-level city)	Q5869
+Hausen	Q32054273
+Bavarian State Library	Q256507
+Brasília	Q2844
+Florida	Q812
+Cortez	Q1012688
+Lake Untersee	Q1778360
+Nordenham	Q503711
+Lützerath	Q1670480
+Badstraße	Q26833809
+Cuba	Q241
+Brest, France	Q12193
+Asselborn	Q2029793
+Putinland	Q28130070
+Saint Glinglin	Q946904
+Lebanon	Q822
+Middle East	Q7204
+Arabic	Q13955
+Odessa	Q1874
+Seattle Art Museum	Q1816301
+Kiel	Q1707
+Algeciras	Q484552
+Austria-Hungary	Q28513
+Rhine	Q584
+Republic	Q7270
+Nationwide alert day 2022	Q115631905
+Ramstein Air Base	Q161348
+Upper Palatinate	Q10555
+Grafenwöhr	Q252595
+Hohenfels, Bavaria	Q524364
+hill	Q54050
+Palermo F.C.	Q2674
+Lower Austria	Q42497
+Ibiza affair	Q63928206
+Askari	Q643745
+Sonnenallee (Berlin)	Q456397
+Jamaica	Q766
+Balts	Q207761
+Verdun	Q154748
+Netherlands	Q55
+Magdeburg Cathedral	Q668341
+Holy Roman Empire	Q12548
+East Africa	Q27407
+Vorbeck	Q691697
+German Reich	Q1206012
+Mexico	Q96
+Bonn	Q586
+Wedding (Berlin)	Q675187
+Potsdam	Q1711
+Wedding	Q675187
+Königsbach-Stein	Q81247
+Lörrach	Q6855
+Upal	Q2295780
+Berlin Olympic Stadium	Q151374
+3629 Lebedinskij	Q680809
+Kremina	Q96148385
+Russian Orthodox Church	Q60995
+Neumünster	Q3879
+St. Peter's Square	Q83425
+St. Peter's Basilica	Q12512
+Coffin	Q184418
+Garmisch-Partenkirchen	Q127043
+Shieling	Q2082774
+Chiemgau Alps	Q572571
+1976 Winter Olympics	Q9651
+Southern Europe	Q27449
+Alps	Q1286
+Rügen	Q3237
+Upper Rhine	Q663546
+Las Vegas	Q23768
+Deutschlandsberg	Q573106
+Flag of Germany	Q48160
+Frankfurter Würstchen	Q681770
+Antakya	Q80561
+Osmaniye	Q181379
+Malaysia	Q833
+Cambodia	Q424
+Southeast Asia	Q11708
+Asia	Q48
+Lichtenberg	Q329609
+Halle (Saale)	Q2814
+Riebeckplatz	Q2151919
+Eastern Germany	Q919721
+Central Germany (cultural area)	Q524856
+Erfurt	Q1729
+Allgäu	Q169276
+Austrian Empire	Q131964
+North Sea	Q1693
+Ruhr	Q151993
+Bavarian Forest	Q4207
+Lower Bavaria	Q10559
+Passau	Q4190
+New Delhi	Q987
+Nigeria	Q1033
+Sinsheim	Q14950
+TSG 1899 Hoffenheim	Q22707
+Forsbergsbrännan	Q30157779
+Wolfsburg	Q3014
+Augsburg	Q2749
+Bremen	Q24879
+Gelsenkirchen	Q2765
+Mönchengladbach	Q2758
+Leverkusen	Q2938
+Freiburg im Breisgau	Q2833
+Planica	Q753195
+Emsland (region)	Q145620
+Lignite	Q156267
+University of Münster	Q168426
+Lambrecht (Pfalz)	Q628198
+Högl	Q1643517
+Dnipro	Q48256
+Tel Aviv	Q33935
+Argentina	Q414
+Quimper	Q342
+Katowice	Q588
+Algeria	Q262
+Nepal	Q837
+Pokhara	Q6640
+Himalayas	Q5451
+Eifel	Q152356
+Dana	Q1559603
+Versailles, Yvelines	Q621
+Palace of Versailles	Q2946
+Larzenbach	Q21868896
+Soledad, Atlántico	Q767071
+Holsteins	Q61996835
+Berlin Brandenburg Airport	Q160556
+Scandinavia	Q21195
+East Frisia	Q165269
+Borne	Q9997
+Antwerp	Q12892
+Paraguay	Q733
+Ecuador	Q736
+Antarctic	Q1555938
+Ozone depletion	Q183140
+Southern Hemisphere	Q41228
+Oceanic climate	Q182090
+Heath	Q27590
+Saarland	Q1201
+Ennsdorf	Q697066
+Reichwalde	Q160235
+Soviet occupation zone	Q55300
+Worms, Germany	Q3852
+Speyer	Q6829
+UNESCO	Q7809
+Seattle	Q5083
+Linden	Q625743
+Plauen	Q3952
+Würzburg	Q2999
+Brücke	Q41300511
+Schloss Elmau	Q317768
+New York City	Q60
+Sewell, Chile	Q588417
+Cape Town	Q5465
+Cathedral	Q2977
+Colony of Natal	Q1301901
+Oberstdorf	Q266230
+Slovenia	Q215
+Iceland	Q189
+Staatsarchiv des Kantons Schwyz	Q14848094
+Bus station	Q494829
+Wilhelmshaven	Q3857
+German nationality law	Q535332
+Fulda	Q3963
+Normandy	Q15878
+Roman Catholic Archdiocese of Munich and Freising	Q219133
+Downing Street	Q192687
+10 Downing Street	Q169101
+Scotland Yard	Q184619
+Turkish	Q256
+Athens	Q1524
+Acropolis	Q131668
+European championship	Q1375427
+Bratislava	Q1780
+Ken Patrick Trail	Q6388283
+Reims	Q41876
+Lille	Q648
+Valenciennes	Q163795
+Norse mythology	Q128285
+Fólkvangr	Q1435524
+Swabia	Q11812551
+VfB Stuttgart	Q4512
+Aydın	Q170457
+Sosa, Germany	Q58019
+FC Augsburg	Q15755
+Swabia (Bavaria)	Q10557
+Bielefeld	Q2112
+Fürth	Q3075
+Main (river)	Q1670
+Moselle	Q1667
+Lower Rhine region	Q445609
+Somalia	Q1045
+New Zealand	Q664
+Fachhochschule Kiel	Q1391201
+West Bank	Q36678
+Ramallah	Q158119
+Marseille	Q23482
+Democratic Republic of the Congo	Q974
+Comet	Q3559
+Polaris	Q12980
+Moon	Q405
+Solar System	Q544
+Wismar	Q7030
+Stralsund	Q4065
+Bremerhaven	Q2706
+Hong Kong	Q8646
+Werfen	Q255361
+Weißenfels	Q14815
+Stříbrná	Q1788222
+Morocco	Q1028
+Ryabkovka	Q4402398
+Victoria (Australia)	Q36687
+Azores	Q25263
+Thuringian Forest	Q4210
+Rhineland	Q152243
+South Carolina	Q1456
+The Shuttle	Q65045904
+Breitscheidplatz	Q698370
+Itzehoe	Q16073
+Groß-Rohrheim	Q970081
+Chile	Q298
+Santiago	Q2887
+Nubleo	Q6046174
+Araucanía Region	Q2176
+Werder	Q525686
+SV Werder Bremen	Q51976
+Rhineland-Palatinate	Q1200
+Kusel	Q22937
+Ukrainian	Q8798
+Heinrich Rehm	Q4393082
+Black Forest	Q4204
+Almaty	Q35493
+Korgan	Q1921284
+Egypt	Q79
+Bischofshofen	Q254165
+Innsbruck	Q1735
+Snow	Q7561
+Volnovakha	Q3562943
+Bila Tserkva	Q33342
+Przemyśl	Q208473
+Marfa, Texas	Q982507
+Bayers	Q746842
+Guardiola de Berguedà	Q15519
+2008 Summer Paralympics	Q216864
+Forst (Lausitz)	Q572545
+King's Lynn	Q157341
+Swabian Jura	Q159589
+Radolfzell	Q16113
+East Frisian Islands	Q27769
+Transatlantic relations	Q7833791
+Brunsbüttel	Q516635
+Peru	Q419
+Lima	Q2868
+Andean states	Q490417
+Germany national football team	Q43310
+South Korea	Q884
+Woodstock	Q164815
+Brooklyn	Q18419
+Hunsrück	Q311234
+Palatinate Forest	Q707004
+Danube	Q1653
+Łódź	Q580
+Lviv	Q36036
+Rhenish Hesse	Q707297
+Globe	Q133792
+Chicago	Q1297
+Rio de Janeiro	Q8678
+Mainland Southeast Asia	Q43467
+European champion	Q120669870
+Coesfeld	Q14914
+Rostov-on-Don	Q908
+French Third Republic	Q70802
+Röslau	Q513710
+Bundesautobahn 45	Q10813
+Siegerland	Q580471
+Solingen	Q2942
+European windstorm	Q148942
+Munster Training Area	Q830816
+Munster, Lower Saxony	Q506599
+Mainz Cathedral	Q666960
+United States Department of Defense	Q11209
+Augsburger Allgemeine	Q760524
+Old City of Freiburg	Q445502
+Macau	Q14773
+Stadion An der Alten Försterei	Q749172
+Zauchensee	Q3574911
+Copacabana, Rio de Janeiro	Q202730
+Times Square	Q11259
+Schengen Area	Q1969730
+Amazonas	Q40040
+Grane (river)	Q1543059
+Granerud	Q19970089
+Lübbenau	Q147895
+Aue	Q57948
+North Frisia	Q1421347
+Sylt	Q3107
+Beelitz	Q544439
+Nordstrand	Q21010
+Quirinal Palace	Q223079
+United Arab Emirates	Q878
+Abu Dhabi	Q1519
+Northern Ireland	Q26
+Derry	Q163584
+La Palma	Q201689
+Cumbre Vieja	Q1143757
+Wildlife garden	Q735035
+Tokyo	Q1490
+Mariyinsky Palace	Q732489
+Munich (district)	Q10544
+Baar-Ebenhausen	Q490463
+Schäftlarn	Q506494
+Valjevo	Q208015
+Los Angeles	Q65
+Cincinnati Bengals	Q223511
+Cincinnati	Q43196
+Ostbayern	Q1745690
+Anatolia	Q51614
+Diyarbakır	Q83387
+Kahramanmaraş	Q134703
+Syriac	Q33538
+Wunstorf	Q14827
+Adana	Q38545
+Rotes Rathaus	Q155210
+Oberhof, Germany	Q489215
+Wick	Q1012502
+Lynn, Massachusetts	Q49188
+Upper Bavaria	Q10562
+Fichtel Mountains	Q157728
+Horno	Q1474006
+Palestinian territories	Q407199
+Jordan	Q810
+Israeli settlement	Q582706
+Latvia	Q211
+Tallinn	Q1770
+Gravelin	Q37272168
+Belfort	Q171545
+Potsdamer Platz	Q152252
+Theater at Potsdamer Platz	Q328706
+Roth	Q504019
+2012 Summer Olympics	Q8577
+Flecktarn	Q463446
+Augustdorf	Q242632
+Gauting	Q74057
+Myanmar	Q836
+Yangon	Q37995
+Mandalay	Q185518
+Memphis, Tennessee	Q16563
+Far East	Q42225
+Kinshasa	Q3838
+South Sudan	Q958
+Vogtland	Q708317
+Titz	Q200076
+Hamidids	Q2410637
+Posse Up	Q114498793
+Wuppertal	Q2107
+Pina (river)	Q647126
+École des Sables	Q107278883
+African dance	Q387407
+Central Europe	Q27509
+Southeast Europe	Q263686
+Sauerland	Q4194
+Moses	Q9077
+United States Secret Service	Q503224
+St. Michael's Golden-Domed Monastery	Q1142386
+Bégaar	Q1003883
+Donetsk-Krivoy Rog Soviet Republic	Q61427
+Moldavian Soviet Socialist Republic	Q170895
+Chișinău International Airport	Q844951
+Chișinău	Q21197
+Haná	Q1575707
+Hatay Province	Q83274
+Pyongyang	Q18808
+Deutsche Bundesbank	Q162222
+Alafia	Q2829482
+Deutz, Cologne	Q3621
+Norwegian Sea	Q47545
+Northern Germany	Q46613
+Isfahan	Q42053
+Sanandaj	Q272093
+University of Bonn	Q152171
+Garzweiler surface mine	Q205775
+Hambach Forest	Q1124284
+Barth, Germany	Q161943
+Adelboden	Q68994
+Bernese Oberland	Q475403
+Aalborg	Q25410
+Madonna di Campiglio	Q952929
+Winterberg	Q10923
+Buckwitz	Q106066682
+Lipperheide	Q86597523
+Windsor, Berkshire	Q464955
+Oster (river)	Q1753659
+Ethiopia	Q115
+Tigray Region	Q200127
+Alicante	Q11959
+Ocean Racer	Q103914897
+Genoa	Q1449
+Hellersdorf	Q821089
+Ilenia	Q3796383
+Bad Bevensen	Q558569
+Senegal	Q1041
+Scotland	Q22
+Merseburg	Q14945
+Electoral Palatinate	Q22880
+Tseneb	Q22344238
+English Channel	Q34640
+Southern Germany	Q46519
+Wind	Q8094
+Marietta, Georgia	Q852684
+Wales	Q25
+Anhaltspunkte für die ärztliche Gutachtertätigkeit im sozialen Entschädigungsrecht und nach dem Schwerbehindertenrecht	Q545167
+All-German Bloc/League of Expellees and Deprived of Rights	Q707844
+Doğubayazıt	Q849535
+Hama	Q173545
+Kenya	Q114
+Valley	Q39816
+Méribel	Q914361
+Wellington	Q23661
+Canary Islands	Q5813
+Shahada	Q41831
+Uckermark	Q338635
+Brühl (Rhineland)	Q7036
+İskenderun	Q174341
+Âderna Fìzika ta Energetika	Q50552617
+Afrin, Syria	Q302268
+Idlib	Q504657
+ambassador of Turkey to Hungary	Q38130758
+Kobanî	Q126415
+United States Air Force	Q11223
+Lotto Thüringen Arena am Rennsteig	Q1154329
+Sicily	Q1460
+Berchtesgadener Land	Q10530
+Wangerooge	Q25135
+Altenberge	Q181809
+Hanau shootings	Q85636305
+Corfu	Q121378
+Itamar	Q1675212
+Jenin	Q374748
+Western Germany	Q181576
+Kehl	Q15979
+Neuengamme concentration camp	Q312478
+Grevesmühlen	Q517353
+Frankfurt Rhine-Main Metropolitan Region	Q707278
+Saarbrücken	Q1724
+Hans Majestet Kongens Garde	Q1581231
+Westfalenstadion	Q150928
+Iserlohn	Q1130
+Sydney	Q3130
+Zverevskaya	Q14915308
+Sigulda	Q465698
+Lichtenau im Waldviertel	Q675172
+Former U.S. President Gerald Ford dies, aged 93	Q17595927
+Elbphilharmonie	Q673223
+Erlenbach im Simmental	Q66132
+Kassel	Q2865
+Nazarbayeva	Q100255434
+Markus Eisenbichler	Q126987
+Arctic	Q25322
+North Pole	Q934
+Greenland	Q223
+Fjord	Q45776
+Harz	Q4186
+Odenthal	Q245466
+Tajrish	Q1019120
+Zahedan	Q140561
+Iranians	Q397297
+State of Palestine	Q219060
+Damascus	Q3766
+Nablus	Q214178
+International Space Station	Q25271
+Museum Barberini	Q23785329
+National Aeronautics and Space Administration	Q23548
+Reichstag	Q151897
+São Paulo	Q174
+Santos, São Paulo	Q81882
+Amazon River	Q3783
+Brazilian Portuguese	Q750553
+Ruppoldingen	Q1485847
+Ruhpolding	Q73532
+Magdalena Department	Q199910
+Siberia	Q5428
+Algae	Q37868
+Antony, Hauts-de-Seine	Q205592
+Tonga	Q678
+Lug, Germany	Q631895
+Vatican City	Q237
+Pope	Q19546
+Hattari	Q11579085
+Brandenburg an der Havel	Q3931
+Havel	Q1682
+Osnabrück	Q2916
+Rech	Q565992
+Sächsische Zeitung	Q2378692
+Reutlingen	Q3085
+Rothaar Mountains	Q4219
+Husum	Q21159
+Marburg	Q3869
+Neuruppin	Q16085
+people's republic	Q465613
+South Pacific Ocean	Q12355425
+Philippines	Q928
+Pakistan	Q843
+Oberursel (Taunus)	Q7044
+European debt crisis	Q217197
+St. Moritz	Q68986
+Mount Washington	Q572801
+New Hampshire	Q759
+Pripyat	Q170456
+Chernobyl Nuclear Power Plant	Q215419
+Gaderi	Q32753060
+Palais Coburg	Q692117
+Ahr Valley	Q402908
+Landau	Q7052
+Ahr	Q153394
+Betzenstein	Q182131
+Yana (river)	Q78861
+Hawaii	Q782
+Augustin Pyramus de Candolle	Q123057
+Road	Q34442
+Soledar	Q2399843
+Kramatorsk	Q33613
+Weimar	Q3955
+Eleusis	Q204905
+Timișoara	Q83404
+Fichtelberg	Q164561
+Colleyville, Texas	Q974075
+Kabul	Q5838
+Filderstadt	Q7032
+Lisbon	Q597
+Americans	Q846570
+French Open	Q43605
+Wimbledon	Q736742

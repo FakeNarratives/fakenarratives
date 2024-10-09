@@ -1,3 +1,36 @@
-Q16335075	War in Donbass
-Q8740	Vietnam War
-Q8683	Cold War
+COVID-19 pandemic	Q81068910
+World War II	Q362
+Cuban Missile Crisis	Q128160
+COVID-19 pandemic in Germany	Q83889294
+The Holocaust	Q2763
+CumEx-Files	Q22956512
+Cold War	Q8683
+Algerian War	Q200790
+Party conference	Q2288051
+Coup d'état	Q45382
+World War III	Q363
+World War I	Q361
+Russian invasion of Ukraine	Q110999040
+Eastern Front (World War II)	Q189266
+New Year's Eve	Q11269
+Coalition Wars	Q15053704
+Kosovo War	Q190029
+Korean War	Q8663
+Battle of Stalingrad	Q38789
+Battle of Lechfeld	Q273069
+Six-Day War	Q49077
+Berlin International Film Festival	Q130871
+Golden Bear	Q154590
+Synodal Path	Q104844763
+spring	Q1312
+Poetry slam	Q20852
+Vietnam War	Q8740
+Four Hills Tournament	Q157087
+Berlin International Green Week	Q493494
+Biathlon World Championships	Q646317
+Torture	Q132781
+Wannsee Conference	Q152120
+Munich Security Conference	Q565507
+Iranian Revolution	Q126065
+Festival	Q132241
+Nine Years' War	Q152218
