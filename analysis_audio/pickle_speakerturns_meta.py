@@ -28,6 +28,7 @@ def parse_args():
         help="Path to pkl directory"
     )
     parser.add_argument(
+        "-t",
         "--threshold",
         type=float,
         default=0.6,
