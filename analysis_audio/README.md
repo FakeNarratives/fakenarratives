@@ -22,7 +22,7 @@ huggingface:
 
 #### Output of `asr_whisperx.pkl`:
 
-```json
+```python
 {
   "github_repo": "https://github.com/m-bain/whisperX",
   "commit_id": "f2da2f858e99e4211fe4f64b5f2938b007827e17",
@@ -48,7 +48,7 @@ huggingface:
 
 #### Output Format of `shot_audioClf.pkl` and `whisperxspeaker_audioClf.pkl`:
 
-```json
+```python
 {
   "github_repo": "https://github.com/microsoft/unilm",
   "commit_id": "13641268b59df5cf90d27b451d87ab58b6a07055",
@@ -73,7 +73,7 @@ huggingface:
 
 #### Output Format of `speaker_attr.pkl`:
 
-```json
+```python
 {
   "github_repo": "https://github.com/speechbrain/speechbrain;https://huggingface.co/alefiury/wav2vec2-large-xlsr-53-gender-recognition-librispeech",
   "commit_id": "481e5dfddd70d81714b1dea32e5dbfdee7c50c03;0a5d4dc65986030a703faf1942d51a9734824882",
@@ -103,7 +103,7 @@ huggingface:
 
 #### Output Format for `{model_type}_audio_shot_similarity.pkl`:
 
-```json
+```python
 {
   "github_repo": "",
   "commit_id": "",
@@ -115,10 +115,10 @@ huggingface:
         "start": "<start_time>",
         "end": "<end_time>"
       },
-      "prev_1": 0.8,    // Similarity to previous shot
-      "prev_2": 0.7,   // Similarity to 2nd previous shot
-      "next_1": 0.9,  // Similarity to next shot
-      "next_2": 0.6   // Similarity to 2nd next shot
+      "prev_1": 0.8,    ## Similarity to previous shot
+      "prev_2": 0.7,   ## Similarity to 2nd previous shot
+      "next_1": 0.9,  ## Similarity to next shot
+      "next_2": 0.6   ## Similarity to 2nd next shot
     },
     ...
   ]
@@ -135,23 +135,23 @@ huggingface:
 #### Output Format of `speaker_turns_meta.pkl`:
 
 
-```json
+```python
 {
   "github_repo": "None",
   "commit_id": "None",
   "parameters": "default",
   "video_file": "<video_path>",
-  "output_data": [    // Updated speaker turn data with multimodal features
+  "output_data": [    ## Updated speaker turn data with multimodal features
     {
       "start": "<start_time>",
       "end": "<end_time>",
       "speaker": "SPEAKER",
-      "active": true,   // Active speech or not
-      "active_ratio": 0.75,   // Ratio of active speech
-      "active_track_id": "<track_id>",  // Track ID of largest overlapping active face track
-      "role_l0": "anchor",  // Role level 0 ("anchor", "reporter", "other")
-      "role_l1": "reporter",  // Role level 1 ("anchor", "reporter", "expert", "layperson", "politician", "other")
-      "situation": "talking-head" // News situation ("talking-head", "voiceover", "interview", "commenting", "speech")
+      "active": true,   ## Active speech or not
+      "active_ratio": 0.75,   ## Ratio of active speech
+      "active_track_id": "<track_id>",  ## Track ID of largest overlapping active face track
+      "role_l0": "anchor",  ## Role level 0 ("anchor", "reporter", "other")
+      "role_l1": "reporter",  ## Role level 1 ("anchor", "reporter", "expert", "layperson", "politician", "other")
+      "situation": "talking-head" ## News situation ("talking-head", "voiceover", "interview", "commenting", "speech")
     },
     ...
   ]
