@@ -55,14 +55,16 @@ def get_sentiment_model(type, device):
 
 
 
-def extract_sentiment(model, text, model_type):
+def extract_sentiment(model, text, model_type, sent_dict):
     if model_type in ["news", "general"]:
         preds, probs = model.predict_sentiment([text], output_probabilities=True)
-        return preds[0], [probs[0][0][1], probs[0][1][1], probs[0][2][1]]
+        return preds[0], [probs[0][0][1], probs[0][1][1], probs[0][2][1]]   ## [positive, negative, neutral]
     elif model_type == "multi":
-        result = model(text, truncation=True, max_length=512)[0]
+        result = model(text, truncation=True, max_length=512)[0]        ## Outputs in descending order of score
         pred = max(result, key=lambda x: x['score'])['label']
-        probs = [item['score'] for item in result]
+        probs = [0, 0, 0]
+        for res in result:
+            probs[sent_dict[res['label']]] = res['score']   ## [positive, negative, neutral]
         return pred, probs
 
 
