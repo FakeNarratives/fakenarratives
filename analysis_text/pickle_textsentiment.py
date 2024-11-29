@@ -120,7 +120,7 @@ def perform_sentiment(video_path, speaker_turns, nlp, models, sent_dict):
             
             sent_vector = np.zeros(3)
             for sentence in turn_sentences:
-                pred, _ = extract_sentiment(model, sentence, model_type)
+                pred, _ = extract_sentiment(model, sentence, model_type, sent_dict)
                 sent_vector[sent_dict[pred]] += 1
 
             sent_vector = sent_vector / len(turn_sentences)
@@ -129,7 +129,7 @@ def perform_sentiment(video_path, speaker_turns, nlp, models, sent_dict):
                                         "vector": sent_vector})
         
             # Speaker-Turn-wise sentiment
-            st_pred, st_prob = extract_sentiment(model, segment["text"].strip(), model_type)
+            st_pred, st_prob = extract_sentiment(model, segment["text"].strip(), model_type, sent_dict)
             
             spkturn_sentiments.append({"start": segment["start"], "end": segment["end"], "speaker": segment["speaker"],
                              "pred": st_pred, "prob": st_prob})
