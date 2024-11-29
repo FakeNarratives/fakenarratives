@@ -45,15 +45,14 @@ def parse_args():
     )
     return parser.parse_args()
 
+
 def get_model(device: str, config: Dict[str, Any]) -> Tuple[Any, Any, Any, Dict[str, Any]]:
-    model = whisperx.load_model("large-v3", device=device, compute_type="float16", language="de")
+    model = whisperx.load_model("large-v3", device=device, compute_type="float16")
     diarize_model = whisperx.DiarizationPipeline(use_auth_token=config['huggingface']['token'], device=device)
-    alignment_model, metadata = whisperx.load_align_model(language_code="de", device=device)
-    return model, diarize_model, alignment_model, metadata
+    return model, diarize_model
 
 def transcribe_video(video_path: Path, output_dir: Path, model: Any, diarize_model: Any, 
-                     alignment_model: Any, metadata: Dict[str, Any], device: str, 
-                     batch_size: int) -> Dict[str, Any]:
+                        device: str, batch_size: int) -> Dict[str, Any]:
     """
     Transcribes video using WhisperX library and performs speaker diarization.
 
@@ -62,8 +61,6 @@ def transcribe_video(video_path: Path, output_dir: Path, model: Any, diarize_mod
         output_dir (Path): Path to the output directory
         model (Any): Initialized Whisperx ASR model
         diarize_model (Any): Initialized Whisperx diarization model
-        alignment_model (Any): Initialized Whisperx alignment model
-        metadata (Dict[str, Any]): Metadata of the alignment model
         device (str): Device to run the model on
         batch_size (int): Batch size for whisperX
 
@@ -89,7 +86,8 @@ def transcribe_video(video_path: Path, output_dir: Path, model: Any, diarize_mod
 
     audio = whisperx.load_audio(str(audio_path))
 
-    result = model.transcribe(audio, batch_size=batch_size, language="de")
+    result = model.transcribe(audio, batch_size=batch_size)
+    alignment_model, metadata = whisperx.load_align_model(language_code=result["language"], device=device)
     result = whisperx.align(result["segments"], alignment_model, metadata, audio, device, return_char_alignments=False)
     aligned_segments = result["segments"]
 
@@ -111,9 +109,9 @@ def transcribe_video(video_path: Path, output_dir: Path, model: Any, diarize_mod
 
     return video_feat_dict
 
+
 def process_videos(videos: List[str], pkl_dir: str, model: Any, diarize_model: Any, 
-                   alignment_model: Any, metadata: Dict[str, Any], device: str, 
-                   batch_size: int, rewrite: bool) -> Tuple[int, int, List[str]]:
+                   device: str, batch_size: int, rewrite: bool) -> Tuple[int, int, List[str]]:
     successful = 0
     failed = 0
     failed_videos = []
@@ -139,7 +137,7 @@ def process_videos(videos: List[str], pkl_dir: str, model: Any, diarize_model: A
         try:
             logging.info(f"Processing video [{vi+1}/{len(videos)}]: {video_path}")
             video_feat_dict = transcribe_video(video_path, output_dir, model, diarize_model, 
-                                               alignment_model, metadata, device, batch_size)
+                                               device, batch_size)
 
             with open(asr_output_path, "wb") as f:
                 pickle.dump(video_feat_dict, f)
@@ -170,10 +168,10 @@ def main():
     with open(config_path, 'r') as file:
         config = yaml.safe_load(file)
 
-    model, diarize_model, alignment_model, metadata = get_model(device, config)
+    model, diarize_model = get_model(device, config)
 
     successful, failed, failed_videos = process_videos(args.videos, args.pkl_dir, model, diarize_model, 
-                                                       alignment_model, metadata, device, args.batch_size, args.rewrite)
+                                                        device, args.batch_size, args.rewrite)
 
     # Log summary
     total = successful + failed

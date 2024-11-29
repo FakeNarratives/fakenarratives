@@ -2,116 +2,153 @@ import os
 import pickle
 from tqdm import tqdm
 import numpy as np
-from transnetv2 import TransNetV2
+from pathlib import Path
 import argparse
 import logging
 import sys
-import time
+import math
+from sklearn.neighbors import KernelDensity
+from typing import List, Dict, Any, Tuple
 sys.path.append(".")
-from video_utils import read_video_and_get_info
+from project_utils import set_seeds, setup_logging, save_pickle, load_pickle
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Performs shot detection in a video using TransNetV2.")
     parser.add_argument(
-        "--videos", nargs="+", type=str, required=True, help="path to the video files"
+        "-v", "--videos", nargs="+", type=str, required=True, help="path to the video files"
     )
     parser.add_argument(
-        "--pkl_dir", type=str, required=True, help="path to the output folder"
+        "-o", "--pkl_dir", type=str, required=True, help="path to the output folder"
     )
-    parser.add_argument("--fps", type=int, default=25, help="frames per second")
-    parser.add_argument("--debug", action="store_true", help="debug output")
+    parser.add_argument(
+        "-f", "--fps",
+        type=int,
+        default=25.0,
+        help="Frames per second"
+    )
+    parser.add_argument(
+        "-b", "--bandwidth",
+        type=int,
+        default=10,
+        help="Bandwidth for KDE"
+    )
     args = parser.parse_args()
     return args
 
 
-def process_video(video_path, model, args):
+def process_video(video_path, shots_data, fps, bandwidth):
     """
-    Use TransNetV2 model to perform shot detection on the video.
+    Use Kernel Density Estimation to compute shot density
 
     Args:
         video_path (str): path to video
         output_path (str): path to save output
-        model (TransNetV2): TransNetV2 model
 
     Returns:
-        shot_dict (dict): dictionary containing shot detection results
+        {"y": shot_density, "time": time_stamps, "delta_time": 1/fps}
     """
-    shot_dict = {
-        "github_repo": "https://github.com/soCzech/TransNetV2",
-        "commit_id": "85cef72af9a916bdfd7cc94a670c9cdfbf12d1ed", 
-        "parameters": "default",
+
+    last_shot_end = 0
+    shots = []
+    for shot in shots_data:
+        shots.append(shot["start"])
+
+        if shot["end"]> last_shot_end:
+            last_shot_end = shot["end"]
+
+    time = np.linspace(0, last_shot_end, math.ceil(last_shot_end * fps) + 1)[:, np.newaxis]
+    shots = np.asarray(shots).reshape(-1, 1)
+    kde = KernelDensity(kernel="gaussian", bandwidth=bandwidth).fit(shots)
+    log_dens = kde.score_samples(time)
+    shot_density = np.exp(log_dens)
+    shot_density = (shot_density - shot_density.min()) / (shot_density.max() - shot_density.min())
+
+    output_data = {
         "video_file": video_path,
-        "output_data": {"shots": []}
+        "parameters": {"fps": fps, "bandwidth": bandwidth},
+        "output_data": {
+                    "y": shot_density.squeeze(),
+                    "time": time.squeeze().astype(np.float64),
+                    "delta_time": 1 / fps
+                }
     }
 
-    # get frames from video
-    vd, frame_width, frame_height, fps, real_fps = read_video_and_get_info(video_path, args, args.fps)
-    logging.info(f"\tVideo info: {len(vd)} frames, New FPS {fps}, Original FPS {real_fps}, Size: {frame_width} x {frame_height}")
+    return output_data
 
-    all_frames = np.array([vd[i] for i in range(len(vd))])
-    logging.info(f"\tAll Frames: {all_frames.shape}")
 
-    single_frame_predictions, _ = model.predict_frames(all_frames)
+def process_videos(videos: List[str], pkl_dir: str, args: Any) -> Tuple[int, int, List[str]]:
+    successful = 0
+    failed = 0
+    failed_videos = []
 
-    # Process predictions
-    shots = model.predictions_to_scenes(single_frame_predictions)
+    for vi, video in enumerate(videos):
+        video_path = Path(video)
+        if not video_path.exists():
+            logging.warning(f"Video file not found: {video_path}")
+            failed += 1
+            failed_videos.append(str(video_path))
+            continue
 
-    for shot in shots:
-        start_frame, end_frame = shot
-        start_time = start_frame / args.fps
-        end_time = end_frame / args.fps
+        output_dir = Path(pkl_dir) / video_path.stem
+        shot_file = output_dir / "transnet_shotdetection.pkl"
 
-        shot_dict["output_data"]["shots"].append({
-            "start_frame": int(start_frame),
-            "end_frame": int(end_frame),
-            "start": start_time,
-            "end": end_time
-        })
+        if not shot_file.exists():
+            logging.warning(f"Shot boundary detection file not found: {shot_file}")
+            failed += 1
+            failed_videos.append(str(video_path))
+            continue
 
-    return shot_dict
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        output_file = output_dir / "shot_density.pkl"
+
+        try:
+            logging.info(f"Processing video [{vi+1}/{len(videos)}]: {video_path}")
+
+            with open(shot_file, 'rb') as pkl:
+                shots_data = pickle.load(pkl)["output_data"]["shots"]
+
+            shot_density = process_video(video_path, shots_data, args.fps, args.bandwidth)
+            save_pickle(shot_density, output_file)
+
+            logging.info(f"Shot density output saved to: [{vi+1}/{len(videos)}]: {output_file}")
+
+            successful += 1
+        except Exception as e:
+            failed += 1
+            failed_videos.append(str(video_path))
+            logging.error(f"Error processing video [{vi+1}/{len(videos)}]: {video_path}: {str(e)}")
+
+    return successful, failed, failed_videos
+
 
 def main():
     args = parse_args()
+    log_file = setup_logging("shot_density")
 
-    # define logging level and format
-    level = logging.INFO
-    if args.debug:
-        level = logging.DEBUG
+    logging.info(f"Log file will be saved at: {log_file}")
+    
+    set_seeds(42)
 
-    logging.basicConfig(
-        format="%(asctime)s %(levelname)s:%(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-        level=level,
-    )
+    successful, failed, failed_videos = process_videos(args.videos, args.pkl_dir, args)
 
-    model = get_model()
-
-    videos = args.videos
-    for vi, video_path in enumerate(videos):
-        start = time.time()
-
-        logging.info(f"\tProcessing video [{vi+1}/{len(videos)}]: {video_path}")
-
-        vidname = os.path.splitext(os.path.basename(video_path))[0]
-        output_dir = os.path.join(args.pkl_dir, vidname)
-
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-
-        output_file_path = os.path.join(output_dir, "transnet_shotdetection.pkl")
-
-        shot_dict = process_video(video_path, model, args)
-
-        with open(output_file_path, "wb") as output_file:
-            pickle.dump(shot_dict, output_file)
-
-        logging.info(f"\tShot Prediction output saved at: {output_file_path}")
-
-        logging.info(f"\tTime taken: {time.time() - start:.2f} seconds")
-
-        print()
-
-        break
+    # Log summary
+    total = successful + failed
+    logging.info(f"Shot detection processing complete. Total: {total}, Successful: {successful}, Failed: {failed}")
+    
+    if failed > 0:
+        logging.info("Failed videos:")
+        for video in failed_videos:
+            logging.info(f"  - {video}")
+    
+    # Print summary to console
+    print(f"\nShot detection processing summary:")
+    print(f"Total videos processed: {total}")
+    print(f"Successful: {successful}")
+    print(f"Failed: {failed}")
+    print(f"\nLog file saved at: {log_file}")
+    if failed > 0:
+        print(f"Check the log file for details on failed videos.")
 
 if __name__ == "__main__":
     main()

@@ -5,6 +5,7 @@ import numpy as np
 from tqdm import tqdm
 from pathlib import Path
 from typing import List, Dict, Any, Tuple
+from datetime import timedelta
 import logging
 import sys
 sys.path.append(".")
@@ -42,67 +43,43 @@ def parse_args():
     )
     return parser.parse_args()
 
-def sort_tracks_by_start_time(asd_tracks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Sort ASD tracks by their start time."""
-    return sorted(asd_tracks, key=lambda x: x['frames'][0])
+def find_overlapping_faces(reference_turn: Dict[str, Any], faces: List[Dict[str, Any]], fps: float):
+    ref_start, ref_end = reference_turn["start"], reference_turn["end"]
 
-def find_overlapping_tracks(turn: Dict[str, Any], sorted_asd_tracks: List[Dict[str, Any]], fps: float) -> List[Tuple[Dict[str, Any], float]]:
-    """
-    Find all face tracks that overlap with a given speaker turn.
-    
-    Args:
-    turn: A dictionary containing 'start' and 'end' times of the speaker turn.
-    sorted_asd_tracks: List of face tracks sorted by start time.
-    fps: Frames per second of the video.
-    
-    Returns:
-    A list of tuples, each containing an overlapping track and its overlap duration,
-    sorted by overlap duration in descending order.
-    """
-    turn_start, turn_end = turn['start'], turn['end']
-    overlapping_tracks = []
-    for track in sorted_asd_tracks:
-        track_start = track['frames'][0] / fps
-        track_end = track['frames'][-1] / fps
-        if track_start >= turn_end:
-            break  # No need to check further tracks
-        if track_end > turn_start and track_start < turn_end:
-            overlap_start = max(turn_start, track_start)
-            overlap_end = min(turn_end, track_end)
-            overlap_duration = overlap_end - overlap_start
-            overlapping_tracks.append((track, overlap_duration))
-    
-    return sorted(overlapping_tracks, key=lambda x: x[1], reverse=True)
+    overlapping_faces = []
+    for face in faces:
+        face_time = face["time"] ## Detected at this time
 
-def calculate_speaking_duration(turn: Dict[str, Any], track: Dict[str, Any], fps: float) -> float:
-    """
-    Calculate the duration of speaking frames within the overlap of a turn and a face track.
+        if face_time < ref_start or face_time > ref_end:
+            continue
+        
+        if face["speaking"]:
+            overlapping_faces.append({"face_id": face["face_id"], "time": face_time, "cluster_id": face["cluster_id"], 
+                                    "speaking_ratio": face["speaking_ratio"], "speaking": face["speaking"], "bbox": face["bbox"]})
+
+    unique_faces = {}
+    for face in overlapping_faces:
+        if face["cluster_id"] not in unique_faces and face["cluster_id"] is not None:
+            unique_faces[face["cluster_id"]] = [face]
+        else:
+            unique_faces[face["cluster_id"]].append(face)
+
+    largest_duration = 0
+    largest_cluster_id = None
+    for cluster_id, faces in unique_faces.items():
+        time_diff = faces[-1]["time"] - faces[0]["time"]
+        if time_diff > largest_duration:
+            largest_duration = time_diff
+            largest_cluster_id = cluster_id
+
+    if largest_cluster_id is None:
+        return None, None, None
     
-    Args:
-    turn: A dictionary containing 'start' and 'end' times of the speaker turn.
-    track: A dictionary containing information about a face track.
-    fps: Frames per second of the video.
+    return largest_cluster_id, largest_duration, unique_faces[face["cluster_id"]]
     
-    Returns:
-    The duration (in seconds) of speaking frames within the overlap.
-    """
-    turn_start, turn_end = turn['start'], turn['end']
-    track_start = track['frames'][0] / fps
-    track_end = track['frames'][-1] / fps
-    overlap_start = max(turn_start, track_start)
-    overlap_end = min(turn_end, track_end)
-    
-    overlap_frames = int((overlap_end - overlap_start) * fps)
-    speaking_frames = int(overlap_frames * track['speaking_ratio'])
-    
-    return speaking_frames / fps
 
 def process_video(video_path: Path, output_dir: Path, threshold: float) -> bool:
     try:
-        # Load face detection
-        face_detection = load_pickle(output_dir / "face_detection_insightface.pkl")
-        fps = face_detection['args']['fps']
-
         # Load ASR results
         asr_path = output_dir / "asr_whisperx.pkl"
         asr_data = load_pickle(asr_path)
@@ -110,16 +87,15 @@ def process_video(video_path: Path, output_dir: Path, threshold: float) -> bool:
 
         logging.info(f"Loaded {len(speaker_turns)} speaker turns")
 
-        # Load ASD results
-        asd_path = output_dir / "asd_light-asd.pkl"
-        asd_data = load_pickle(asd_path)
-
-        # Sort ASD tracks by start time
-        sorted_asd_tracks = sort_tracks_by_start_time(asd_data['tracks'])
+        # Load combined face analysis results for cluster based active speaker turns
+        face_path = output_dir / "face_analysis.pkl" 
+        face_data = load_pickle(face_path)
+        faces, fps = face_data["faces"], face_data["args"]["fps"]
 
         # Load speaker roles and news situations
         speaker_roles = load_pickle(output_dir / "icmr_speaker_roles.pkl")
         news_situations = load_pickle(output_dir / "icmr_situations.pkl")
+        llm_evaluative = load_pickle(output_dir / "llm_evaluative.pkl")
 
         assert len(speaker_turns) == len(speaker_roles) == len(news_situations), "Mismatch in the number of turns, roles, and situations"
 
@@ -132,25 +108,27 @@ def process_video(video_path: Path, output_dir: Path, threshold: float) -> bool:
                 'speaker': turn['speaker']
             }
 
-            overlapping_tracks = find_overlapping_tracks(turn, sorted_asd_tracks, fps)
+            face_cluster_id, largest_face_duration, largest_face = find_overlapping_faces(turn, faces, fps)
+
+            # if "01:57" in str(timedelta(seconds=round(turn['start']))):
+            #     print(face_cluster_id, largest_face_duration/(turn['end'] - turn['start']), largest_face[0])
             
-            if overlapping_tracks:
-                largest_track, _ = overlapping_tracks[0]
-                speaking_duration = calculate_speaking_duration(turn, largest_track, fps)
+            if face_cluster_id is not None:
                 turn_duration = turn['end'] - turn['start']
-                active_ratio = speaking_duration / turn_duration
+                active_ratio = largest_face_duration / turn_duration
 
                 updated_turn['active'] = active_ratio > threshold
                 updated_turn['active_ratio'] = active_ratio
-                updated_turn['active_track_id'] = largest_track['track_id']
+                updated_turn['face'] = {"first_appearance": largest_face[0], "last_appearance": largest_face[-1]}
             else:
                 updated_turn['active'] = False
                 updated_turn['active_ratio'] = 0
-                updated_turn['active_track_id'] = None
+                updated_turn['face'] = None
 
             updated_turn['role_l0'] = speaker_roles[i]['role_l0']
             updated_turn['role_l1'] = speaker_roles[i]['role_l1']
             updated_turn['situation'] = news_situations[i]['situation']
+            updated_turn['llm_evaluative'] = True if llm_evaluative[i]["label"] == "evaluative" else False
 
             updated_speaker_turns.append(updated_turn)
 

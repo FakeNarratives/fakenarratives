@@ -10,15 +10,17 @@ import argparse
 import numpy as np
 from mmdet.apis import DetInferencer  # type: ignore
 sys.path.append(".")
-from video_utils import read_video_and_get_info
+from project_utils import read_video_and_get_info, set_seeds
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Generates layout detections for frames sampled from video shots.")
     parser.add_argument("-m", "--model_dir", type=str, default="/nfs/data/fakenarratives/layout_analysis/saved_models/")
     parser.add_argument("-b", "--batch_size", type=int, default=1, help="batch size for inference. Defaults to 1.")
-    parser.add_argument("--videos", nargs="+", type=str, required=True, help="path to the video files")
-    parser.add_argument("--pkl_dir", type=str, required=True, help="path to the output folder")
+    parser.add_argument("-v", "--videos", nargs="+", type=str, required=True, help="path to the video files")
+    parser.add_argument("-o", "--pkl_dir", type=str, required=True, help="path to the output folder")
+    parser.add_argument("-w", "--num_workers", type=int, default=4, help="number of workers for video reading")
+    parser.add_argument("--rewrite_pooled", action="store_true", help="rewrite pooled features")
     parser.add_argument(
         "--max_dimension",
         type=int,
@@ -56,7 +58,7 @@ def process_video(video_path, model, args, shot_content, class_names):
     Process a video by sampling frames from each shot and running object detection.
     """
     # Load video
-    vr, frame_width, frame_height, fps, real_fps = read_video_and_get_info(video_path, args, 4, 25)
+    vr, frame_width, frame_height, fps, real_fps = read_video_and_get_info(video_path, args, args.num_workers, 25)
     logging.info(f"\tVideo info: {len(vr)} frames, New FPS {fps}, Original FPS {real_fps}, Size: {frame_width} x {frame_height}")
 
     video_dict = {
@@ -79,7 +81,8 @@ def process_video(video_path, model, args, shot_content, class_names):
         video_dict["output_data"].append({
             "start": shot["start"],
             "end": shot["end"],
-            "layout_cnt": objects_cnt_dict
+            "layout_cnt": objects_cnt_dict,
+            "shot_predictions": shot_preds
         })
 
     return video_dict
@@ -100,6 +103,8 @@ def unstack_array(array):
 def main():
     args = parse_args()
 
+    set_seeds(42)
+
     logging.basicConfig(format="%(asctime)s %(levelname)s:%(message)s", datefmt="%Y-%m-%d %H:%M:%S", level=logging.INFO)
 
     weights_path = os.path.join(args.model_dir, "co-detr_mixedtraining_2024-05-19_15-08/final_model.pth")
@@ -108,29 +113,47 @@ def main():
     class_names = inferencer.cfg.test_dataloader.dataset.metainfo.classes
     print(f"\tClass names: {class_names}")
 
+    split_layout_classes = ["photo_moving", "background", "photo_still", "aerial_moving", "aerial_still"]
+
     for vi, video_path in enumerate(args.videos):
         logging.info(f"\tProcessing video [{vi+1}/{len(args.videos)}]: {video_path}")
         vidname = os.path.splitext(os.path.basename(video_path))[0]
         output_dir = os.path.join(args.pkl_dir, vidname)
 
-        shot_detection_path = os.path.join(output_dir, "transnet_shotdetection.pkl")
+        if args.rewrite_pooled:
+            layout_data = pickle.load(open(os.path.join(output_dir, "layout_detection.pkl"), "rb"))
 
-        if not os.path.isfile(shot_detection_path):
-            logging.error(f"\tMissing shot detection file in {shot_detection_path}")
-            continue
+            for shot in layout_data["output_data"]:
+                condition_cnt = 0
+                for cls in split_layout_classes:
+                    condition_cnt += shot["layout_cnt"].get(cls, 0)
+                shot["layout_image_cnt"] = condition_cnt
 
-        with open(shot_detection_path, "rb") as pklfile:
-            shot_content = pickle.load(pklfile)
+            with open(os.path.join(output_dir, "layout_detection.pkl"), "wb") as output_file:
+                pickle.dump(layout_data, output_file)
+        else:
+            if os.path.exists(os.path.join(output_dir, "layout_detection.pkl")):
+                logging.info(f"\tLayout detections already exist in {output_dir}")
+                continue
 
-        logging.info(f"\tNumber of shots: {len(shot_content['output_data']['shots'])}")
+            shot_detection_path = os.path.join(output_dir, "transnet_shotdetection.pkl")
 
-        video_feat_dict = process_video(video_path, inferencer, args, shot_content, class_names)
-        
-        output_fp = os.path.join(output_dir, "layout_detection.pkl")
-        with open(output_fp, "wb") as output_file:
-            pickle.dump(video_feat_dict, output_file)
-        
-        logging.info(f"\tSaved layout detections to {output_fp}")
+            if not os.path.isfile(shot_detection_path):
+                logging.error(f"\tMissing shot detection file in {shot_detection_path}")
+                continue
+
+            with open(shot_detection_path, "rb") as pklfile:
+                shot_content = pickle.load(pklfile)
+
+            logging.info(f"\tNumber of shots: {len(shot_content['output_data']['shots'])}")
+
+            video_feat_dict = process_video(video_path, inferencer, args, shot_content, class_names)
+            
+            output_fp = os.path.join(output_dir, "layout_detection.pkl")
+            with open(output_fp, "wb") as output_file:
+                pickle.dump(video_feat_dict, output_file)
+            
+            logging.info(f"\tSaved layout detections to {output_fp}")
 
 if __name__ == "__main__":
     main()

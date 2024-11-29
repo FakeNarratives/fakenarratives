@@ -13,6 +13,11 @@ analysis_multimodal/srr_nsr_news_videos
 analysis_visual/vlm_evaluation
 analysis_face/face_analysis.json
 analysis_multimodal/srr_nsr/config.yaml
+narrative_analysis_github/
+analysis_text/spkrturn_annotations/
+analysis_text/evaluate_llm_spkrturns.py
+analysis_text/annotation_spkturn.py
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -23,7 +23,7 @@ def parse_args():
         "-o",
         "--pkl_dir", type=str, required=True, help="Path to pkl directory"
     )
-    parser.add_argument("--workers", type=int, default=4, help="number of workers")
+    parser.add_argument("-w", "--workers", type=int, default=4, help="number of workers")
     parser.add_argument("-r", "--rewrite", action="store_true", help="Rewrite existing files")
     return parser.parse_args()
 

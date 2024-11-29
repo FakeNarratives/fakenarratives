@@ -278,6 +278,38 @@
   - `ner_labelmap`: Mapping of NER tags to indices in the count vector
 
 
+## Evaluative Talk Classification of Speaker Turns with LLM
+
+### Filename: `llm_evaluative.pkl`
+
+```json
+{   "github_repo": "https://github.com/unslothai/unsloth",
+    "commit_id": "38663b01f5dd0e610b12475bd95b144303cff539",
+    "parameters": "default",
+    "video_file":  "video_path",
+    "output_data": [        // Speaker turn text classified as evaluative or non-evaluative
+        {
+            "start": 0.0,
+            "end": 4.0,
+            "speaker": "SPEAKER_01",
+            "label": "evaluative",
+            "confidence": "high"
+        },
+    ] 
+}
+```
+
+- `github_repo`: URL of the GitHub repository
+- `commit_id`: Commit ID of the code used
+- `parameters`: Parameters used for processing
+- `video_file`: Full path to the video file
+- `output_data`: List of speaker turns classified as evaluative or non-evaluative
+  - `start`, `end`: Start and end times of the speaker turn in seconds
+  - `speaker`: Speaker ID or name
+  - `label`: Classification label ("evaluative" or "non-evaluative")
+  - `confidence`: Confidence level of the classification ("low", "moderate" or "high")
+
+
 # Visual Feature Extraction
 
 ## Shot Detection
@@ -579,22 +611,6 @@
 - `args`: Arguments used for face detection process
 
 
-## Shared Object Relation [TODO]
-
-### Filename: `shared_object_relation.pkl`
-
-```json
-{
-    "github_repo": "<URL of the GitHub repo(s) separated by ;>",
-    "commit_id": "<Commit ID(s) of the model(s) used, separated by ;>",
-    "parameters": "default",
-    "video_file": "/path/to/video.mp4",
-    "output_data": [
-        // TODO: Add structure for shared object relation data
-    ]
-}
-```
-
 # Multimodal Features
 
 ## Speaker Roles & News Situations & Active Speaker Turn
@@ -618,6 +634,7 @@
             "role_l0": "anchor",    // High-level speaker role
             "role_l1": "anchor",   // Detailed speaker role
             "situation": "Talking-head" // News situation category
+            "
         }
     ]
 }
@@ -639,18 +656,73 @@
   - `role_l1`: Detailed speaker role category
   - `situation`: News situation or context category
 
-## LVLM [TODO]
 
-### Filename: `lvlm_analysis.pkl`
+## Large Vision-Language Model (LVLM) Analysis - Social Roles, Locations and Events
+
+- Run queries with LVLM on the video at 1 FPS to extract social roles, locations, and events
+
+- Presence of a label is indicated by a value of 1, while absence is indicated by 0
+- In `responses` marix of size (num_labels, num_frames), row index corresponds to the label index in label list
 
 ```json
 {
-    "github_repo": "<URL of the GitHub repo(s) separated by ;>",
-    "commit_id": "<Commit ID(s) of the model(s) used, separated by ;>",
+    `"github_repo": "https://huggingface.co/Qwen/Qwen2-VL-7B-Instruct",
+    "commit_id": "51c47430f97dd7c74aa1fa6825e68a813478097f",
     "parameters": "default",
-    "video_file": "/path/to/video.mp4",
-    "output_data": [
-        // TODO: Add structure for LVLM analysis data
-    ]
+    "video_file": "video_path",
+    "output_data": {
+        "labels": "<labels>",
+        "responses": "<response vectors>", // Size: (num_labels, num_frames)
+        "original_responses": "<original responses>", // Size: (num_frames,)
+        "times": "<time stamps>",
+        "delta_time": 1,
+    }
+}
+```
+
+### Filename: `vlm_social_roles.pkl`
+
+- labels: ["anchor", "reporter", "journalist", "media personnel", "elite", "politician", "layperson", "doctor",
+            "medical personnel", "public safety personnel", "public service personnel", "No person visible"]
+
+- Original label map
+```json
+{
+    "A. a celebrity": "A", "B. a doctor": "B", "C. a domain expert": "C", "D. a firefighter": "D", "E. a journalist": "E", 
+    "F. a lab worker": "F", "G. a layperson": "G", "H. a medical expert": "H", "I. a military personnel": "I", 
+    "J. a news anchor": "J", "K. a news reporter": "K", "L. a nurse": "L",  "M. a politician": "M", "N. a public service worker": "N", 
+    "O. a soldier": "O", "P. a testcenter worker": "P", "Q. an NGO worker": "Q", "R. an athlete": "R", "S. an elite": "S", 
+    "T. from police": "T", "U. from press or media": "U", "V. No person visible": "V", "W. None of the above": "W"
+}
+```
+
+### Filename: `vlm_locations.pkl`
+
+- labels: ["aerial", "industrial", "private", "public", "elite", "studio", "indoor", "outdoor"]
+
+- Original label map
+```json
+{
+    "A. an aerial view or location": "A", "B. an industrial outdoor location": "B", "C. an outdoor location": "C", 
+    "D. an outer space location": "D", "E. inside a camp": "E", "F. inside a doctor's office": "F", "G. inside a home": "G", 
+    "H. inside a hospital": "H", "I. inside a military building": "I", "J. inside a museum": "J", "K. inside a political building": "K", 
+    "L. inside a public indoor location": "L", "M. inside a religious building": "M", "N. inside a restaurant": "N", "O. inside a school": "O", 
+    "P. inside a shop": "P", "Q. inside a studio": "Q", "R. inside a test center": "R", "S. inside a train or bus station": "S", 
+    "T. inside a vaccination center": "T", "U. inside an indoor location": "U", "V. inside an industrial indoor location": "V",
+    "W. inside an office": "W", "X. None of the above": "X"
+}
+```
+
+### Filename: `vlm_events.pkl`
+
+- labels: ["conference", "speech", "demonstration", "voting", "migration", "ceremony", "festival", "sport", "military", "fire", 
+            "explosion", "hostage", "natural", "political", "cultural", "religious", "war", "crime"]
+
+- Original label map
+```json
+{
+    "A. conference": "A", "B. crime-related fire": "B", "C. cultural ceremony": "C", "D. cultural festival": "D", "E. demonstration": "E", 
+    "F. explosion": "F", "G. hostage taking": "G", "H. migration": "H", "I. military action": "I", "J. natural event": "J", "K. religious ceremony": "K", 
+    "L. speech": "L", "M. sport activity": "M", "N. voting": "N", "O. war-related fire": "O", "P. None of the above": "P"
 }
 ```
