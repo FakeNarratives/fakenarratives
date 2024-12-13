@@ -278,6 +278,46 @@
   - `ner_labelmap`: Mapping of NER tags to indices in the count vector
 
 
+## Text Sentiment Analysis
+
+### Filename: `llm_sentiment.pkl`
+
+```json
+{
+    "github_repo": "https://github.com/vllm-project/vllm",
+    "commit_id": "",
+    "parameters": "default",
+    "video_file": "/path/to/video.mp4",
+    "output_data": [
+        {
+            "start": 0.0,
+            "end": 10.0,
+            "speaker": "SPEAKER_01",
+            "sentiment": "very positive"  // ["very negative", "slightly negative", "neutral", "slightly positive", "very positive"]
+        }
+    ]
+}
+```
+
+### Filename: `llm_sentiment_2.pkl`
+
+```json
+{
+    "github_repo": "https://github.com/vllm-project/vllm",
+    "commit_id": "",
+    "parameters": "default",
+    "video_file": "/path/to/video.mp4",
+    "output_data": [
+        {
+            "start": 0.0,
+            "end": 10.0,
+            "speaker": "SPEAKER_01",
+            "sentiment": "very positive"  // ["very negative", "neutral", "very positive"]
+        }
+    ]
+}
+```
+
 ## Evaluative Talk Classification of Speaker Turns with LLM
 
 ### Filename: `llm_evaluative.pkl`
