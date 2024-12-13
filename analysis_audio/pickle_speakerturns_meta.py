@@ -32,7 +32,7 @@ def parse_args():
         "-t",
         "--threshold",
         type=float,
-        default=0.6,
+        default=0.5,
         help="Threshold for determining active speaker turn based on the ratio of speaking duration to turn duration"
     )
     parser.add_argument(
@@ -68,6 +68,8 @@ def find_overlapping_faces(reference_turn: Dict[str, Any], faces: List[Dict[str,
     largest_cluster_id = None
     for cluster_id, faces in unique_faces.items():
         time_diff = faces[-1]["time"] - faces[0]["time"]
+        # fc_idx = int(len(faces)/2)
+        # print(cluster_id, faces[fc_idx]["time"], faces[fc_idx]["speaking_ratio"], faces[fc_idx]["speaking"])
         if time_diff > largest_duration:
             largest_duration = time_diff
             largest_cluster_id = cluster_id
@@ -95,7 +97,6 @@ def process_video(video_path: Path, output_dir: Path, threshold: float) -> bool:
         # Load speaker roles and news situations
         speaker_roles = load_pickle(output_dir / "icmr_speaker_roles.pkl")
         news_situations = load_pickle(output_dir / "icmr_situations.pkl")
-        llm_evaluative = load_pickle(output_dir / "llm_evaluative.pkl")
 
         assert len(speaker_turns) == len(speaker_roles) == len(news_situations), "Mismatch in the number of turns, roles, and situations"
 
@@ -109,14 +110,10 @@ def process_video(video_path: Path, output_dir: Path, threshold: float) -> bool:
             }
 
             face_cluster_id, largest_face_duration, largest_face = find_overlapping_faces(turn, faces, fps)
-
-            # if "01:57" in str(timedelta(seconds=round(turn['start']))):
-            #     print(face_cluster_id, largest_face_duration/(turn['end'] - turn['start']), largest_face[0])
             
             if face_cluster_id is not None:
                 turn_duration = turn['end'] - turn['start']
                 active_ratio = largest_face_duration / turn_duration
-
                 updated_turn['active'] = active_ratio > threshold
                 updated_turn['active_ratio'] = active_ratio
                 updated_turn['face'] = {"first_appearance": largest_face[0], "last_appearance": largest_face[-1]}
@@ -128,7 +125,6 @@ def process_video(video_path: Path, output_dir: Path, threshold: float) -> bool:
             updated_turn['role_l0'] = speaker_roles[i]['role_l0']
             updated_turn['role_l1'] = speaker_roles[i]['role_l1']
             updated_turn['situation'] = news_situations[i]['situation']
-            updated_turn['llm_evaluative'] = True if llm_evaluative[i]["label"] == "evaluative" else False
 
             updated_speaker_turns.append(updated_turn)
 

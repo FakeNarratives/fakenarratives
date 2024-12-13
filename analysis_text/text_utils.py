@@ -244,8 +244,6 @@ def get_related_wikifier_entry(spacy_anno, wikifier_annotations, char_tolerance=
 
         # loop through all occurences of a given entity recognized by wikifier
         for wikifier_entity_occurence in wikifier_entity_occurences:
-            # print(wikifier_entity_occurence['chFrom'], spacy_anno['start'])
-            # print(wikifier_entity_occurence['chTo'], spacy_anno['end'])
             if wikifier_entity_occurence['chFrom'] < spacy_anno['start'] - char_tolerance:
                 continue
 
@@ -307,6 +305,7 @@ def link_annotations(spacy_annotations, wikifier_annotations):
                 },
                 **spacy_anno,
             }
+
             linked_entities.append(entity_candidate)
         else:
             highest_PR = -1

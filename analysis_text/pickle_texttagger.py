@@ -85,8 +85,7 @@ def perform_ner(video_path, speaker_turns, nlp, ner_dict, org_list, event_list):
 
         speaker_turn_ner.append({"start": segment["start"], "end": segment["end"], "speaker": segment["speaker"],
                                 "tags": linked_entities, "vector": ner_vector})
-        
-
+            
     video_feat_dict["output_data"]["speakerturn_wise"] = speaker_turn_ner
 
     return video_feat_dict
@@ -150,8 +149,6 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     set_seeds(42)
-
-    sent_dict = {"positive": 0, "negative": 1, "neutral": 2}
 
     pos_dict = {"ADJ": 0, "ADP": 1, "ADV": 2, "AUX": 3, "CONJ": 4, "CCONJ": 4, "SCONJ": 4, "DET": 5, "INTJ": 6, 
             "NOUN": 7, "NUM": 8, "PART": 9, "PRON": 10, "PROPN": 11, "VERB": 12, "X": 13, "PUNCT": 13, "SYM": 13}
