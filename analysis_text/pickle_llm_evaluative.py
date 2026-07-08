@@ -102,7 +102,8 @@ def perform_llm_eval(video_path, speaker_turns, model,
             )
         ], return_tensors = "pt").to(device)
 
-        output = model.generate(**input, max_new_tokens = 128, use_cache = True)
+        output = model.generate(**input, max_new_tokens = 128, temperature=0.7, top_p=0.8, 
+                                top_k=20, repetition_penalty=1.05, use_cache = True)
         
         response = tokenizer.batch_decode(output, skip_special_tokens=True)[0].split("Response:")[1].strip()
         

@@ -4,6 +4,7 @@ import time
 import logging
 import argparse
 import numpy as np
+from datetime import timedelta
 from pathlib import Path
 from typing import List, Dict, Any, Tuple
 
@@ -84,7 +85,7 @@ def combine_face_analysis(features_dir: Path) -> Tuple[List[Dict[str, Any]], Dic
             "kpss": face['kps'],
             "emb": np.array(face['embedding']),
             "track_id": track_id,
-            "cluster_id": clustering_map.get(face_id),
+            "cluster_id": clustering_map.get(face_id) if clustering_map.get(face_id) != -1 else None,
             "gaze": headgaze_map.get(face_id, {}),
             "pose": None,  ## headpose_map.get(face_id, {}),
             "speaking": asd_info.get('is_speaking', False),

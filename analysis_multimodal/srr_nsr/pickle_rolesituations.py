@@ -123,5 +123,6 @@ def main():
         print(f"Saved predictions to {vi+1}/{len(args.videos)}: {output_file}")
         print()
 
+
 if __name__ == "__main__":
     main()

@@ -19,8 +19,18 @@ from torchvision.transforms.v2 import (
     Lambda,
     Resize,
     Normalize,
+    CenterCrop,
+    FiveCrop,
     UniformTemporalSubsample
 )
+
+## Maps --crop_type to the output pickle filename
+OUTPUT_FILENAMES = {
+    "square": "videoshot_scalemovement.pkl",
+    "centercrop": "videoshot_scalemovement_centercrop.pkl",
+    "fivecrop": "videoshot_scalemovement_fivecrop.pkl",
+}
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Predict Shot Scale and Movement using a custom multi-task VideoMAE model.")
@@ -28,10 +38,22 @@ def parse_args():
     parser.add_argument("-o", "--pkl_dir", type=str, required=True, help="path to the output folder")
     parser.add_argument("-w", "--num_workers", type=int, default=4, help="number of workers to use for data loading")
     parser.add_argument(
+        "-r", "--resume",
+        action="store_true",
+        help="reprocess and overwrite the output pickle even if it already exists",
+    )
+    parser.add_argument(
+        "-c", "--crop_type",
+        type=str,
+        required=True,
+        choices=list(OUTPUT_FILENAMES.keys()),
+        help="frame preprocessing strategy: 'square' (resize to square, no crop), 'centercrop' (resize + center crop), 'fivecrop' (resize + five crop with majority vote)",
+    )
+    parser.add_argument(
         "--max_dimension",
         type=int,
         required=False,
-        default=640,
+        default=1280,
         help="max dimension of the video frames",
     )
     args = parser.parse_args()
@@ -46,8 +68,8 @@ class CustomVideoMAEConfig(VideoMAEConfig):
         self.scale_id2label = scale_id2label if scale_id2label is not None else {}
         self.movement_label2id = movement_label2id if movement_label2id is not None else {}
         self.movement_id2label = movement_id2label if movement_id2label is not None else {}
-        
-        
+
+
 class CustomModel(PreTrainedModel):
     config_class = CustomVideoMAEConfig
 
@@ -88,19 +110,97 @@ def get_model(device):
     return model, processor
 
 
+def get_transform(crop_type, image_size, processor):
+    """
+    Build the frame preprocessing pipeline for the given crop_type.
+
+    'square' and 'centercrop' produce a single (T, C, S, S) tensor and are normalized
+    inline. 'fivecrop' produces a tuple of 5 crops, so normalization is applied per-crop
+    in process_video instead (FiveCrop can't be followed by Normalize in the same Compose).
+    """
+    ops = [
+        Lambda(lambda x: x.permute(0, 3, 1, 2)),  # T, H, W, C -> T, C, H, W
+        UniformTemporalSubsample(16),
+    ]
+
+    if crop_type == "square":
+        ops.append(Resize((image_size, image_size)))
+    elif crop_type == "centercrop":
+        ops.append(Resize(image_size))
+        ops.append(CenterCrop((image_size, image_size)))
+    elif crop_type == "fivecrop":
+        ops.append(Resize(image_size))
+        ops.append(FiveCrop((image_size, image_size)))
+    else:
+        raise ValueError(f"Unknown crop_type: {crop_type}")
+
+    if crop_type != "fivecrop":
+        ops.append(Lambda(lambda x: x / 255.0))
+        ops.append(Normalize(processor.image_mean, processor.image_std))
+
+    return Compose([ApplyTransformToKey(key="video", transform=Compose(ops))])
+
+
 def get_subclip_indices(start_index, end_index, total_frames):
     return [i for i in range(start_index, min(end_index + 1, total_frames))]
 
 
-def process_video(video_path, shot_dict, model, transform, args, device="cuda"):
+def predict_shot(inputs, model, crop_type, processor, device):
+    """
+    Run the model on the transformed clip for a single shot and return
+    (scale_cat, cumulative_distance, movement_cat).
+
+    For 'fivecrop', inputs is a tuple of 5 unnormalized crop tensors; predictions
+    are combined across crops via majority vote, and cumulative_distance uses the
+    scale probabilities averaged across crops.
+    """
+    if crop_type == "fivecrop":
+        normed_inputs = [
+            Normalize(processor.image_mean, processor.image_std)(crop.float().div(255.0))
+            for crop in inputs
+        ]  # list of 5 tensors, each (16,3,S,S)
+        batch = torch.stack(normed_inputs, dim=0).to(device)  # (5,16,3,S,S)
+    else:
+        batch = inputs.unsqueeze(0).to(device)  # (1,16,3,S,S)
+
+    with torch.no_grad():
+        outputs = model(batch)
+        scale_logits = outputs["scale_logits"]
+        movement_logits = outputs["movement_logits"]
+
+    scale_probs = F.softmax(scale_logits, dim=-1).cpu().numpy()  # (N, num_scales)
+
+    if crop_type == "fivecrop":
+        scale_preds = scale_logits.argmax(dim=-1)
+        movement_preds = movement_logits.argmax(dim=-1)
+        scale_pred, _ = torch.mode(scale_preds, dim=0)
+        movement_pred, _ = torch.mode(movement_preds, dim=0)
+        scale_pred = scale_pred.item()
+        movement_pred = movement_pred.item()
+        avg_probs = scale_probs.mean(axis=0)
+        cumulative_distance = round((avg_probs * np.arange(1, avg_probs.shape[0] + 1)).sum(), 4)
+    else:
+        scale_pred = scale_logits.argmax(dim=-1).cpu().numpy().tolist()[0]
+        movement_pred = movement_logits.argmax(dim=-1).cpu().numpy().tolist()[0]
+        cumulative_distance = round(sum(scale_probs[0] * np.arange(1, scale_probs.shape[1] + 1)), 4)
+
+    scale_cat = model.config.scale_id2label[str(scale_pred)]
+    movement_cat = model.config.movement_id2label[str(movement_pred)]
+
+    return scale_cat, cumulative_distance, movement_cat
+
+
+def process_video(video_path, shot_dict, model, transform, processor, crop_type, args, device="cuda"):
     """
     Take VideoMAE model and predicts both shot scale and movement for each shot in the video.
 
     Args:
         video_path (str): path to video
-        output_path (str): path to load shot output
+        shot_dict (dict): loaded shot detection output
         model (CustomModel): VideoMAE model
         transform (torchvision.transforms): transforms for the model
+        processor (VideoMAEImageProcessor): processor holding image_mean/image_std
+        crop_type (str): 'square', 'centercrop' or 'fivecrop'
         device (str, optional): device to run inference on. Defaults to "cuda".
 
     Returns:
@@ -117,7 +217,7 @@ def process_video(video_path, shot_dict, model, transform, args, device="cuda"):
                         "start": 0.0,
                         "end": 1.0
                     },
-                    "prediction": [predicted_scale_class, predicted_movement_class]
+                    "prediction": [predicted_scale_class, cummulative_distance, predicted_movement_class]
                 }
             ]
         }
@@ -143,22 +243,10 @@ def process_video(video_path, shot_dict, model, transform, args, device="cuda"):
         ## Transform
         inputs = transform({"video": all_frames})["video"]
 
-        inputs = inputs.unsqueeze(0).to(device)
-
-        ## Predict
-        with torch.no_grad():
-            outputs = model(inputs)
-            scale_logits = outputs["scale_logits"]
-            movement_logits = outputs["movement_logits"]
-
-        scale_pred = scale_logits.argmax(dim=-1).cpu().numpy().tolist()[0]
-        movement_pred = movement_logits.argmax(dim=-1).cpu().numpy().tolist()[0]
-
-        scale_cat = model.config.scale_id2label[str(scale_pred)]
-        movement_cat = model.config.movement_id2label[str(movement_pred)]
+        scale_cat, cumulative_distance, movement_cat = predict_shot(inputs, model, crop_type, processor, device)
 
         video_feat_dict["output_data"].append({"shot": {"start": ref_shot["start"], "end": ref_shot["end"]},
-                                               "prediction": [scale_cat, movement_cat]})
+                                               "prediction": [scale_cat, cumulative_distance, movement_cat]})
 
     return video_feat_dict
 
@@ -175,22 +263,10 @@ def main():
 
     model, processor = get_model(device)
 
+    output_filename = OUTPUT_FILENAMES[args.crop_type]
+
     ## Transforms
-    test_transform = Compose(
-    [
-        ApplyTransformToKey(
-            key="video",
-            transform=Compose(
-            [
-                Lambda(lambda x: x.permute(0, 3, 1, 2)), # T, H, W, C -> T, C, H, W
-                UniformTemporalSubsample(16),
-                Lambda(lambda x: x / 255.0),
-                Normalize(processor.image_mean, processor.image_std),
-                Resize((model.config.image_size, model.config.image_size)),
-                ]
-            ),
-        ),
-    ])
+    test_transform = get_transform(args.crop_type, model.config.image_size, processor)
 
     videos = args.videos
     for vi, video_path in enumerate(videos):
@@ -198,7 +274,7 @@ def main():
         vidname = os.path.splitext(os.path.basename(video_path))[0]
         output_dir = os.path.join(args.pkl_dir, vidname)
 
-        if os.path.exists(os.path.join(output_dir, "videoshot_scalemovement.pkl")):
+        if os.path.exists(os.path.join(output_dir, output_filename)) and not args.resume:
             logging.info(f"\tFound existing pickle file in {output_dir}, skipping")
             continue
 
@@ -213,9 +289,9 @@ def main():
 
         logging.info(f"\tNumber of shots: {len(shot_content['output_data']['shots'])}")
 
-        video_feat_dict = process_video(video_path, shot_content, model, test_transform, args, device)
+        video_feat_dict = process_video(video_path, shot_content, model, test_transform, processor, args.crop_type, args, device)
 
-        with open(os.path.join(output_dir, "videoshot_scalemovement.pkl"), "wb") as output_file:
+        with open(os.path.join(output_dir, output_filename), "wb") as output_file:
             pickle.dump(video_feat_dict, output_file)
 
         print("%%\n")

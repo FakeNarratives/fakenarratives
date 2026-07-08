@@ -12,7 +12,7 @@ from typing import List, Dict, Any, Tuple
 from collections import defaultdict
 from sklearn.cluster import DBSCAN
 from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler, normalize
+from sklearn.preprocessing import normalize
 
 sys.path.append(".")
 from project_utils import read_video_and_get_info, set_seeds, setup_logging
@@ -85,13 +85,10 @@ def process_tracks(face_tracking: Dict[str, Any]) -> Dict[str, np.ndarray]:
     return track_embeddings
 
 def improved_clustering(embeddings: np.ndarray, eps: float = 0.5, metric: str = 'cosine') -> np.ndarray:
-    # Standardize features
-    scaler = StandardScaler()
-    embeddings_scaled = scaler.fit_transform(embeddings)
-
-    # Apply PCA
+    # Embeddings are already L2-normalized; StandardScaler would corrupt cosine distances
+    # Apply PCA directly on normalized embeddings
     pca = PCA(n_components=0.95)
-    embeddings_pca = pca.fit_transform(embeddings_scaled)
+    embeddings_pca = pca.fit_transform(embeddings)
     logging.info(f"PCA: {embeddings_pca.shape}")
 
     # Use DBSCAN
@@ -115,10 +112,13 @@ def extract_face_image(bbox: List[float], frame: np.ndarray) -> np.ndarray:
     face_img = frame[y1:y2, x1:x2]
     return cv2.resize(face_img, (224, 224))
 
-def visualize_clusters(face_tracking: Dict[str, Any], clusters: np.ndarray, unique_clusters: np.ndarray, output_dir: Path, vr: List[np.ndarray]) -> None:
+def visualize_clusters(face_tracking: Dict[str, Any], track_cluster_map: Dict[str, int], unique_clusters: np.ndarray, output_dir: Path, vr: List[np.ndarray]) -> None:
     """Visualize clusters by creating grids of face images"""
     cluster_faces = defaultdict(list)
-    for track, cluster in zip(face_tracking['y'], clusters):
+    for track in face_tracking['y']:
+        cluster = track_cluster_map.get(track['track_id'])
+        if cluster is None:
+            continue
         if track['frames']:
             mid_frame = track['frames'][len(track['frames'])//2]
             frame_image = vr[mid_frame['frame_number']]
@@ -156,7 +156,8 @@ def process_video(video_path: Path, output_dir: Path, args: argparse.Namespace) 
     # Process tracks to get embeddings
     track_embeddings = process_tracks(face_tracking)
 
-    # Prepare data for clustering
+    # Prepare data for clustering — preserve track_id order to avoid positional misalignment
+    track_ids = list(track_embeddings.keys())
     embeddings = list(track_embeddings.values())
 
     embeddings = np.array(normalize(embeddings))
@@ -168,6 +169,9 @@ def process_video(video_path: Path, output_dir: Path, args: argparse.Namespace) 
     num_clusters = len(unique_clusters)
     logging.info(f"Number of clusters: {num_clusters}")
 
+    # Build track_id -> cluster_id map to avoid zip misalignment when tracks lack embeddings
+    track_cluster_map = {tid: int(c) for tid, c in zip(track_ids, clusters)}
+
     # Visualize clusters if requested
     if args.visualize:
         vr, frame_width, frame_height, fps, real_fps = read_video_and_get_info(str(video_path), args, args.workers, face_content["args"]["fps"])
@@ -177,16 +181,19 @@ def process_video(video_path: Path, output_dir: Path, args: argparse.Namespace) 
 
         vis_output_dir = output_dir / "cluster_visualizations"
         vis_output_dir.mkdir(parents=True, exist_ok=True)
-        visualize_clusters(face_tracking, clusters, unique_clusters, vis_output_dir, vr)
+        visualize_clusters(face_tracking, track_cluster_map, unique_clusters, vis_output_dir, vr)
 
     # Prepare clustering results in the desired format
     clustering_results = []
-    for track, cluster in zip(face_tracking['y'], clusters):
+    for track in face_tracking['y']:
+        cluster = track_cluster_map.get(track['track_id'])
+        if cluster is None:
+            continue
         for frame in track['frames']:
             clustering_results.append({
                 "face_id": frame['face_id'],
                 "track_id": track['track_id'],
-                "cluster_id": int(cluster)
+                "cluster_id": cluster
             })
 
     return clustering_results

@@ -5,7 +5,7 @@ from typing import List, Dict, Tuple
 import pandas as pd
 import numpy as np
 from text_utils import *
-from umap import UMAP
+import umap
 from hdbscan import HDBSCAN
 from sentence_transformers import SentenceTransformer
 from sklearn.feature_extraction.text import CountVectorizer
@@ -13,6 +13,9 @@ from bertopic import BERTopic
 from bertopic.representation import KeyBERTInspired, MaximalMarginalRelevance
 from bertopic.vectorizers import ClassTfidfTransformer
 from typing import Union
+import sys
+sys.path.append(".")
+from project_utils import set_seeds
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Topic modeling for German news videos")
@@ -20,9 +23,9 @@ def parse_args():
     parser.add_argument("-o", "--out_dir", type=str, required=True, help="Directory to save output files")
     parser.add_argument("--min_clust_size", type=int, default=10, help="Minimum cluster size for HDBSCAN")
     parser.add_argument("--min_samples", type=int, default=5, help="Minimum samples for HDBSCAN")
-    parser.add_argument("--diversity", type=float, default=0.5, help="Diversity parameter for MMR")
-    parser.add_argument("--neighbors", type=int, default=10, help="Number of neighbors for UMAP")
-    parser.add_argument("--components", type=int, default=20, help="Number of components for UMAP")
+    parser.add_argument("--diversity", type=float, default=0.7, help="Diversity parameter for MMR")
+    parser.add_argument("--neighbors", type=int, default=5, help="Number of neighbors for UMAP")
+    parser.add_argument("--components", type=int, default=10, help="Number of components for UMAP")
     return parser.parse_args()
 
     """
@@ -55,8 +58,10 @@ def load_asr_data(directory: str, min_words: int = 5) -> Tuple[List[str], List[D
     video_to_text = {}
     video_to_speaker_turns = {}
 
-    for video_folder in os.listdir(directory):
-        video_folder_path = os.path.join(directory, video_folder)
+    for video in os.listdir(directory):
+        vidname = os.path.splitext(video)[0]
+        video_folder_path = os.path.join(directory.replace("videos", "results_pkl"), vidname)
+
         if not os.path.isdir(video_folder_path):
             continue
 
@@ -70,17 +75,17 @@ def load_asr_data(directory: str, min_words: int = 5) -> Tuple[List[str], List[D
         full_text = data['output_data']['text']
         if isinstance(full_text, str) and len(full_text.split()) >= min_words:
             full_texts.append(full_text)
-            video_to_text[video_folder] = full_text
+            video_to_text[vidname] = full_text
 
-        speaker_turns = get_speaker_turns(data['output_data']['speaker_segments'])
+        speaker_turns = data['output_data']['speaker_turns']
         filtered_turns = [
-            {'start': turn['start'], 'end': turn['end'], 'text': turn['text']}
-            for turn in speaker_turns 
+            {'id': tid, 'start': turn['start'], 'end': turn['end'], 'text': turn['text']}
+            for tid, turn in enumerate(speaker_turns) 
             if isinstance(turn['text'], str) and len(turn['text'].split()) >= min_words
         ]
         if filtered_turns:
             all_speaker_turns.extend(filtered_turns)
-            video_to_speaker_turns[video_folder] = filtered_turns
+            video_to_speaker_turns[vidname] = filtered_turns
 
     print(f"Loaded {len(full_texts)} full texts and {len(all_speaker_turns)} speaker turns.")
     return full_texts, all_speaker_turns, video_to_text, video_to_speaker_turns
@@ -90,13 +95,13 @@ def load_asr_data(directory: str, min_words: int = 5) -> Tuple[List[str], List[D
 def create_topic_model(args):
     # Load custom stopwords
     stopwords = []
-    with open("text_analysis/stopwords.txt", "r") as fr:
+    with open("analysis_text/stopwords.txt", "r") as fr:
         for line in fr:
             stopwords.append(line.strip())
 
     ## paraphrase-multilingual-MiniLM-L12-v2
     embedding_model = SentenceTransformer("paraphrase-multilingual-mpnet-base-v2")
-    umap_model = UMAP(n_neighbors=args.neighbors, n_components=args.components, metric='cosine')
+    umap_model = umap.UMAP(n_neighbors=args.neighbors, n_components=args.components, metric='cosine')
     hdbscan_model = HDBSCAN(min_cluster_size=args.min_clust_size, min_samples=args.min_samples, 
                             metric='euclidean', cluster_selection_method='eom', prediction_data=True)
     vectorizer_model = CountVectorizer(stop_words=stopwords)
@@ -154,7 +159,8 @@ def run_topic_modeling(texts: List[Union[str, Dict]], model: BERTopic,
 
 def save_results(out_dir: str, video_topics: List[int], video_topic_info: Dict,
                  turn_topics: List[int], turn_topic_info: Dict,
-                 video_to_text: Dict[str, str], video_to_speaker_turns: Dict[str, List[Dict]]):
+                 video_to_text: Dict[str, str], video_to_speaker_turns: Dict[str, List[Dict]],
+                 id_to_topic_turns: Dict[int, str]):
     os.makedirs(out_dir, exist_ok=True)
 
     # Save video-level topics
@@ -167,14 +173,29 @@ def save_results(out_dir: str, video_topics: List[int], video_topic_info: Dict,
     # Save speaker turn topics
     turn_data = []
     for video, turns in video_to_speaker_turns.items():
+        video_turns = []
         for i, turn in enumerate(turns):
             turn_data.append({
                 'video': video,
-                'turn_index': i,
+                'turn_index': turn['id'],
                 'start': turn['start'],
                 'end': turn['end'],
                 'topic': turn_topics[len(turn_data)] if len(turn_data) < len(turn_topics) else -1
             })
+
+            video_turns.append(
+                {
+                    'turn_index': turn['id'],
+                    'start': turn['start'],
+                    'end': turn['end'],
+                    'text': turn['text'],
+                    'topic': id_to_topic_turns[turn_data[-1]['topic']]["name"],
+                    'words': id_to_topic_turns[turn_data[-1]['topic']]["words"]
+                }
+            )
+
+        pickle.dump(video_turns, open(os.path.join(out_dir, "pkls", f"{video}_turn_topics.pkl"), "wb"))
+
     turn_df = pd.DataFrame(turn_data)
     turn_df.to_csv(os.path.join(out_dir, 'speaker_turn_topics.csv'), index=False)
 
@@ -185,6 +206,8 @@ def save_results(out_dir: str, video_topics: List[int], video_topic_info: Dict,
 
 def main():
     args = parse_args()
+
+    set_seeds(42)
 
     # Load ASR data
     full_texts, all_speaker_turns, video_to_text, video_to_speaker_turns = load_asr_data(args.inp_dir, 25)
@@ -204,9 +227,11 @@ def main():
     print("Processing speaker turn texts:")
     turn_topics, turn_topic_info = run_topic_modeling(all_speaker_turns, topic_model)
 
+    id_to_topic_turns = {topic['Topic'] : {"name": topic['Name'], "words": topic["Representation"]} for topic in turn_topic_info}
+
     # Save results
     save_results(args.out_dir, video_topics, video_topic_info, turn_topics, turn_topic_info, 
-                 video_to_text, video_to_speaker_turns)
+                 video_to_text, video_to_speaker_turns, id_to_topic_turns)
 
 if __name__ == "__main__":
     main()

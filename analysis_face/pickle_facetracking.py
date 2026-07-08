@@ -39,7 +39,7 @@ def parse_args():
     parser.add_argument(
         "--min_track",
         type=int,
-        default=25,
+        default=10,
         help="Number of min frames for each shot"
     )
     parser.add_argument(

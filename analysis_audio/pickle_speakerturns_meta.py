@@ -57,27 +57,31 @@ def find_overlapping_faces(reference_turn: Dict[str, Any], faces: List[Dict[str,
             overlapping_faces.append({"face_id": face["face_id"], "time": face_time, "cluster_id": face["cluster_id"], 
                                     "speaking_ratio": face["speaking_ratio"], "speaking": face["speaking"], "bbox": face["bbox"]})
 
+    if not overlapping_faces:
+        return None, None, None
+
     unique_faces = {}
     for face in overlapping_faces:
-        if face["cluster_id"] not in unique_faces and face["cluster_id"] is not None:
+        if face["cluster_id"] is None:
+            continue
+        if face["cluster_id"] not in unique_faces:
             unique_faces[face["cluster_id"]] = [face]
         else:
             unique_faces[face["cluster_id"]].append(face)
 
-    largest_duration = 0
-    largest_cluster_id = None
-    for cluster_id, faces in unique_faces.items():
-        time_diff = faces[-1]["time"] - faces[0]["time"]
-        # fc_idx = int(len(faces)/2)
-        # print(cluster_id, faces[fc_idx]["time"], faces[fc_idx]["speaking_ratio"], faces[fc_idx]["speaking"])
-        if time_diff > largest_duration:
-            largest_duration = time_diff
-            largest_cluster_id = cluster_id
+    if unique_faces:
+        largest_duration = 0
+        largest_cluster_id = None
+        for cluster_id, cluster_faces in unique_faces.items():
+            time_diff = cluster_faces[-1]["time"] - cluster_faces[0]["time"]
+            if time_diff >= largest_duration:
+                largest_duration = time_diff
+                largest_cluster_id = cluster_id
+        return largest_cluster_id, largest_duration, unique_faces[largest_cluster_id]
 
-    if largest_cluster_id is None:
-        return None, None, None
-    
-    return largest_cluster_id, largest_duration, unique_faces[face["cluster_id"]]
+    # Speaking faces exist but none have a cluster_id (one-shot person) — still a valid speaker
+    duration = overlapping_faces[-1]["time"] - overlapping_faces[0]["time"]
+    return None, duration, overlapping_faces
     
 
 def process_video(video_path: Path, output_dir: Path, threshold: float) -> bool:
@@ -111,7 +115,7 @@ def process_video(video_path: Path, output_dir: Path, threshold: float) -> bool:
 
             face_cluster_id, largest_face_duration, largest_face = find_overlapping_faces(turn, faces, fps)
             
-            if face_cluster_id is not None:
+            if largest_face is not None:
                 turn_duration = turn['end'] - turn['start']
                 active_ratio = largest_face_duration / turn_duration
                 updated_turn['active'] = active_ratio > threshold
@@ -141,7 +145,7 @@ def process_video(video_path: Path, output_dir: Path, threshold: float) -> bool:
         new_pickle_path = output_dir / "speaker_turns_meta.pkl"
         save_pickle(video_feat_dict, new_pickle_path)
         logging.info(f"Updated speaker turns and saved to {new_pickle_path}")
-        
+
         return True
     except Exception as e:
         logging.error(f"Error processing video {video_path}: {str(e)}")

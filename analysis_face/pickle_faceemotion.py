@@ -173,7 +173,7 @@ def process_video(video_path: Path, output_dir: Path, model: Sequential, args: a
             if face_img.size == 0:
                 continue
             
-            face_img = cv2.cvtColor(face_img, cv2.COLOR_BGR2GRAY)
+            face_img = cv2.cvtColor(face_img, cv2.COLOR_RGB2GRAY)
             face_batch.append(face_img)
             face_info_batch.append({"face_id": face["id"], "frame": frame_index, "time": face["time"]})
 

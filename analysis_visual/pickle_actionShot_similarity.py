@@ -19,6 +19,9 @@ def parse_args():
     parser.add_argument("-o", "--pkl_dir", type=str, required=True, help="path to the output folder")
     parser.add_argument("-m", "--model", type=str, default="kinetics-vmae", help="kinetics-vmae | ssv2-vmae | kinetics-xclip")
     parser.add_argument("-w", "--num_workers", type=int, default=4, help="number of workers to use for data loading")
+    parser.add_argument("-r", "--rewrite", action="store_true", help="rewrite existing pickle files")
+    parser.add_argument("-n", "--num_neighbors", type=int, default=2,
+                        help="number of previous/next neighboring shots to compute similarity for, on each side")
     parser.add_argument(
         "--max_dimension",
         type=int,
@@ -49,12 +52,6 @@ def get_model(model_type, device):
     return model, processor
 
 
-def get_shot_frames(index, shots):
-    if 0 <= index < len(shots):
-        return shots[index]["start_frame"], shots[index]["end_frame"]
-    return None, None
-
-
 def sample_frame_indices(clip_len, indices):
     if len(indices) <= clip_len:
         return indices + [indices[-1]] * (clip_len - len(indices))
@@ -72,25 +69,30 @@ def process_frames(frames, processor, model_type):
     return inputs
 
 
-def compute_similarity(ref_feat, query_video, model_type, model, processor, device):
-    query_inputs = process_frames(query_video, processor, model_type).to(device)
-    
+def get_shot_feature(vr, shot, total_frames, clip_len, model_type, model, processor, device):
+    indices = [k for k in range(shot["start_frame"], min(shot["end_frame"] + 1, total_frames))]
+    indices = sample_frame_indices(clip_len, indices)
+    frames = vr.get_batch(indices)
+    inputs = process_frames(list(frames), processor, model_type).to(device)
     with torch.no_grad():
         if "vmae" in model_type:
-            outputs = model(**query_inputs).last_hidden_state.squeeze(0)
-            query_feat = outputs[0].unsqueeze(0).cpu().numpy()
+            outputs = model(**inputs).last_hidden_state.squeeze(0)
+            feat = outputs[0].unsqueeze(0).cpu().numpy()
         else:
-            query_feat = model.get_video_features(**query_inputs).cpu().numpy()
-        
-        similarity = cosine_similarity(ref_feat, query_feat)[0][0]
+            feat = model.get_video_features(**inputs).cpu().numpy()
+    return feat
 
-    return similarity
+
+def get_neighbor_keys(num_neighbors):
+    offsets = list(range(-num_neighbors, 0)) + list(range(1, num_neighbors + 1))
+    keys = [f"prev_{abs(offset)}" if offset < 0 else f"next_{offset}" for offset in offsets]
+    return list(zip(offsets, keys))
 
 
 def process_video(video_path, shot_dict, model_type, model, processor, args, device="cuda"):
     """
-    Take VideoMAE model and process the video to get shot similarity between two neibhboring shots from the reference shot in a video.
-    Reference shot: i, Neighboring shots: i-2, i+1, i+1, i+2
+    Take VideoMAE model and process the video to get shot similarity between neighboring shots and the reference shot in a video.
+    Reference shot: i, Neighboring shots: i-args.num_neighbors, ..., i-1, i+1, ..., i+args.num_neighbors
 
     Args:
         video_path (str): path to video
@@ -117,11 +119,14 @@ def process_video(video_path, shot_dict, model_type, model, processor, args, dev
                     },
                     "prev_1": 0.0,  ## Video level similarity score over 16/8 frames
                     "prev_2": 0.0,
+                    ...
                     "next_1": 0.0,
-                    "next_2": 0.0 
+                    "next_2": 0.0,
+                    ...
                 }
             ]
         }
+        Number of prev_N/next_N keys is controlled by args.num_neighbors.
     """
 
     video_feat_dict = {"github_repo": "", "commit_id": "", "parameters": "default", "video_file": video_path, "output_data": []}
@@ -143,36 +148,24 @@ def process_video(video_path, shot_dict, model_type, model, processor, args, dev
     total_frames = len(vr)
 
     clip_len = 16 if "vmae" in model_type else 8
+    shots = shot_dict["output_data"]["shots"]
 
-    for i, ref_shot in enumerate(tqdm(shot_dict["output_data"]["shots"])):
+    # Extract and cache each shot's feature vector once, instead of recomputing it
+    # every time the shot is used as another shot's neighbor.
+    shot_feats = [get_shot_feature(vr, shot, total_frames, clip_len, model_type, model, processor, device)
+                  for shot in tqdm(shots, desc="Extracting shot features")]
+
+    neighbor_offsets_keys = get_neighbor_keys(args.num_neighbors)
+
+    for i, ref_shot in enumerate(tqdm(shots, desc="Computing shot similarities")):
         ## For each shot and reference shot - cls tag similarity from last hidden state
-        similarities = {"shot": ref_shot, "prev_1": 0, "prev_2": 0, "next_1": 0, "next_2": 0}
+        similarities = {"shot": ref_shot}
+        similarities.update({key: 0 for _, key in neighbor_offsets_keys})
 
-        ## Compute reference shot feats
-        ref_indices = [k for k in range(ref_shot["start_frame"], min(ref_shot["end_frame"] + 1, total_frames))]
-        ref_indices = sample_frame_indices(clip_len, ref_indices)
-        ref_frames = vr.get_batch(ref_indices)
-        ref_inputs = process_frames(ref_frames, processor, model_type).to(device)
-        with torch.no_grad():
-            if "vmae" in model_type:
-                outputs = model(**ref_inputs).last_hidden_state.squeeze(0)
-                ref_feat = outputs[0].unsqueeze(0).cpu().numpy()
-            else:
-                ref_feat = model.get_video_features(**ref_inputs).cpu().numpy()
-
-        # Time frames for the current and neighboring shots
-        shot_frames = [get_shot_frames(i + offset, shot_dict["output_data"]["shots"]) for offset in [-2, -1, 1, 2]]
-
-        # Extract and compute for each neighboring shot
-        for j, (start_frame, end_frame) in enumerate(shot_frames):
-            if start_frame is not None and end_frame is not None:
-                query_indices = [k for k in range(start_frame, min(end_frame + 1, total_frames))]
-                ## Sample 16 frames from the reference shot
-                query_indices = sample_frame_indices(clip_len, query_indices)
-                query_frames = vr.get_batch(query_indices)
-                similarity_key = ["prev_2", "prev_1", "next_1", "next_2"][j]
-                similarities[similarity_key] = compute_similarity(ref_feat, list(query_frames), model_type, model, processor, device)
-
+        for offset, key in neighbor_offsets_keys:
+            j = i + offset
+            if 0 <= j < len(shots):
+                similarities[key] = cosine_similarity(shot_feats[i], shot_feats[j])[0][0]
 
         video_feat_dict["output_data"].append(similarities)
 
@@ -196,6 +189,11 @@ def main():
         logging.info(f"\tProcessing video [{vi+1}/{len(videos)}]: {video_path}")
         vidname = os.path.splitext(os.path.basename(video_path))[0]
         output_dir = os.path.join(args.pkl_dir, vidname)
+
+        # Skip if pickle file already exists
+        if os.path.exists(os.path.join(output_dir, f"{args.model}_action_shot_similarity.pkl")) and not args.rewrite:
+            logging.info(f"\tFound pkl: {output_dir}, skipping")
+            continue
 
         shot_detection_path = os.path.join(output_dir, "transnet_shotdetection.pkl")
 

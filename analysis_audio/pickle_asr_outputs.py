@@ -87,7 +87,8 @@ def transcribe_video(video_path: Path, output_dir: Path, model: Any, diarize_mod
     audio = whisperx.load_audio(str(audio_path))
 
     result = model.transcribe(audio, batch_size=batch_size)
-    alignment_model, metadata = whisperx.load_align_model(language_code=result["language"], device=device)
+    language_code = result["language"]
+    alignment_model, metadata = whisperx.load_align_model(language_code=language_code, device=device)
     result = whisperx.align(result["segments"], alignment_model, metadata, audio, device, return_char_alignments=False)
     aligned_segments = result["segments"]
 
@@ -97,7 +98,7 @@ def transcribe_video(video_path: Path, output_dir: Path, model: Any, diarize_mod
     speaker_turns = get_speaker_turns(result["segments"])
 
     asr_result = {
-        "language": "de",
+        "language": language_code,
         "text": " ".join(seg["text"].strip() for seg in aligned_segments),
         "segments": aligned_segments,
         "speaker_segments": result["segments"],
