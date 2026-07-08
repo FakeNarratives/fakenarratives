@@ -10,5 +10,5 @@ WORKERS=$3
 # do
 echo %%%% $CHANNEL
 videos=$(ls -d /nfs/data/fakenarratives/${YEAR}_corpus/videos/$CHANNEL/*)
-python analysis_face/pickle_light-asd.py -v $videos -o /nfs/data/fakenarratives/${YEAR}_corpus/results_pkl/$CHANNEL --workers $WORKERS
+python analysis_face/pickle_light-asd.py -v $videos -o /nfs/data/fakenarratives/${YEAR}_corpus/results_pkl/$CHANNEL --workers $WORKERS -r
 # done

@@ -9,69 +9,69 @@ base:
     color: "#66cc66"
     shape: dot
 nodes:
-  camera_size_classification:
-    type: attribute
-    attribute: 
-      target: shot
-      value: mean
-  face_analysis:
-    type: attribute
-    attribute:
-      target: shot
-  instructblip_actions:
-    type: node
-    plugin_type: query
-    color: "#ffffff"
-    shape: dot
-    relation: 
-      target: shot
-      weight: mean
-      threshold: 0.5
-  instructblip_daytime:
-    type: node
-    plugin_type: query
-    color: "#ffffff"
-    shape: dot
-    relation: 
-      target: shot
-      weight: mean
-      threshold: 0.5
-  instructblip_environment:
-    type: node
-    plugin_type: query
-    color: "#ffffff"
-    shape: dot
-    relation: 
-      target: shot
-      weight: mean
-      threshold: 0.5
-  instructblip_news_events:
-    type: node
-    plugin_type: query
-    color: "#ffffff"
-    shape: dot
-    relation: 
-      target: shot
-      weight: mean
-      threshold: 0.5
-  instructblip_news_roles:
-    type: node
-    plugin_type: query
-    color: "#ffffff"
-    shape: dot
-    relation: 
-      target: shot
-      weight: mean
-      threshold: 0.5
-  instructblip_weather:
-    type: node
-    plugin_type: query
-    color: "#ffffff"
-    shape: dot
-    relation: 
-      target: shot
-      weight: mean
-      threshold: 0.5
+  # camera_size_classification:
+  #   type: attribute
+  #   attribute: 
+  #     target: shot
+  #     value: mean
+  # face_analysis:
+    # type: attribute
+    # attribute:
+      # target: shot
+  # instructblip_actions:
+  #   type: node
+  #   plugin_type: query
+  #   color: "#ffffff"
+  #   shape: dot
+  #   relation: 
+  #     target: shot
+  #     weight: mean
+  #     threshold: 0.5
+  # instructblip_daytime:
+  #   type: node
+  #   plugin_type: query
+  #   color: "#ffffff"
+  #   shape: dot
+  #   relation: 
+  #     target: shot
+  #     weight: mean
+  #     threshold: 0.5
+  # instructblip_environment:
+  #   type: node
+  #   plugin_type: query
+  #   color: "#ffffff"
+  #   shape: dot
+  #   relation: 
+  #     target: shot
+  #     weight: mean
+  #     threshold: 0.5
+  # instructblip_news_events:
+  #   type: node
+  #   plugin_type: query
+  #   color: "#ffffff"
+  #   shape: dot
+  #   relation: 
+  #     target: shot
+  #     weight: mean
+  #     threshold: 0.5
+  # instructblip_news_roles:
+  #   type: node
+  #   plugin_type: query
+  #   color: "#ffffff"
+  #   shape: dot
+  #   relation: 
+  #     target: shot
+  #     weight: mean
+  #     threshold: 0.5
+  # instructblip_weather:
+  #   type: node
+  #   plugin_type: query
+  #   color: "#ffffff"
+  #   shape: dot
+  #   relation: 
+  #     target: shot
+  #     weight: mean
+  #     threshold: 0.5
   shot_audioClf:
     type: attribute
     attribute:

@@ -19,6 +19,18 @@ narrative_analysis_github/
 analysis_text/spkrturn_annotations/
 analysis_text/evaluate_llm_spkrturns.py
 analysis_text/annotation_spkturn.py
+object_det_stuff/
+places365/
+pretrained_models/
+gaze_output/
+create_symlinks.sh
+corpus_stats.py
+leandra_videos/
+wav2vec2_checkpoints/
+what_to_run_again.sh
+face_data_check.py
+llm_spkrturns_results*
+corpus_outputs/elan_202409/
 
 
 # Byte-compiled / optimized / DLL files

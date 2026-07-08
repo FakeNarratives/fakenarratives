@@ -1,14 +1,19 @@
-#!/bin/sh
+# #!/bin/sh
 
-YEAR=$1
-CHANNEL=$2
-WORKERS=$3
+# YEAR=$1
+# CHANNEL=$2
+# WORKERS=$3
 
-# NEWSCHANNELS=(BildTV Tagesschau Welt HeuteJournal CompactTV)
+# # NEWSCHANNELS=(BildTV Tagesschau Welt HeuteJournal CompactTV)
 
-# for c in ${NEWSCHANNELS[*]}
-# do
-echo %%%% $CHANNEL
-videos=$(ls -d /nfs/data/fakenarratives/${YEAR}_corpus/videos/$CHANNEL/*)
-python analysis_visual/pickle_shotdetection.py -v $videos -o /nfs/data/fakenarratives/${YEAR}_corpus/results_pkl/$CHANNEL --workers $WORKERS
-# done
+# # for c in ${NEWSCHANNELS[*]}
+# # do
+# echo %%%% $CHANNEL
+# videos=$(ls -d /nfs/data/fakenarratives/${YEAR}_corpus/videos/$CHANNEL/*)
+# python analysis_visual/pickle_shotdetection.py -v $videos -o /nfs/data/fakenarratives/${YEAR}_corpus/results_pkl/$CHANNEL --workers $WORKERS
+# # done
+
+WORKERS=$1
+
+videos=$(ls -d /nfs/data/vian-light/Filme_UZH/*)
+python analysis_visual/pickle_shotdetection.py -v $videos -o /nfs/data/vian-light_pkls --workers $WORKERS

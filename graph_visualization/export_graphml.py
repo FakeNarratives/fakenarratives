@@ -178,7 +178,7 @@ def add_attributes_shot(G, plugin, data, config, args):
                     node_attr["title"] += f"{lab}: {round(prob,2)}, "
     elif "face_analysis" in plugin:
         # get plugin fps and face information
-        fps = data["plugins"][0]["parameters"]["fps"]
+        fps = data["args"]["fps"]
         faces = data["faces"]
 
         # create node for face clusters
@@ -336,26 +336,26 @@ def add_attributes_speakerturn(G, plugin, data, config):
                 continue
 
             # TODO Gullal: Why can it happen that the sentiment output has less entries as there are speaker turns?
-            if node_attr["index"] > len(data["output_data"]["sentence_wise"]) - 1:
+            if node_attr["index"] > len(data["output_data"]["model_news"]["sentence_wise"]) - 1:
                 logging.warning(
                     "sentiment: Number of speaker turns does not match output data"
                 )
                 continue
 
 
-            if data["output_data"]["sentence_wise"][node_attr["index"]]["vector"] is None:
+            if data["output_data"]["model_news"]["sentence_wise"][node_attr["index"]]["vector"] is None:
                 node_attr[f"{plugin}"] = "None"
                 node_attr["title"] += f"{plugin}: None"
             else:
-                vector = data["output_data"]["sentence_wise"][node_attr["index"]]["vector"]
+                vector = data["output_data"]["model_news"]["sentence_wise"][node_attr["index"]]["vector"]
                 proportion_sentiment = config["labels"][np.argmax(vector)]
                 proportion_max_value = round(np.max(vector), 2)
-                prediction = data["output_data"]["speakerturn_wise"][node_attr["index"]][
+                prediction = data["output_data"]["model_news"]["speakerturn_wise"][node_attr["index"]][
                     "pred"
                 ]
                 max_value = round(
                     np.max(
-                        data["output_data"]["speakerturn_wise"][node_attr["index"]]["prob"]
+                        data["output_data"]["model_news"]["speakerturn_wise"][node_attr["index"]]["prob"]
                     ),
                     2,
                 )

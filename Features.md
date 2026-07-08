@@ -1,3 +1,12 @@
+# Consolidated Outputs for Pattern Mining
+
+For downstream pattern mining, prefer these merged outputs over intermediate files:
+
+- `asr_whisperx.pkl`: consolidated ASR + diarization + word alignment + speaker turns.
+- `face_analysis.pkl`: consolidated face detection/tracking/clustering/gaze/ASD/emotion per detected face instance.
+- `speaker_turns_meta.pkl`: consolidated speaker turns + active-speaker signal + role labels + situation labels.
+- `srr_nsr_features.pkl`: fused multimodal vectors per speaker turn used for role/situation prediction models.
+
 # Audio Feature Extraction
 
 ## ASR (Automatic Speech Recognition)
@@ -57,6 +66,7 @@
   - `language`: Detected language of the transcription
   - `speaker_segments`: Speaker diarization segments
   - `word_segments`: Word-level alignment data
+    - `speaker_turns`: Speaker-turn segmentation with text and word count (`n_words`)
 
 ## Shot Audio Similarity
 
@@ -312,11 +322,54 @@
             "start": 0.0,
             "end": 10.0,
             "speaker": "SPEAKER_01",
-            "sentiment": "very positive"  // ["very negative", "neutral", "very positive"]
+            "label": "very positive"  // ["very negative", "neutral", "very positive"]
         }
     ]
 }
 ```
+
+- `llm_sentiment_2.pkl` currently uses `label` (not `sentiment`) for the 3-class output.
+- `llm_sentiment.pkl` is the 5-class variant when available.
+
+### Filename: `whisperx_sentiment.pkl`
+
+```json
+{
+    "github_repo": "<URL of the GitHub repo(s) separated by ;>",
+    "commit_id": "<Commit ID(s) of the model(s) used, separated by ;>",
+    "parameters": "default",
+    "video_file": "/path/to/video.mp4",
+    "output_data": {
+        "sent_labelmap": {"positive": 0, "negative": 1, "neutral": 2},
+        "model_news": {
+            "sentence_wise": [
+                {
+                    "start": 0.0,
+                    "end": 10.0,
+                    "speaker": "SPEAKER_01",
+                    "vector": [0.2, 0.1, 0.7]
+                }
+            ],
+            "speakerturn_wise": [
+                {
+                    "start": 0.0,
+                    "end": 10.0,
+                    "speaker": "SPEAKER_01",
+                    "pred": "neutral",
+                    "prob": [0.2, 0.1, 0.7]
+                }
+            ]
+        },
+        "model_general": {"sentence_wise": [], "speakerturn_wise": []},
+        "model_multi": {"sentence_wise": [], "speakerturn_wise": []}
+    }
+}
+```
+
+- `output_data.sent_labelmap`: label to index mapping used by vectors/probabilities.
+- `model_news`, `model_general`, `model_multi`: outputs from three sentiment models.
+- `sentence_wise.vector`: normalized sentiment proportion over all sentences in a speaker turn.
+- `speakerturn_wise.pred` and `speakerturn_wise.prob`: turn-level predicted label and probabilities.
 
 ## Evaluative Talk Classification of Speaker Turns with LLM
 
@@ -552,7 +605,8 @@
 
 ## Shot Scale/Movement Classification
 
-### Filename: `videoshot_scalemovement.pkl`
+### Filenames:
+- `videoshot_scalemovement.pkl`
 
 ```json
 {
@@ -566,7 +620,7 @@
                 "start": 0.0,  // Start time of the shot in seconds
                 "end": 1.0     // End time of the shot in seconds
             },
-            "prediction": ["MS", "static"]  // [predicted_scale_class, predicted_movement_class]
+            "prediction": ["MS", 2.87, "static"]  // [predicted_scale_class, cumulative_distance, predicted_movement_class]
         }
     ]
 }
@@ -578,11 +632,16 @@
 - `video_file`: Full path to the video file
 - `output_data`: List of shot scale and movement classification results for each shot
   - `shot`: Start and end times of the shot in seconds
-  - `prediction`: List containing predicted scale class and movement class for the shot
+    - `prediction` for `videoshot_scalemovement_*`: `[predicted_scale_class, cumulative_distance, predicted_movement_class]`
+    - `prediction` for `videoshot_scale_*`: `[predicted_scale_class, cumulative_distance]`
+    - `cumulative_distance`: expected scale value from softmax probabilities, useful as continuous scale intensity
+    
 
 ## Face Analysis
 
 ### Filename: `face_analysis.pkl`
+
+This is the consolidated face feature file for downstream use. It merges face detection, tracking, clustering, head-gaze, active-speaker detection, and face emotion outputs into one structure.
 
 ```json
 {
@@ -600,19 +659,15 @@
             },
             "kpss": [...],      // Facial keypoints
             "emb": [...],       // Face embedding vector
-            "track_id": "unique_track_id",
-            "cluster_id": 0,    // ID of the face cluster this face belongs to
+            "track_id": "unique_track_id",  // Can be null if no track was assigned
+            "cluster_id": 0,    // Can be null if clustering was unavailable
             "gaze": {
                         "left_gaze_rad": [theta_x, theta_y],
                         "right_gaze_rad": [theta_x, theta_y],
                         "left_gaze_deg": [theta_x, theta_y],
                         "right_gaze_deg": [theta_x, theta_y],
             },
-            "pose": {           // Head pose information
-                "pitch": 0.0,
-                "yaw": 0.0,
-                "roll": 0.0
-            },
+            "pose": null,       // Reserved field; currently not populated in consolidation
             "speaking": false,  // Whether the face is speaking in this frame
             "speaking_ratio": 0.0,  // Ratio of frames/track where this face is speaking
             "speaking_frames": 0,   // Number of frames/track where this face is speaking
@@ -642,7 +697,7 @@
   - `track_id`: Unique identifier for the face track across frames
   - `cluster_id`: Identifier for the face cluster this face belongs to
   - `gaze`: Eye gaze direction (pitch and yaw angles)
-  - `pose`: Head pose information (pitch, yaw, and roll angles)
+    - `pose`: Reserved field (currently `null` in the merged output)
   - `speaking`: Boolean indicating if the face is speaking in this frame
   - `speaking_ratio`: Proportion of frames/track where this face is speaking
   - `speaking_frames`: Total number of frames/track where this face is speaking
@@ -650,8 +705,35 @@
   - `emotions`: Probabilities for different emotions
 - `args`: Arguments used for face detection process
 
+Downstream notes:
+- Use `time` and `frame` for alignment with shot-level and turn-level features.
+- `speaking_ratio` and `speaking_scores` are track-level ASD summaries copied onto each face instance in that track.
+
 
 # Multimodal Features
+
+## Fused SRR/NSR Feature Vectors
+
+### Filename: `srr_nsr_features.pkl`
+
+```json
+{
+    "speaker_turns": [
+        {
+            "id": 0,
+            "seg_feature": [0.0, 0.0, ...],  // Length 53
+            "sw_feature": [0.0, 0.0, ...],   // Length 137
+            "start_time": 0.0,
+            "end_time": 10.0
+        }
+    ]
+}
+```
+
+- This file fuses multiple modalities per speaker turn and is used by SRR/NSR classifiers.
+- `seg_feature`: segment-based feature vector.
+- `sw_feature`: sliding-window feature vector.
+- Temporal unit is speaker turn (`start_time`, `end_time`), enabling direct alignment with `asr_whisperx.pkl` speaker turns.
 
 ## Speaker Roles & News Situations & Active Speaker Turn
 
@@ -670,11 +752,13 @@
             "speaker": "SPEAKER_1", // Speaker label
             "active": true,         // Boolean indicating if the turn is considered active with a speaker visible on the screen
             "active_ratio": 0.85,   // Ratio of largest track face's speaking duration to turn duration
-            "active_track_id": "face_track_001", // ID of the face track with largest overlap
+            "face": {
+                "first_appearance": {"face_id": "id_1", "time": 0.2, "cluster_id": 3},
+                "last_appearance": {"face_id": "id_9", "time": 9.8, "cluster_id": 3}
+            },
             "role_l0": "anchor",    // High-level speaker role
-            "role_l1": "anchor",   // Detailed speaker role
+            "role_l1": "anchor",    // Detailed speaker role
             "situation": "Talking-head" // News situation category
-            "
         }
     ]
 }
@@ -688,13 +772,16 @@
   - `start`, `end`: Start and end times of the speaker turn in seconds
   - `speaker`: Speaker label or identifier
   - `active`: Boolean indicating if the turn is considered an active speaker turn
-  - `active_ratio`: Ratio of speaking duration to turn duration (set to 0.6)
-    - Value between 0 and 1, where higher values indicate more active speaking
-  - `active_track_id`: Identifier of the face track with the largest overlap for this turn
-    - `null` if no overlapping face track was found
+    - `active_ratio`: Ratio of speaking duration to turn duration for the best matching face cluster
+    - `face`: Matched face summary with `first_appearance` and `last_appearance`
+        - `null` if no overlapping speaking face was found
   - `role_l0`: High-level speaker role category
   - `role_l1`: Detailed speaker role category
   - `situation`: News situation or context category
+
+Downstream notes:
+- `speaker_turns_meta.pkl` is a consolidated turn-level file created from `asr_whisperx.pkl`, `face_analysis.pkl`, `icmr_speaker_roles.pkl`, and `icmr_situations.pkl`.
+- Default active-speaker threshold in the script is `0.5` (`active = active_ratio > threshold`).
 
 
 ## Large Vision-Language Model (LVLM) Analysis - Social Roles, Locations and Events
@@ -702,11 +789,11 @@
 - Run queries with LVLM on the video at 1 FPS to extract social roles, locations, and events
 
 - Presence of a label is indicated by a value of 1, while absence is indicated by 0
-- In `responses` marix of size (num_labels, num_frames), row index corresponds to the label index in label list
+- In `responses` matrix of size `(num_labels, num_frames)`, row index corresponds to the label index in label list
 
 ```json
 {
-    `"github_repo": "https://huggingface.co/Qwen/Qwen2-VL-7B-Instruct",
+    "github_repo": "https://huggingface.co/Qwen/Qwen2-VL-7B-Instruct",
     "commit_id": "51c47430f97dd7c74aa1fa6825e68a813478097f",
     "parameters": "default",
     "video_file": "video_path",
