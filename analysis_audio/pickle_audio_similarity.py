@@ -1,4 +1,3 @@
-import os
 import sys
 import torch
 import pickle
@@ -49,6 +48,13 @@ def parse_args():
         action="store_true",
         help="Rewrite existing files"
     )
+    parser.add_argument(
+        "-n",
+        "--num_neighbors",
+        type=int,
+        default=2,
+        help="Number of previous/next neighboring shots to compute similarity for, on each side"
+    )
     return parser.parse_args()
 
 def get_model(model_type: str, device: str) -> Tuple[Any, Any]:
@@ -70,12 +76,12 @@ def get_model(model_type: str, device: str) -> Tuple[Any, Any]:
     model.eval()
     return model, processor
 
-def get_shot_time(index: int, shots: List[Dict[str, float]]) -> Tuple[float, float]:
-    if 0 <= index < len(shots):
-        return shots[index]["start"], shots[index]["end"]
-    return None, None
+def get_neighbor_keys(num_neighbors: int) -> List[Tuple[int, str]]:
+    offsets = list(range(-num_neighbors, 0)) + list(range(1, num_neighbors + 1))
+    keys = [f"prev_{abs(offset)}" if offset < 0 else f"next_{offset}" for offset in offsets]
+    return list(zip(offsets, keys))
 
-def get_waveform(audio_path: str, start_time: float, end_time: float) -> torch.Tensor:    
+def get_waveform(audio_path: str, start_time: float, end_time: float) -> torch.Tensor:
     audio_array, _ = librosa.load(audio_path, sr=16000, offset=start_time, duration=end_time-start_time)
     audio_array = torch.tensor(audio_array).unsqueeze(0).to(torch.float32)
     
@@ -102,10 +108,15 @@ def get_features(model_type: str, model: Any, processor: Any, audio_array: torch
         input_values = processor(audio_array.squeeze(0), sampling_rate=16000, return_tensors="pt").input_values.to(device)
         return model(input_values).extract_features.mean(1).cpu().numpy()
 
-def process_video(video_path: Path, output_dir: Path, shot_dict: Dict[str, List[Dict[str, float]]], 
-                  model_type: str, model: Any, processor: Any, device: str) -> Dict[str, Any]:
+def get_shot_feature(audio_path: Path, shot: Dict[str, float], model_type: str, model: Any, processor: Any, device: str) -> np.ndarray:
+    audio_array = get_waveform(str(audio_path), shot["start"], shot["end"])
+    return get_features(model_type, model, processor, audio_array, device)
+
+def process_video(video_path: Path, output_dir: Path, shot_dict: Dict[str, List[Dict[str, float]]],
+                  model_type: str, model: Any, processor: Any, device: str, num_neighbors: int = 2) -> Dict[str, Any]:
     """
-    Computes audio shot similarity between two neighboring shots from the reference shot in a video.
+    Computes audio shot similarity between neighboring shots and the reference shot in a video.
+    Reference shot: i, Neighboring shots: i-num_neighbors, ..., i-1, i+1, ..., i+num_neighbors
 
     Args:
         video_path (Path): Path to the video file
@@ -115,6 +126,7 @@ def process_video(video_path: Path, output_dir: Path, shot_dict: Dict[str, List[
         model (Any): The loaded model for feature extraction
         processor (Any): The loaded processor for the model
         device (str): The device to run computations on
+        num_neighbors (int): Number of previous/next neighboring shots to compute similarity for, on each side
 
     Returns:
         Dict[str, Any]: Dictionary containing audio shot similarity information
@@ -130,9 +142,12 @@ def process_video(video_path: Path, output_dir: Path, shot_dict: Dict[str, List[
             "shot": Dict[str, float],
             "prev_1": float,
             "prev_2": float,
+            ...
             "next_1": float,
-            "next_2": float
+            "next_2": float,
+            ...
         }
+        Number of prev_N/next_N keys is controlled by num_neighbors.
     """
     video_feat_dict = {
         "github_repo": "",
@@ -153,28 +168,29 @@ def process_video(video_path: Path, output_dir: Path, shot_dict: Dict[str, List[
         video_feat_dict["commit_id"] = "ba3f3cd54b0e5b8ce1ab3de13e32122d0d5f98ab"
 
     audio_path = output_dir / "audio.wav"
+    shots = shot_dict["shots"]
 
-    for i, ref_shot in enumerate(tqdm(shot_dict["shots"])):  
-        similarities = {"shot": ref_shot, "prev_1": 0, "prev_2": 0, "next_1": 0, "next_2": 0}
+    # Extract and cache each shot's feature vector once, instead of recomputing it
+    # every time the shot is used as another shot's neighbor.
+    shot_feats = [get_shot_feature(audio_path, shot, model_type, model, processor, device)
+                  for shot in tqdm(shots, desc="Extracting shot features")]
 
-        sr_time, er_time = ref_shot["start"], ref_shot["end"]
-        audio_array = get_waveform(str(audio_path), sr_time, er_time)
-        ref_feat = get_features(model_type, model, processor, audio_array, device)
+    neighbor_offsets_keys = get_neighbor_keys(num_neighbors)
 
-        shot_times = [get_shot_time(i + offset, shot_dict["shots"]) for offset in [-2, -1, 1, 2]]
+    for i, ref_shot in enumerate(tqdm(shots, desc="Computing shot similarities")):
+        similarities = {"shot": ref_shot}
+        similarities.update({key: 0 for _, key in neighbor_offsets_keys})
 
-        for j, (start_time, end_time) in enumerate(shot_times):
-            if start_time is not None and end_time is not None:
-                query_array = get_waveform(str(audio_path), start_time, end_time)
-                query_feat = get_features(model_type, model, processor, query_array, device)
-                similarity_key = ["prev_2", "prev_1", "next_1", "next_2"][j]
-                similarities[similarity_key] = cosine_similarity(ref_feat, query_feat)[0][0]
+        for offset, key in neighbor_offsets_keys:
+            j = i + offset
+            if 0 <= j < len(shots):
+                similarities[key] = cosine_similarity(shot_feats[i], shot_feats[j])[0][0]
 
         video_feat_dict["output_data"].append(similarities)
 
     return video_feat_dict
 
-def process_videos(videos: List[str], pkl_dir: str, model_type: str, model: Any, processor: Any, device: str, rewrite: bool) -> Tuple[int, int, List[str]]:
+def process_videos(videos: List[str], pkl_dir: str, model_type: str, model: Any, processor: Any, device: str, rewrite: bool, num_neighbors: int = 2) -> Tuple[int, int, List[str]]:
     successful = 0
     failed = 0
     failed_videos = []
@@ -209,8 +225,8 @@ def process_videos(videos: List[str], pkl_dir: str, model_type: str, model: Any,
             with open(shot_detection_path, "rb") as pklfile:
                 shot_content = pickle.load(pklfile)["output_data"]
             
-            video_feat_dict = process_video(video_path, output_dir, shot_content, 
-                                            model_type, model, processor, device)
+            video_feat_dict = process_video(video_path, output_dir, shot_content,
+                                            model_type, model, processor, device, num_neighbors)
 
             with open(sim_output_path, "wb") as output_file:
                 pickle.dump(video_feat_dict, output_file)
@@ -226,7 +242,6 @@ def process_videos(videos: List[str], pkl_dir: str, model_type: str, model: Any,
     return successful, failed, failed_videos
 
 def main():
-    script_path = Path(__file__).resolve()
     log_file = setup_logging("audio_shot_similarity")
     
     args = parse_args()
@@ -238,7 +253,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model, processor = get_model(args.model, device)
 
-    successful, failed, failed_videos = process_videos(args.videos, args.pkl_dir, args.model, model, processor, device, args.rewrite)
+    successful, failed, failed_videos = process_videos(args.videos, args.pkl_dir, args.model, model, processor, device, args.rewrite, args.num_neighbors)
 
     # Log summary
     total = successful + failed

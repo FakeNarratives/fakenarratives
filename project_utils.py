@@ -9,7 +9,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Any, Tuple
 from decord import VideoReader, cpu
-os.environ["DECORD_EOF_RETRY_MAX"] = "30480"
+os.environ["DECORD_EOF_RETRY_MAX"] = "20480"
 
 
 def read_video_and_get_info(video_path, args, workers, required_fps):
