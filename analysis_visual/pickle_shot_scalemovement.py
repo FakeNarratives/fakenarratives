@@ -31,6 +31,9 @@ OUTPUT_FILENAMES = {
     "fivecrop": "videoshot_scalemovement_fivecrop.pkl",
 }
 
+## Number of frames sampled per shot for the model (must match UniformTemporalSubsample below)
+NUM_TEMPORAL_SAMPLES = 16
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Predict Shot Scale and Movement using a custom multi-task VideoMAE model.")
@@ -120,7 +123,7 @@ def get_transform(crop_type, image_size, processor):
     """
     ops = [
         Lambda(lambda x: x.permute(0, 3, 1, 2)),  # T, H, W, C -> T, C, H, W
-        UniformTemporalSubsample(16),
+        UniformTemporalSubsample(NUM_TEMPORAL_SAMPLES),
     ]
 
     if crop_type == "square":
@@ -141,8 +144,18 @@ def get_transform(crop_type, image_size, processor):
     return Compose([ApplyTransformToKey(key="video", transform=Compose(ops))])
 
 
-def get_subclip_indices(start_index, end_index, total_frames):
-    return [i for i in range(start_index, min(end_index + 1, total_frames))]
+def get_subclip_indices(start_index, end_index, total_frames, num_samples=NUM_TEMPORAL_SAMPLES):
+    """
+    Pick num_samples frame indices evenly spaced across [start_index, end_index], matching
+    what UniformTemporalSubsample(num_samples) would later pick from the full range. Sampling
+    here (before vr.get_batch) instead of after avoids decoding every frame in the shot first
+    - some shots span tens of thousands of frames (bad shot-detection splits), and decoding
+    all of them before subsampling to num_samples can OOM a multi-hundred-GB host.
+    """
+    end_index = min(end_index, total_frames - 1)
+    num_shot_frames = max(1, end_index - start_index + 1)
+    positions = torch.linspace(0, num_shot_frames - 1, num_samples).long()
+    return [start_index + p.item() for p in positions]
 
 
 def predict_shot(inputs, model, crop_type, processor, device):
@@ -269,6 +282,10 @@ def main():
     test_transform = get_transform(args.crop_type, model.config.image_size, processor)
 
     videos = args.videos
+    successful = 0
+    failed = 0
+    failed_videos = []
+
     for vi, video_path in enumerate(videos):
         logging.info(f"\tProcessing video [{vi+1}/{len(videos)}]: {video_path}")
         vidname = os.path.splitext(os.path.basename(video_path))[0]
@@ -276,25 +293,45 @@ def main():
 
         if os.path.exists(os.path.join(output_dir, output_filename)) and not args.resume:
             logging.info(f"\tFound existing pickle file in {output_dir}, skipping")
+            successful += 1
             continue
 
         shot_detection_path = os.path.join(output_dir, "transnet_shotdetection.pkl")
 
         if not os.path.isfile(shot_detection_path):
             logging.error(f"\tMissing shot detection file in {shot_detection_path}")
+            failed += 1
+            failed_videos.append(video_path)
             continue
 
-        with open(shot_detection_path, "rb") as pklfile:
-            shot_content = pickle.load(pklfile)
+        try:
+            with open(shot_detection_path, "rb") as pklfile:
+                shot_content = pickle.load(pklfile)
 
-        logging.info(f"\tNumber of shots: {len(shot_content['output_data']['shots'])}")
+            logging.info(f"\tNumber of shots: {len(shot_content['output_data']['shots'])}")
 
-        video_feat_dict = process_video(video_path, shot_content, model, test_transform, processor, args.crop_type, args, device)
+            video_feat_dict = process_video(video_path, shot_content, model, test_transform, processor, args.crop_type, args, device)
 
-        with open(os.path.join(output_dir, output_filename), "wb") as output_file:
-            pickle.dump(video_feat_dict, output_file)
+            with open(os.path.join(output_dir, output_filename), "wb") as output_file:
+                pickle.dump(video_feat_dict, output_file)
 
-        print("%%\n")
+            successful += 1
+            print("%%\n")
+        except Exception as e:
+            logging.error(f"\tError processing video {video_path}: {e}")
+            failed += 1
+            failed_videos.append(video_path)
+
+    total = len(videos)
+    logging.info(f"Processing complete. Total: {total}, Successful: {successful}, Failed: {failed}")
+    print(f"\nProcessing summary:")
+    print(f"Total videos: {total}")
+    print(f"Successful: {successful}")
+    print(f"Failed: {failed}")
+    if failed_videos:
+        print("Failed videos:")
+        for v in failed_videos:
+            print(f"  - {v}")
 
 
 if __name__ == "__main__":

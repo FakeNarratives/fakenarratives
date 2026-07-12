@@ -24,7 +24,7 @@ def parse_args():
     parser.add_argument("-o", "--pkl_dir", type=str, required=True, help="path to the output folder")
     parser.add_argument("-w", "--num_workers", type=int, default=4, help="number of workers to use for data loading")
     parser.add_argument("-r", "--rewrite", action="store_true", help="rewrite existing pickle files")
-    parser.add_argument("--model", type=str, required=True, choices=["siglip", "convnextv2", "places"],
+    parser.add_argument("-m", "--model", type=str, required=True, choices=["siglip", "convnextv2", "places"],
                         help="Choose the model to run")
     parser.add_argument("-n", "--num_neighbors", type=int, default=2,
                         help="number of previous/next neighboring shots to compute similarity for, on each side")
@@ -32,7 +32,7 @@ def parse_args():
         "--max_dimension",
         type=int,
         required=False,
-        default=640,
+        default=1280,
         help="max dimension of the video frames",
     )
     args = parser.parse_args()
@@ -65,15 +65,21 @@ def get_model(device, model_type):
     
     return model.eval(), processor
 
-def extract_frames(vr, start_frame, end_frame, fps, subsample_rate=4):
+def get_shot_frame_indices(start_frame, end_frame, total_frames, fps, subsample_rate=4, max_frames=32):
+    """
+    Compute the exact frame indices to sample from a shot, without decoding any frames first.
+    Mirrors the same two-stage subsampling as before (fixed stride of fps//subsample_rate,
+    then a uniform cap to max_frames) but as plain index arithmetic, so vr.get_batch() only
+    ever decodes up to max_frames frames - some shots span tens of thousands of frames (bad
+    shot-detection splits), and decoding the full range before subsampling can OOM the host.
+    """
+    end_frame = min(end_frame, total_frames - 1)
     step_size = max(1, int(fps // subsample_rate))
-    frames = vr.get_batch(range(start_frame, end_frame + 1))
-    frames = frames[::step_size]
-    ## Max frames 32 (To avoid GPU OOM Error)
-    if len(frames) > 32:  ## Uniformly sample 64 frames
-        indices = np.linspace(0, len(frames) - 1, 32, dtype=int)
-        frames = [frames[i] for i in indices]
-    return frames
+    indices = list(range(start_frame, end_frame + 1, step_size))
+    if len(indices) > max_frames:
+        positions = np.linspace(0, len(indices) - 1, max_frames, dtype=int)
+        indices = [indices[p] for p in positions]
+    return indices
 
 def process_frames(frames, model_type, processor, device):
     if model_type == "siglip":
@@ -99,8 +105,9 @@ def get_features(inputs, model_type, model):
     elif model_type == "places":
         return model(inputs).reshape(inputs.shape[0], 2048)
 
-def get_shot_features(vr, shot, fps, model_type, processor, model, device):
-    frames = extract_frames(vr, shot["start_frame"], shot["end_frame"], fps, subsample_rate=4)
+def get_shot_features(vr, shot, total_frames, fps, model_type, processor, model, device):
+    indices = get_shot_frame_indices(shot["start_frame"], shot["end_frame"], total_frames, fps, subsample_rate=4)
+    frames = vr.get_batch(indices)
     inputs = process_frames(frames, model_type, processor, device)
     feats = get_features(inputs, model_type, model)
     feats = feats / feats.norm(dim=1)[:, None]
@@ -170,12 +177,13 @@ def process_video(video_path, shot_dict, model, processor, args, device, model_t
     
     vr, frame_width, frame_height, fps, real_fps = read_video_and_get_info(video_path, args, args.num_workers, 25)
     logging.info(f"\tVideo info: {len(vr)} frames, New FPS {fps}, Original FPS {real_fps}, Size: {frame_width} x {frame_height}")
+    total_frames = len(vr)
 
     shots = shot_dict["output_data"]["shots"]
 
     # Extract and cache each shot's normalized features once, instead of recomputing
     # them every time a shot is used as another shot's neighbor.
-    shot_feats = [get_shot_features(vr, shot, fps, model_type, processor, model, device)
+    shot_feats = [get_shot_features(vr, shot, total_frames, fps, model_type, processor, model, device)
                   for shot in tqdm(shots, desc="Extracting shot features")]
 
     neighbor_offsets_keys = get_neighbor_keys(args.num_neighbors)
